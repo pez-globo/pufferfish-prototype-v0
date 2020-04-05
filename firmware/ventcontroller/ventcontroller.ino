@@ -7,11 +7,6 @@ static inline int sgn(int val) {
  return 1;
 }
 
-// byte[0]: which motor to move: 0 x, 1 y, 2 z, 3 LED, 4 Laser
-// byte[1]: what direction: 1 forward, 0 backward
-// byte[2]: how many micro steps - upper 8 bits
-// byte[3]: how many micro steps - lower 8 bits
-
 static const int CMD_LENGTH = 4;
 static const int MSG_LENGTH = 9;
 byte buffer_rx[500];
@@ -22,18 +17,28 @@ static const int N_BYTES_POS = 3;
 static const int pin_valve1 = 48;
 static const int pin_valve2 = 49;
 
+long flow = 0;
+long volume = 0;
+long paw = 0;
+float RR = 30;
+float Ti = 0.5;
+float cycle_period_ms = 0; // duration of each breathing cycle
+float cycle_time_ms = 0;  // current time in the breathing cycle
+float time_inspiratory_ms = 500;
+
+
 #include <DueTimer.h>
-static const int TIMER_PERIOD = 500; // in us
+static const float TIMER_PERIOD_us = 500; // in us
 
 void setup() {
 
   // Initialize Native USB port
   //SerialUSB.begin(2000000);     
   //while(!SerialUSB);            // Wait until connection is established
-  buffer_rx_ptr = 0;
+  //buffer_rx_ptr = 0;
 
   pinMode(13, OUTPUT);
-  digitalWrite(13,LOW);
+  digitalWrite(13,HIGH);
   
   pinMode(pin_valve1, OUTPUT);
   digitalWrite(pin_valve1, LOW);
@@ -42,18 +47,36 @@ void setup() {
   digitalWrite(pin_valve2, LOW);
 
   Timer3.attachInterrupt(timer_interruptHandler);
-  Timer3.start(TIMER_PERIOD); 
+  Timer3.start(TIMER_PERIOD_us);
+
+  cycle_period_ms = 60*1000/RR;
   
 }
 
 void timer_interruptHandler()
 {
-  digitalWrite(13,LOW);
-}
+  // read sensor value
 
+  // update cycle time
+  cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us/1000;
+  if(cycle_time_ms>cycle_period_ms)
+  {
+    cycle_time_ms = 0;
+    set_valve2_state(0);
+    set_valve1_state(1);
+    digitalWrite(13,HIGH);
+  }
+  if(cycle_time_ms>time_inspiratory_ms)
+  {
+    set_valve1_state(0);
+    set_valve2_state(1);
+    digitalWrite(13,LOW);
+  }
+}
 
 void loop() 
 {
+  /*
   while (SerialUSB.available()) 
   { 
     buffer_rx[buffer_rx_ptr] = SerialUSB.read();
@@ -67,6 +90,7 @@ void loop()
         set_valve2_state(buffer_rx[1]);
     }
   }
+  */
 }
 
 void set_valve1_state(int state)
