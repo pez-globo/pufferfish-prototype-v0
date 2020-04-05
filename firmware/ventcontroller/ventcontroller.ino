@@ -17,15 +17,18 @@ static const int N_BYTES_POS = 3;
 static const int pin_valve1 = 48;
 static const int pin_valve2 = 49;
 
-static const int flow_FS = 100;
-static const int volume_FS = 1500;
-static const int paw_FS = 50;
+static const float flow_FS = 100;
+static const float volume_FS = 1500;
+static const float paw_FS = 50;
+static const float Ti_FS = 5;
+static const float Vt_FS = 1500;
 
 long flow = 0;
 long volume = 0;
 long paw = 0;
 float RR = 30;
 float Ti = 0.5;
+float Vt = 0;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
@@ -90,7 +93,7 @@ void timer_interruptHandler()
     counter_send_data = 0;
     flag_send_data = true;
   }
-    
+  
 }
 
 void loop() 
@@ -102,7 +105,13 @@ void loop()
     if (buffer_rx_ptr == CMD_LENGTH) 
     {
       buffer_rx_ptr = 0;
-      if(buffer_rx[0]==3)
+      if(buffer_rx[0]==0)
+        RR = buffer_rx[1];
+      else if(buffer_rx[0]==1)
+        Ti = (float(buffer_rx[1])/256)*Ti_FS;
+      else if(buffer_rx[0]==2)
+        Vt = (float(buffer_rx[1])/256)*Vt_FS;
+      else if(buffer_rx[0]==3)
         set_valve1_state(buffer_rx[1]);
       else if(buffer_rx[0]==4)
         set_valve2_state(buffer_rx[1]);
