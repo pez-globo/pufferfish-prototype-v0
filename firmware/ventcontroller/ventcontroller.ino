@@ -7,8 +7,8 @@ static inline int sgn(int val) {
  return 1;
 }
 
-static const int CMD_LENGTH = 4;
-static const int MSG_LENGTH = 9;
+static const int CMD_LENGTH = 2;
+static const int MSG_LENGTH = 6;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
@@ -17,15 +17,25 @@ static const int N_BYTES_POS = 3;
 static const int pin_valve1 = 48;
 static const int pin_valve2 = 49;
 
+static const int flow_FS = 100;
+static const int volume_FS = 1500;
+static const int paw_FS = 50;
+
 long flow = 0;
 long volume = 0;
 long paw = 0;
 float RR = 30;
 float Ti = 0.5;
+
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
 float time_inspiratory_ms = 500;
+float frequency_send_data = 50;
+float counter_send_data = 0;
 
+bool flag_send_data = false;
+uint16_t tmp_uint16;
+int16_t tmp_int16;
 
 #include <DueTimer.h>
 static const float TIMER_PERIOD_us = 500; // in us
@@ -57,7 +67,7 @@ void timer_interruptHandler()
 {
   // read sensor value
 
-  // update cycle time
+  // breathing control
   cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us/1000;
   if(cycle_time_ms>cycle_period_ms)
   {
@@ -72,12 +82,20 @@ void timer_interruptHandler()
     set_valve2_state(1);
     digitalWrite(13,LOW);
   }
+
+  // send data to host computer
+  counter_send_data = counter_send_data + 1;
+  if(TIMER_PERIOD_us*counter_send_data>=1000000/frequency_send_data)
+  {
+    counter_send_data = 0;
+    flag_send_data = true;
+  }
+    
 }
 
 void loop() 
 {
-  /*
-  while (SerialUSB.available()) 
+  while(SerialUSB.available()) 
   { 
     buffer_rx[buffer_rx_ptr] = SerialUSB.read();
     buffer_rx_ptr = buffer_rx_ptr + 1;
@@ -90,7 +108,24 @@ void loop()
         set_valve2_state(buffer_rx[1]);
     }
   }
-  */
+
+  if(flag_send_data)
+  {
+    tmp_uint16 = 65536*paw/paw_FS;    
+    buffer_tx[0] = byte(tmp_uint16>>8);
+    buffer_tx[1] = byte(tmp_uint16%256);
+
+    tmp_int16 = (65536/2)*flow/flow_FS;
+    buffer_tx[2] = byte(tmp_int16>>8);
+    buffer_tx[3] = byte(tmp_int16%256);
+
+    tmp_uint16 = 65536*volume/volume_FS;
+    buffer_tx[4] = byte(tmp_uint16>>8);
+    buffer_tx[5] = byte(tmp_uint16%256);
+
+    SerialUSB.write(buffer_tx,MSG_LENGTH);
+    flag_send_data = false;    
+  }
 }
 
 void set_valve1_state(int state)
@@ -113,6 +148,5 @@ void set_valve2_state(int state)
 long signed2NBytesUnsigned(long signedLong,int N)
 {
   long NBytesUnsigned = signedLong + pow(256L,N)/2;
-  //long NBytesUnsigned = signedLong + 8388608L;
   return NBytesUnsigned;
 }
