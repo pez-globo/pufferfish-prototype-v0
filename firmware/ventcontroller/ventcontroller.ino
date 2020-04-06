@@ -44,7 +44,7 @@ static const int N_BYTES_POS = 3;
 static const int pin_valve1 = 48;
 static const int pin_valve2 = 49;
 
-static const float flow_FS = 100;
+static const float flow_FS = 200;
 static const float volume_FS = 1500;
 static const float paw_FS = 50;
 static const float Ti_FS = 5;

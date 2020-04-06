@@ -22,7 +22,8 @@ class VentDevGUI(QMainWindow):
 		super().__init__(*args, **kwargs)
 
 		# load objects
-		self.microcontroller = microcontroller.Microcontroller_Simulation()
+		# self.microcontroller = microcontroller.Microcontroller_Simulation()
+		self.microcontroller = microcontroller.Microcontroller()
 		self.stepperMotorController = core.ValveController(self.microcontroller)
 		self.waveforms = core.Waveforms(self.microcontroller)
 

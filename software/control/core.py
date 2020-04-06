@@ -73,13 +73,15 @@ class Waveforms(QObject):
         self.timer_update_waveform.start()
 
     def update_waveforms(self):
-        # readout = self.microcontroller.read_received_packet_nowait()
-        # if readout is None:
-        #     return
-        # self.Paw = utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_POS)/Motion.STEPS_PER_MM_XY
-        # self.Volume = utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_POS)/Motion.STEPS_PER_MM_XY
-        # self.Flow = utils.unsigned_to_signed(readout[4:6],MicrocontrollerDef.N_BYTES_POS)/Motion.STEPS_PER_MM_XY
-        self.Paw = (self.Paw + 0.01)%5
-        self.Volume = (self.Volume + 0.01)%5
-        self.Flow = (self.Flow + 0.01)%5
+        readout = self.microcontroller.read_received_packet_nowait()
+        if readout is None:
+            return
+        self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
+        # self.Flow = (utils.unsigned_to_signed(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
+        # self.Volume = (utils.unsigned_to_unsigned(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
         print(self.Paw)
+
+        # self.Paw = (self.Paw + 0.01)%5
+        # self.Volume = (self.Volume + 0.01)%5
+        # self.Flow = (self.Flow + 0.01)%5
+        # print(self.Paw)
