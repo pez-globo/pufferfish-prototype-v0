@@ -70,6 +70,7 @@ volatile bool flag_send_data = false;
 volatile bool flag_read_sensor = false;
 uint16_t tmp_uint16;
 int16_t tmp_int16;
+long tmp_long;
 
 #include <DueTimer.h>
 static const float TIMER_PERIOD_us = 500; // in us
@@ -145,7 +146,7 @@ void timer_interruptHandler()
     counter_send_data = 0;
     flag_send_data = true;
   }
-  
+
 }
 
 void loop() 
@@ -186,11 +187,13 @@ void loop()
 
   if(flag_send_data)
   {
-    tmp_uint16 = 65536*paw/paw_FS;    
+    tmp_long = (65536/2)*paw/paw_FS;
+    tmp_uint16 = signed2NBytesUnsigned(tmp_long,2);
     buffer_tx[0] = byte(tmp_uint16>>8);
     buffer_tx[1] = byte(tmp_uint16%256);
 
-    tmp_int16 = (65536/2)*flow/flow_FS;
+    tmp_long = (65536/2)*flow/flow_FS;
+    tmp_uint16 = signed2NBytesUnsigned(tmp_long,2);
     buffer_tx[2] = byte(tmp_int16>>8);
     buffer_tx[3] = byte(tmp_int16%256);
 
