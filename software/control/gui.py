@@ -29,10 +29,12 @@ class VentDevGUI(QMainWindow):
 
 		# load widgets
 		self.navigationWidget = widgets.stepperMotorWidget(self.stepperMotorController)
+		self.waveformDisplay = widgets.WaveformDisplay()
 		
 		# layout widgets
 		layout = QGridLayout() #layout = QStackedLayout()
-		layout.addWidget(self.navigationWidget,2,0)
+		# layout.addWidget(self.navigationWidget,0,0)
+		layout.addWidget(self.waveformDisplay,1,0)
 
 		# transfer the layout to the central widget
 		self.centralWidget = QWidget()
@@ -42,6 +44,10 @@ class VentDevGUI(QMainWindow):
 		# make connections
 		self.stepperMotorController.xPos.connect(self.navigationWidget.label_Xpos.setNum)
 		self.stepperMotorController.yPos.connect(self.navigationWidget.label_Ypos.setNum)
+		self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway pressure'].update_plot)
+		self.waveforms.signal_Flow.connect(self.waveformDisplay.plotWidgets['Flow rate'].update_plot)
+		self.waveforms.signal_Volume.connect(self.waveformDisplay.plotWidgets['Volume'].update_plot)
+
 
 	def closeEvent(self, event):
 		event.accept()

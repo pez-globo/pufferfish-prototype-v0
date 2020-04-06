@@ -41,8 +41,8 @@ byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
 static const int N_BYTES_POS = 3;
 
-static const int pin_valve1 = 48;
-static const int pin_valve2 = 49;
+static const int pin_valve1 = 30;
+static const int pin_valve2 = 31;
 
 static const float flow_FS = 200;
 static const float volume_FS = 1500;
@@ -50,13 +50,13 @@ static const float paw_FS = 50;
 static const float Ti_FS = 5;
 static const float Vt_FS = 1500;
 
-static const float coefficient_dP2flow = 100;
+static const float coefficient_dP2flow = 1.66;
 
 float dP = 0;
 float flow = 0;
 float volume = 0;
 float paw = 0;
-float RR = 30;
+float RR = 15;
 float Ti = 0.5;
 float Vt = 0;
 
@@ -194,8 +194,8 @@ void loop()
 
     tmp_long = (65536/2)*flow/flow_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long,2);
-    buffer_tx[2] = byte(tmp_int16>>8);
-    buffer_tx[3] = byte(tmp_int16%256);
+    buffer_tx[2] = byte(tmp_uint16>>8);
+    buffer_tx[3] = byte(tmp_uint16%256);
 
     tmp_uint16 = 65536*volume/volume_FS;
     buffer_tx[4] = byte(tmp_uint16>>8);
@@ -204,13 +204,12 @@ void loop()
     SerialUSB.write(buffer_tx,MSG_LENGTH);
     flag_send_data = false;
 
-    /*  debug
-    SerialUSB.print(paw);
-    SerialUSB.print("\t ");
-    SerialUSB.print(flow);
-    SerialUSB.print("\t ");
-    SerialUSB.println(volume);
-    */
+    //    SerialUSB.print(paw);
+    //    SerialUSB.print("\t ");
+    //    SerialUSB.print(flow);
+    //    SerialUSB.print("\t ");
+    //    SerialUSB.println(volume);
+    
   }
 }
 

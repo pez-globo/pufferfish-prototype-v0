@@ -57,9 +57,9 @@ class ValveController(QObject):
 
 class Waveforms(QObject):
 
-    signal_Paw = Signal(float)
-    signal_Volume = Signal(float)
-    signal_Flow = Signal(float)
+    signal_Paw = Signal(float,float)
+    signal_Volume = Signal(float,float)
+    signal_Flow = Signal(float,float)
 
     def __init__(self,microcontroller):
         QObject.__init__(self)
@@ -67,19 +67,31 @@ class Waveforms(QObject):
         self.Paw = 0
         self.Volume = 0
         self.Flow = 0
+        self.time = 0
         self.timer_update_waveform = QTimer()
         self.timer_update_waveform.setInterval(WAVEFORMS.UPDATE_INTERVAL_MS)
         self.timer_update_waveform.timeout.connect(self.update_waveforms)
         self.timer_update_waveform.start()
 
     def update_waveforms(self):
+        self.time = self.time + (1/1000)*WAVEFORMS.UPDATE_INTERVAL_MS
+        self.time = self.time%WAVEFORMS.DISPLAY_RANGE_S
         readout = self.microcontroller.read_received_packet_nowait()
-        if readout is None:
-            return
-        self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
-        # self.Flow = (utils.unsigned_to_signed(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
-        # self.Volume = (utils.unsigned_to_unsigned(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
-        print(self.Paw)
+        if readout is not None:
+            self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
+            self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
+            self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
+        
+        self.signal_Paw.emit(self.time,self.Paw)
+        self.signal_Flow.emit(self.time,self.Flow)
+        self.signal_Volume.emit(self.time,self.Volume)
+
+        
+
+        # print(self.Paw)
+        # print(self.Flow)
+        # print(self.Volume)
+        # print('----------')
 
         # self.Paw = (self.Paw + 0.01)%5
         # self.Volume = (self.Volume + 0.01)%5

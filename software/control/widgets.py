@@ -10,6 +10,11 @@ from qtpy.QtGui import *
 
 from control._def import *
 
+import numpy as np
+import pyqtgraph as pg
+from collections import deque
+import time
+
 class stepperMotorWidget(QFrame):
     def __init__(self, stepperMotorController, main=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -76,3 +81,57 @@ class stepperMotorWidget(QFrame):
         self.stepperMotorController.move_y(self.entry_dY.value())
     def move_y_backward(self):
         self.stepperMotorController.move_y(-self.entry_dY.value())
+
+
+# from Deepak
+class PlotWidget(pg.GraphicsLayoutWidget):
+
+    def __init__(self,title, color = 'w', parent=None):
+        super().__init__(parent)
+        #pg.setConfigOption('background', 'w')
+        self.title = title
+        self.maxLen = int(1000*WAVEFORMS.DISPLAY_RANGE_S/WAVEFORMS.UPDATE_INTERVAL_MS)
+        self.X_data = deque(maxlen = self.maxLen)
+        self.Y_data = deque(maxlen = self.maxLen)
+        self.Abs = []
+        self.Ord = []
+        self.plot1 = self.addPlot(title = self.title + ' ' + PLOT_UNITS[self.title])
+        self.setBackground('w')
+        # self.curve = self.plot1.plot(self.Abs, self.Ord, pen=pg.mkPen(color, width=3), fillLevel=-0.3, brush=(50,50,200,100))
+        self.curve = self.plot1.plot(self.Abs, self.Ord, pen=pg.mkPen(color, width=3), brush=(50,50,200,100))
+        self.curve.setClipToView(True)
+        self.plot1.enableAutoRange('y', True)
+        self.plot1.showGrid(x=True, y=True)
+        self.ptr = 0
+        #pg.setConfigOption('background', 'w')
+
+    def update_plot(self, time, data):
+        self.X_data.append(time)        
+        self.Y_data.append(data)
+        self.label = PLOT_UNITS[self.title]
+        self.Abs = np.array(self.X_data)
+        self.Ord = np.array(self.Y_data)
+        self.curve.setData(self.Abs-self.Abs[-1], self.Ord)
+        self.curve.setPos(self.Abs[-1],0)
+
+    def initialise_plot(self):
+        self.X_data = deque(maxlen = self.maxLen)
+        self.Y_data = deque(maxlen = self.maxLen)
+        self.Abs = []
+        self.Ord = []
+        self.curve.setData(self.Abs,self.Ord)
+
+
+class WaveformDisplay(QFrame):
+
+    def __init__(self, main=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_components()
+        self.setFrameStyle(QFrame.Panel | QFrame.Raised)
+
+    def add_components(self):
+        self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
+        grid = QGridLayout() 
+        for ii, key in enumerate(PLOTS):
+            grid.addWidget(self.plotWidgets[key], ii, 0,1,2)
+        self.setLayout(grid)
