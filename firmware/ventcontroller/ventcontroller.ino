@@ -53,18 +53,18 @@ static const float PEEP_FS = 30;
 
 static const float coefficient_dP2flow = 1.66;
 
-float dP = 0;
-float flow = 0;
-float volume = 0;
-float paw = 0;
-float RR = 15;
+volatile float dP = 0;
+volatile float flow = 0;
+volatile float volume = 0;
+volatile float paw = 0;
+float RR = 10;
 float Ti = 1.5;
 float Vt = 250;
 float PEEP = 5;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
-float time_inspiratory_ms = 500;
+float time_inspiratory_ms = Ti*1000;
 float frequency_send_data = 50;
 float counter_send_data = 0;
 
@@ -156,6 +156,8 @@ void timer_interruptHandler()
     // only allow expiratory flow when Paw is >= PEEP
     if(paw>PEEP)
       set_valve2_state(1);
+    else
+      set_valve2_state(0);
   }
 
   // send data to host computer
@@ -183,7 +185,10 @@ void loop()
         cycle_period_ms = (60/RR)*1000;
       }
       else if(buffer_rx[0]==1)
+      {
         Ti = (float(buffer_rx[1])/256)*Ti_FS;
+        time_inspiratory_ms = Ti*1000;
+      }
       else if(buffer_rx[0]==2)
         Vt = (float(buffer_rx[1])/256)*Vt_FS;
       else if(buffer_rx[0]==3)
