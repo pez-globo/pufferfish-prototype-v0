@@ -91,64 +91,35 @@ class PlotWidget(pg.GraphicsLayoutWidget):
         #pg.setConfigOption('background', 'w')
         self.title = title
         self.maxLen = int(1000*WAVEFORMS.DISPLAY_RANGE_S/WAVEFORMS.UPDATE_INTERVAL_MS)
-        self.left_X_data = deque(maxlen = self.maxLen)
-        self.left_Y_data = deque(maxlen = self.maxLen)
-        self.right_Abs = []
-        self.right_Ord = []
-        self.right_X_data = deque(maxlen = self.maxLen)
-        self.right_Y_data = deque(maxlen = self.maxLen)
-        self.left_Abs = []
-        self.left_Ord = []
+        self.X_data = deque(maxlen = self.maxLen)
+        self.Y_data = deque(maxlen = self.maxLen)
+        self.Abs = []
+        self.Ord = []
         self.plot1 = self.addPlot(title = self.title + ' ' + PLOT_UNITS[self.title])
         self.setBackground('w')
         # self.curve = self.plot1.plot(self.Abs, self.Ord, pen=pg.mkPen(color, width=3), fillLevel=-0.3, brush=(50,50,200,100))
-        self.left_curve = self.plot1.plot(self.left_Abs, self.left_Ord, pen=pg.mkPen(color, width=3), brush=(50,50,200,100))
-        self.right_curve = self.plot1.plot(self.right_Abs, self.right_Ord, pen=pg.mkPen(color, width=3), brush=(50,50,200,100))
-        self.left_curve.setClipToView(True)
-        self.right_curve.setClipToView(True)
+        self.curve = self.plot1.plot(self.Abs, self.Ord, pen=pg.mkPen(color, width=3), brush=(50,50,200,100))
+        self.curve.setClipToView(True)
         self.plot1.enableAutoRange('y', True)
         self.plot1.showGrid(x=True, y=True)
         self.ptr = 0
-        self.cycleGap = 10
         #pg.setConfigOption('background', 'w')
 
     def update_plot(self, time, data):
-        if len(self.left_X_data) > 0 and time < self.left_X_data[-1]:
-            self.right_X_data = self.left_X_data
-            self.right_Y_data = self.left_Y_data
-            self.left_X_data = deque(maxlen = self.maxLen)
-            self.left_Y_data = deque(maxlen = self.maxLen)
-        self.left_X_data.append(time)        
-        self.left_Y_data.append(data)
-        while (
-            len(self.right_X_data) > 0
-            and len(self.left_X_data) + len(self.right_X_data) >= self.maxLen - self.cycleGap
-        ):
-            self.right_X_data.popleft()
-            self.right_Y_data.popleft()
+        self.X_data.append(time)        
+        self.Y_data.append(data)
         self.label = PLOT_UNITS[self.title]
-        self.left_Abs = np.array(self.left_X_data)
-        self.left_Ord = np.array(self.left_Y_data)
-        self.right_Abs = np.array(self.right_X_data)
-        self.right_Ord = np.array(self.right_Y_data)
-        if len(self.left_Abs):
-            self.left_curve.setData(self.left_Abs-self.left_Abs[-1], self.left_Ord)
-            self.left_curve.setPos(self.left_Abs[-1],0)
-        if len(self.right_Abs):
-            self.right_curve.setData(self.right_Abs-self.right_Abs[-1], self.right_Ord)
-            self.right_curve.setPos(self.right_Abs[-1],0)
+        self.Abs = np.array(self.X_data)
+        self.Ord = np.array(self.Y_data)
+        self.curve.setData(self.Abs-self.Abs[-1], self.Ord)
+        self.curve.setPos(self.Abs[-1],0)
 
     def initialise_plot(self):
-        self.left_X_data = deque(maxlen = self.maxLen)
-        self.left_Y_data = deque(maxlen = self.maxLen)
-        self.right_X_data = deque(maxlen = self.maxLen)
-        self.right_Y_data = deque(maxlen = self.maxLen)
-        self.left_Abs = []
-        self.left_Ord = []
-        self.right_Abs = []
-        self.right_Ord = []
-        self.left_curve.setData(self.left_Abs,self.left_Ord)
-        self.right_curve.setData(self.right_Abs,self.right_Ord)
+        self.X_data = deque(maxlen = self.maxLen)
+        self.Y_data = deque(maxlen = self.maxLen)
+        self.Abs = []
+        self.Ord = []
+        self.curve.setData(self.Abs,self.Ord)
 
 
 class WaveformDisplay(QFrame):
