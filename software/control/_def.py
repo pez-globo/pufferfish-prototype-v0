@@ -67,8 +67,8 @@ class MicrocontrollerDef:
 
 class WAVEFORMS:
     UPDATE_INTERVAL_MS = 20
-    DISPLAY_RANGE_S = 10 
+    DISPLAY_RANGE_S = 20 
 
-PLOTS = ['Airway pressure', 'Flow rate', 'Volume']
-PLOT_VARIABLES = {'Airway pressure':'P_aw', 'Flow rate':'Flow_rate', 'Volume':'Volume'}
-PLOT_UNITS = {'Airway pressure':'cmH20', 'Flow rate':'L/min', 'Volume':'mL'}
+PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
+PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
+PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}

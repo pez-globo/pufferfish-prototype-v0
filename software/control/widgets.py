@@ -89,6 +89,10 @@ class PlotWidget(pg.GraphicsLayoutWidget):
     def __init__(self,title, color = 'w', parent=None):
         super().__init__(parent)
         #pg.setConfigOption('background', 'w')
+
+        self.font = QFont()
+        self.font.setPixelSize(25)
+
         self.title = title
         self.maxLen = int(1000*WAVEFORMS.DISPLAY_RANGE_S/WAVEFORMS.UPDATE_INTERVAL_MS)
         self.left_X_data = deque(maxlen = self.maxLen)
@@ -100,9 +104,12 @@ class PlotWidget(pg.GraphicsLayoutWidget):
         self.left_Abs = []
         self.left_Ord = []
         self.plot1 = self.addPlot(title = self.title + ' ' + PLOT_UNITS[self.title])
+        self.plot1.setTitle(title = self.title + ' [' + PLOT_UNITS[self.title] + ']',size = '30pt')
+        self.plot1.getAxis("bottom").tickFont = self.font
+        self.plot1.getAxis("left").tickFont = self.font
         self.setBackground('w')
         # self.curve = self.plot1.plot(self.Abs, self.Ord, pen=pg.mkPen(color, width=3), fillLevel=-0.3, brush=(50,50,200,100))
-        self.left_curve = self.plot1.plot(self.left_Abs, self.left_Ord, pen=pg.mkPen(color, width=3), brush=(50,50,200,100))
+        self.left_curve = self.plot1.plot(self.left_Abs, self.left_Ord, pen=pg.mkPen(color, width=3), fillLevel=-0.3, brush=(50,50,200,100))
         self.right_curve = self.plot1.plot(self.right_Abs, self.right_Ord, pen=pg.mkPen(color, width=3), brush=(50,50,200,100))
         self.left_curve.setClipToView(True)
         self.right_curve.setClipToView(True)
@@ -161,8 +168,8 @@ class WaveformDisplay(QFrame):
 
     def add_components(self):
         self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
-        self.plotWidgets['Airway pressure'].plot1.setYRange(min=0,max=50)
-        self.plotWidgets['Flow rate'].plot1.setYRange(min=-120,max=120)
+        self.plotWidgets['Airway Pressure'].plot1.setYRange(min=0,max=50)
+        self.plotWidgets['Flow Rate'].plot1.setYRange(min=-120,max=120)
         self.plotWidgets['Volume'].plot1.setYRange(min=0,max=500)
 
         grid = QGridLayout() 

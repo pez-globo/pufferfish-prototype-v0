@@ -44,8 +44,8 @@ class VentDevGUI(QMainWindow):
 		# make connections
 		self.stepperMotorController.xPos.connect(self.navigationWidget.label_Xpos.setNum)
 		self.stepperMotorController.yPos.connect(self.navigationWidget.label_Ypos.setNum)
-		self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway pressure'].update_plot)
-		self.waveforms.signal_Flow.connect(self.waveformDisplay.plotWidgets['Flow rate'].update_plot)
+		self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway Pressure'].update_plot)
+		self.waveforms.signal_Flow.connect(self.waveformDisplay.plotWidgets['Flow Rate'].update_plot)
 		self.waveforms.signal_Volume.connect(self.waveformDisplay.plotWidgets['Volume'].update_plot)
 
 
