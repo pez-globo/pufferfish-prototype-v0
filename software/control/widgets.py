@@ -106,7 +106,8 @@ class PlotWidget(pg.GraphicsLayoutWidget):
         self.right_curve = self.plot1.plot(self.right_Abs, self.right_Ord, pen=pg.mkPen(color, width=3), brush=(50,50,200,100))
         self.left_curve.setClipToView(True)
         self.right_curve.setClipToView(True)
-        self.plot1.enableAutoRange('y', True)
+        # self.plot1.enableAutoRange('y',True)
+        self.plot1.setXRange(min=0,max=WAVEFORMS.DISPLAY_RANGE_S)
         self.plot1.showGrid(x=True, y=True)
         self.ptr = 0
         self.cycleGap = 10
@@ -160,6 +161,10 @@ class WaveformDisplay(QFrame):
 
     def add_components(self):
         self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
+        self.plotWidgets['Airway pressure'].plot1.setYRange(min=0,max=50)
+        self.plotWidgets['Flow rate'].plot1.setYRange(min=-120,max=120)
+        self.plotWidgets['Volume'].plot1.setYRange(min=0,max=500)
+
         grid = QGridLayout() 
         for ii, key in enumerate(PLOTS):
             grid.addWidget(self.plotWidgets[key], ii, 0,1,2)
