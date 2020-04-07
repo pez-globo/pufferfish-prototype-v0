@@ -49,6 +49,7 @@ static const float volume_FS = 1500;
 static const float paw_FS = 50;
 static const float Ti_FS = 5;
 static const float Vt_FS = 1500;
+static const float PEEP_FS = 30;
 
 static const float coefficient_dP2flow = 1.66;
 
@@ -57,8 +58,9 @@ float flow = 0;
 float volume = 0;
 float paw = 0;
 float RR = 15;
-float Ti = 0.5;
-float Vt = 0;
+float Ti = 1.5;
+float Vt = 250;
+float PEEP = 5;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
@@ -68,6 +70,10 @@ float counter_send_data = 0;
 
 volatile bool flag_send_data = false;
 volatile bool flag_read_sensor = false;
+
+volatile bool is_in_inspiratory_phase = false;
+volatile bool is_in_expiratory_phase = false;
+
 uint16_t tmp_uint16;
 int16_t tmp_int16;
 long tmp_long;
@@ -119,24 +125,37 @@ void timer_interruptHandler()
 {
   // read sensor value
   flag_read_sensor = true;
-  
-  // breathing control
+
+  // update cycle timer
   cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us/1000;
+
+  // begin inspiratory flow
   if(cycle_time_ms>cycle_period_ms)
   {
     cycle_time_ms = 0;
-    // begin inspiratory flow
+    is_in_inspiratory_phase = true;
+    is_in_expiratory_phase = false;
     volume = 0;
     set_valve2_state(0);
     set_valve1_state(1);
     digitalWrite(13,HIGH);
   }
+
+  // breathing control - stop inspiratory flow when Vt is reached
+  if(volume >= Vt)
+    set_valve1_state(0);
+  
+  // breathing control - change to exhalation when Ti is reached
   if(cycle_time_ms>time_inspiratory_ms)
   {
-    // begin expiratory flow
-    set_valve1_state(0);
-    set_valve2_state(1);
     digitalWrite(13,LOW);
+    
+    is_in_inspiratory_phase = false;
+    is_in_expiratory_phase = true;
+    set_valve1_state(0);
+    // only allow expiratory flow when Paw is >= PEEP
+    if(paw>PEEP)
+      set_valve2_state(1);
   }
 
   // send data to host computer
@@ -168,8 +187,10 @@ void loop()
       else if(buffer_rx[0]==2)
         Vt = (float(buffer_rx[1])/256)*Vt_FS;
       else if(buffer_rx[0]==3)
-        set_valve1_state(buffer_rx[1]);
+        PEEP = (float(buffer_rx[1])/256)*PEEP_FS;
       else if(buffer_rx[0]==4)
+        set_valve1_state(buffer_rx[1]);
+      else if(buffer_rx[0]==5)
         set_valve2_state(buffer_rx[1]);
     }
   }
