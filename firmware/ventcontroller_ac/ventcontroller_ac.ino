@@ -67,7 +67,7 @@ float paw_trigger_th = 5;
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
 float time_inspiratory_ms = Ti*1000;
-float frequency_send_data = 50;
+float frequency_send_data = 20;
 float counter_send_data = 0;
 
 volatile bool flag_send_data = false;
@@ -132,7 +132,7 @@ void timer_interruptHandler()
   // update cycle timer
   cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us/1000;
 
-  // time-triggered breathe  
+  // time-triggered breath
   if(cycle_time_ms>cycle_period_ms)
   {
     cycle_time_ms = 0;
@@ -145,7 +145,7 @@ void timer_interruptHandler()
     digitalWrite(13,HIGH);
   }
 
-  // patient triggered breathe
+  // patient triggered breath
   if( paw < paw_trigger_th && is_in_expiratory_phase)
   {
     cycle_time_ms = 0;
@@ -192,6 +192,7 @@ void timer_interruptHandler()
 
 void loop() 
 {
+  /*
   while(SerialUSB.available()) 
   { 
     buffer_rx[buffer_rx_ptr] = SerialUSB.read();
@@ -219,6 +220,7 @@ void loop()
         set_valve2_state(buffer_rx[1]);
     }
   }
+  */
 
   if(flag_read_sensor)
   {

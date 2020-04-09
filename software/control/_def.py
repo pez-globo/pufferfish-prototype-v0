@@ -66,7 +66,7 @@ class MicrocontrollerDef:
     PAW_FS = 50.0
 
 class WAVEFORMS:
-    UPDATE_INTERVAL_MS = 20
+    UPDATE_INTERVAL_MS = 25
     DISPLAY_RANGE_S = 20 
 
 PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
