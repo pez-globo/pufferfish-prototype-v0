@@ -58,12 +58,13 @@ class PosUpdate:
     INTERVAL_MS = 25
 
 class MicrocontrollerDef:
-    MSG_LENGTH = 6
+    MSG_LENGTH = 8
     CMD_LENGTH = 4
     N_BYTES_DATA = 2
     FLOW_FS = 200.0
     VOLUME_FS = 1500.0
     PAW_FS = 50.0
+    TIMER_PERIOD_ms = 0.5
 
 class WAVEFORMS:
     UPDATE_INTERVAL_MS = 25

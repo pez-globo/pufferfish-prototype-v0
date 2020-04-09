@@ -35,7 +35,7 @@ static inline int sgn(int val) {
 }
 
 static const int CMD_LENGTH = 2;
-static const int MSG_LENGTH = 6;
+static const int MSG_LENGTH = 8;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
@@ -80,6 +80,10 @@ volatile bool PEEP_is_reached = false;
 uint16_t tmp_uint16;
 int16_t tmp_int16;
 long tmp_long;
+
+uint16_t timebase = 0; // in number of TIMER_PERIOD_us
+static const long DISPLAY_RANGE_S = 20;
+
 
 #include <DueTimer.h>
 static const float TIMER_PERIOD_us = 500; // in us
@@ -126,6 +130,10 @@ void setup() {
 
 void timer_interruptHandler()
 {
+  timebase = timebase + 1;
+  if(timebase >= (DISPLAY_RANGE_S*1000000/TIMER_PERIOD_us))
+    timebase = 0;
+  
   // read sensor value
   flag_read_sensor = true;
 
@@ -248,6 +256,9 @@ void loop()
     tmp_uint16 = 65536*volume/volume_FS;
     buffer_tx[4] = byte(tmp_uint16>>8);
     buffer_tx[5] = byte(tmp_uint16%256);
+
+    buffer_tx[6] = byte(tmp_uint16>>8);
+    buffer_tx[7] = byte(tmp_uint16%256);
 
     SerialUSB.write(buffer_tx,MSG_LENGTH);
     flag_send_data = false;

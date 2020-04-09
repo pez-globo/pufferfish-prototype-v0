@@ -79,13 +79,13 @@ class Waveforms(QObject):
             self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
             self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
             self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
+            self.time = utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA)*TIMER_PERIOD_ms/1000
         
         self.signal_Paw.emit(self.time,self.Paw)
         self.signal_Flow.emit(self.time,self.Flow)
         self.signal_Volume.emit(self.time,self.Volume)
 
         
-
         # print(self.Paw)
         # print(self.Flow)
         # print(self.Volume)
