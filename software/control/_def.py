@@ -67,7 +67,7 @@ class MicrocontrollerDef:
     TIMER_PERIOD_ms = 0.5
 
 class WAVEFORMS:
-    UPDATE_INTERVAL_MS = 25
+    UPDATE_INTERVAL_MS = 50
     DISPLAY_RANGE_S = 20 
 
 PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
