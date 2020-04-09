@@ -60,7 +60,7 @@ volatile float paw = 0;
 float RR = 12;
 float Ti = 1.5;
 float Vt = 250;
-float PEEP = 5;
+float PEEP = 10;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
