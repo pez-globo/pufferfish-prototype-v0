@@ -58,11 +58,11 @@ volatile float flow = 0;
 volatile float volume = 0;
 volatile float paw = 0;
 
-float RR = 6;
+float RR = 12;
 float Ti = 1.5;
 float Vt = 250;
 float PEEP = 10;
-float paw_trigger_th = 5;
+float paw_trigger_th = 8;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
@@ -75,6 +75,7 @@ volatile bool flag_read_sensor = false;
 
 volatile bool is_in_inspiratory_phase = false;
 volatile bool is_in_expiratory_phase = false;
+volatile bool PEEP_is_reached = false;
 
 uint16_t tmp_uint16;
 int16_t tmp_int16;
@@ -137,6 +138,7 @@ void timer_interruptHandler()
     cycle_time_ms = 0;
     is_in_inspiratory_phase = true;
     is_in_expiratory_phase = false;
+    PEEP_is_reached = false;
     volume = 0;
     set_valve2_state(0);
     set_valve1_state(1);
@@ -149,6 +151,7 @@ void timer_interruptHandler()
     cycle_time_ms = 0;
     is_in_inspiratory_phase = true;
     is_in_expiratory_phase = false;
+    PEEP_is_reached = false;
     volume = 0;
     set_valve2_state(0);
     set_valve1_state(1);
@@ -168,10 +171,13 @@ void timer_interruptHandler()
     is_in_expiratory_phase = true;
     set_valve1_state(0);
     // only allow expiratory flow when Paw is >= PEEP
-    if(paw>PEEP)
+    if(paw>PEEP && PEEP_is_reached==false)
       set_valve2_state(1);
     else
+    {
       set_valve2_state(0);
+      PEEP_is_reached = true;
+    }
   }
 
   // send data to host computer
