@@ -117,7 +117,7 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.plot1.setXRange(min=0,max=WAVEFORMS.DISPLAY_RANGE_S)
 		self.plot1.showGrid(x=True, y=True)
 		self.ptr = 0
-		self.cycleGap = 10
+		self.cycleGap = WAVEFORMS.DISPLAY_RANGE_S
 		#pg.setConfigOption('background', 'w')
 
 	def update_plot(self, timestamp, data):
