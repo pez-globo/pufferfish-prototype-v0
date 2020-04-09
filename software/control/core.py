@@ -71,15 +71,27 @@ class Waveforms(QObject):
         self.timer_update_waveform.timeout.connect(self.update_waveforms)
         self.timer_update_waveform.start()
 
+        self.time_now = 0
+        self.time_diff = 0
+        self.time_prev = time.time()
+
     def update_waveforms(self):
-        self.time = self.time + (1/1000)*WAVEFORMS.UPDATE_INTERVAL_MS
-        self.time = self.time%WAVEFORMS.DISPLAY_RANGE_S
+        # self.time = self.time + (1/1000)*WAVEFORMS.UPDATE_INTERVAL_MS
+
+        # Use the processor clock to determine elapsed time since last function call
+        self.time_now = time.time()
+        self.time_diff = self.time_now - self.time_prev
+        self.time_prev = self.time_now
+
+        # Update the time variable. 
+        self.time += self.time_diff
+      
         readout = self.microcontroller.read_received_packet_nowait()
         if readout is not None:
             self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
             self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
             self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
-            self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
+            # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
             # print(self.time)
         
         # leaving this block of code inside is preventing the old waveform from being cleared
