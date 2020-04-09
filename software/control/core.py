@@ -12,11 +12,9 @@ import control.utils as utils
 from control._def import *
 
 from queue import Queue
-from threading import Thread, Lock
 import time
 import numpy as np
 import pyqtgraph as pg
-import cv2
 from datetime import datetime
 
 class ValveController(QObject):
