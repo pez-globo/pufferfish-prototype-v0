@@ -120,14 +120,14 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.cycleGap = 10
 		#pg.setConfigOption('background', 'w')
 
-	def update_plot(self, time, data):
-		time = time.time()%WAVEFORMS.DISPLAY_RANGE_S
-		if len(self.left_X_data) > 0 and time < self.left_X_data[-1]:
+	def update_plot(self, timestamp, data):
+		timestamp = time.time()%WAVEFORMS.DISPLAY_RANGE_S
+		if len(self.left_X_data) > 0 and timestamp < self.left_X_data[-1]:
 			self.right_X_data = self.left_X_data
 			self.right_Y_data = self.left_Y_data
 			self.left_X_data = deque(maxlen = self.maxLen)
 			self.left_Y_data = deque(maxlen = self.maxLen)
-		self.left_X_data.append(time)        
+		self.left_X_data.append(timestamp)        
 		self.left_Y_data.append(data)
 		while (
 			len(self.right_X_data) > 0
