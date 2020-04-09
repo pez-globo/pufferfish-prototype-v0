@@ -121,7 +121,7 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		#pg.setConfigOption('background', 'w')
 
 	def update_plot(self, timestamp, data):
-		timestamp = time.time()%WAVEFORMS.DISPLAY_RANGE_S
+		timestamp = round(time.time())%WAVEFORMS.DISPLAY_RANGE_S
 		if len(self.left_X_data) > 0 and timestamp < self.left_X_data[-1]:
 			self.right_X_data = self.left_X_data
 			self.right_Y_data = self.left_Y_data
