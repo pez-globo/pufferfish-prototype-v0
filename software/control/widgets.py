@@ -117,29 +117,37 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.plot1.setXRange(min=0,max=WAVEFORMS.DISPLAY_RANGE_S)
 		self.plot1.showGrid(x=True, y=True)
 		self.ptr = 0
-		self.cycleGap = 10
+		self.cycleGap = WAVEFORMS.CYCLE_GAP
 		#pg.setConfigOption('background', 'w')
 
-	def update_plot(self, timestamp, data):
-		#timestamp = time.time()%WAVEFORMS.DISPLAY_RANGE_S
+	def update_plot(self, time_data, data):
+
+		timestamp = time_data%WAVEFORMS.DISPLAY_RANGE_S
+		
+		# Wraparound condition
 		if len(self.left_X_data) > 0 and timestamp < self.left_X_data[-1]:
 			self.right_X_data = self.left_X_data
 			self.right_Y_data = self.left_Y_data
 			self.left_X_data = deque(maxlen = self.maxLen)
 			self.left_Y_data = deque(maxlen = self.maxLen)
+
+		# Add new data to the right end of the left waveform
 		self.left_X_data.append(timestamp)        
 		self.left_Y_data.append(data)
-		while (
-			len(self.right_X_data) > 0
-			and len(self.left_X_data) + len(self.right_X_data) >= self.maxLen - self.cycleGap
-		):
+
+		# Remove overlapping samples by popping left from the right waveform.
+		while (len(self.right_X_data) > 0 and len(self.left_X_data) + len(self.right_X_data) >= self.maxLen - self.cycleGap):
 			self.right_X_data.popleft()
 			self.right_Y_data.popleft()
+		
+		# Set the data 
 		self.label = PLOT_UNITS[self.title]
 		self.left_Abs = np.array(self.left_X_data)
 		self.left_Ord = np.array(self.left_Y_data)
 		self.right_Abs = np.array(self.right_X_data)
 		self.right_Ord = np.array(self.right_Y_data)
+
+		# Update the plot.
 		if len(self.left_Abs):
 			self.left_curve.setData(self.left_Abs-self.left_Abs[-1], self.left_Ord)
 			self.left_curve.setPos(self.left_Abs[-1],0)
