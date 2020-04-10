@@ -16,7 +16,8 @@ TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 #include <AccelStepper.h>
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 static const long steps_per_mm_XY = 120; // for PL35L-024-VLB8
-constexpr float MAX_VELOCITY_Y_mm = 30; // for PL35L-024-VLB8
+//constexpr float MAX_VELOCITY_Y_mm = 30; // for PL35L-024-VLB8
+constexpr float MAX_VELOCITY_Y_mm = 1; // for PL35L-024-VLB8
 constexpr float MAX_ACCELERATION_Y_mm = 300; // 50 ms to reach 15 mm/s
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
@@ -52,8 +53,7 @@ void setup() {
 
 void loop() {
 
-  stepper_Y.runToNewPosition(4*steps_per_mm_XY);
-  stepper_Y.runToNewPosition(-4*steps_per_mm_XY);
-  delay(200);
+  stepper_Y.runToNewPosition(0.5*steps_per_mm_XY);
+  stepper_Y.runToNewPosition(-0.5*steps_per_mm_XY);
   
 }
