@@ -55,7 +55,7 @@ float RR = 12;
 float Ti = 1.5;
 float Vt = 250;
 float PEEP = 5;
-float paw_trigger_th = 4;
+float paw_trigger_th = 3;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
@@ -93,7 +93,7 @@ TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 #include <AccelStepper.h>
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 static const long steps_per_mm_XY = 120; // for PL35L-024-VLB8
-constexpr float MAX_VELOCITY_Y_mm = 25; // for PL35L-024-VLB8
+constexpr float MAX_VELOCITY_Y_mm = 40; // for PL35L-024-VLB8
 constexpr float MAX_ACCELERATION_Y_mm = 300; // 50 ms to reach 15 mm/s
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
