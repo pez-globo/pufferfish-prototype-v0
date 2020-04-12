@@ -68,11 +68,12 @@ volatile float flow = 0;
 volatile float volume = 0;
 volatile float paw = 0;
 
-float RR = 30;
-float Ti = 1;
-float Vt = 250;
-float PEEP = 8;
-float paw_trigger_th = -5;
+float RR = 18;
+float Ti = 1.2;
+float Vt = 300;
+float PEEP = 5;
+float paw_trigger_delta = -3;
+float paw_trigger_th = -3;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
@@ -177,7 +178,7 @@ void timer_interruptHandler()
   }
 
   // breathing control - stop inspiratory flow when Vt is reached
-  if (volume >= Vt)
+  if (volume >= Vt-40) // compensate for system response time
     set_valve1_state(0);
 
   // breathing control - change to exhalation when Ti is reached

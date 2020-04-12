@@ -76,6 +76,12 @@ class MicrocontrollerDef:
     CMD_Flow = 4
     CMD_FlowDeceleratingSlope = 5
 
+    Ti_DEFAULT = 1.2
+    RR_DEFAULT = 18
+    PEEP_DEFAULT = 5
+    Vt_DEFAULT = 300
+
+
 class WAVEFORMS:
     UPDATE_INTERVAL_MS = 50 # In milliseconds
     DISPLAY_RANGE_S = 20 # In seconds
@@ -85,4 +91,4 @@ PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
 PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
 
-SIMULATION = True
+SIMULATION = False

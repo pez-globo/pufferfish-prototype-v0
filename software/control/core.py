@@ -111,16 +111,13 @@ class Waveforms(QObject):
         self.time_diff = 0
         self.time_prev = time.time()
 
+        self.counter = 0
+
     def update_waveforms(self):
         # self.time = self.time + (1/1000)*WAVEFORMS.UPDATE_INTERVAL_MS
 
         # Use the processor clock to determine elapsed time since last function call
         self.time_now = time.time()
-        self.time_diff = self.time_now - self.time_prev
-        self.time_prev = self.time_now
-
-        # Update the time variable. 
-        self.time += self.time_diff
       
         if SIMULATION:
             self.Paw = (self.Paw + 0.2)%5
@@ -136,10 +133,17 @@ class Waveforms(QObject):
                 # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
                 self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
         
-        # leaving this block of code inside is preventing the old waveform from being cleared
-        self.signal_Paw.emit(self.time,self.Paw)
-        self.signal_Flow.emit(self.time,self.Flow)
-        self.signal_Volume.emit(self.time,self.Volume)
+        # reduce display refresh rate
+        self.counter = self.counter + 1
+        if self.counter>=1:
+            self.time_diff = self.time_now - self.time_prev
+            self.time_prev = self.time_now
+            self.time += self.time_diff
+
+            self.counter = 0
+            self.signal_Paw.emit(self.time,self.Paw)
+            self.signal_Flow.emit(self.time,self.Flow)
+            self.signal_Volume.emit(self.time,self.Volume)
 
     def close(self):
         self.file.close()
