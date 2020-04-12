@@ -62,9 +62,19 @@ class MicrocontrollerDef:
     CMD_LENGTH = 4
     N_BYTES_DATA = 2
     FLOW_FS = 200.0
-    VOLUME_FS = 1500.0
-    PAW_FS = 50.0
+    VOLUME_FS = 800.0
+    PAW_FS = 60.0
     TIMER_PERIOD_ms = 0.5
+    VT_FS = 800.0
+    PEEP_FS = 30.0
+    TI_FS = 5.0
+    RR_FS = 60.0
+    CMD_Vt = 0
+    CMD_Ti = 1
+    CMD_RR = 2
+    CMD_PEEP = 3
+    CMD_Flow = 4
+    CMD_FlowDeceleratingSlope = 5
 
 class WAVEFORMS:
     UPDATE_INTERVAL_MS = 50 # In milliseconds

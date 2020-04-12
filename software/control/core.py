@@ -53,6 +53,30 @@ class ValveController(QObject):
     def close_valve_2(self):
         self.microcontroller.toggle_valve_2(0)
 
+class VentController(QObject):
+    def __init__(self,microcontroller):
+        QObject.__init__(self)
+        self.microcontroller = microcontroller
+
+    def setVT(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Vt,value/MicrocontrollerDef.VT_FS)
+
+    def setTi(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Ti,value/MicrocontrollerDef.TI_FS)
+
+    def setRR(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_RR,value/MicrocontrollerDef.RR_FS)
+
+    def setPEEP(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_PEEP,value/MicrocontrollerDef.PEEP_FS)
+
+    def setFlow(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Flow,value/100)
+
+    def setFlowDeceleratingSlope(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_FlowDeceleratingSlope,value/100)
+
+
 # class DataLogger(QObject):
 #     def __init__(self,microcontroller):
 #         QObject.__init__(self)

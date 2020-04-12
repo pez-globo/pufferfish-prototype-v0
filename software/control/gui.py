@@ -29,16 +29,18 @@ class VentDevGUI(QMainWindow):
 			self.microcontroller = microcontroller.Microcontroller()
 		self.stepperMotorController = core.ValveController(self.microcontroller)
 		self.waveforms = core.Waveforms(self.microcontroller)
+		self.ventController = core.VentController(self.microcontroller)
 
 		# load widgets
 		self.navigationWidget = widgets.stepperMotorWidget(self.stepperMotorController)
 		self.waveformDisplay = widgets.WaveformDisplay()
+		self.controlPanel = widgets.ControlPanel(self.ventController)
 
-		
 		# layout widgets
 		layout = QGridLayout() #layout = QStackedLayout()
 		# layout.addWidget(self.navigationWidget,0,0)
-		layout.addWidget(self.waveformDisplay,1,0)
+		layout.addWidget(self.waveformDisplay,0,0)
+		layout.addWidget(self.controlPanel,1,0)
 
 		# transfer the layout to the central widget
 		self.centralWidget = QWidget()

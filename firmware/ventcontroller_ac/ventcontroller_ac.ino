@@ -34,7 +34,7 @@ static inline int sgn(int val) {
   return 1;
 }
 
-static const int CMD_LENGTH = 2;
+static const int CMD_LENGTH = 4;
 static const int MSG_LENGTH = 8;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
@@ -45,11 +45,21 @@ static const int pin_valve1 = 30;
 static const int pin_valve2 = 31;
 
 static const float flow_FS = 200;
-static const float volume_FS = 1500;
-static const float paw_FS = 50;
+static const float volume_FS = 800;
+static const float paw_FS = 60;
 static const float Ti_FS = 5;
-static const float Vt_FS = 1500;
+static const float Vt_FS = 800;
 static const float PEEP_FS = 30;
+static const float RR_FS = 60;
+
+static const uint8_t CMD_Vt = 0;
+static const uint8_t CMD_Ti = 1;
+static const uint8_t CMD_RR = 2;
+static const uint8_t CMD_PEEP = 3;
+static const uint8_t CMD_Flow = 4;
+static const uint8_t CMD_FlowDeceleratingSlope = 5;
+static const uint8_t CMD_valve1 = 10;
+static const uint8_t CMD_valve2 = 11;
 
 static const float coefficient_dP2flow = 1.66;
 
@@ -200,35 +210,33 @@ void timer_interruptHandler()
 
 void loop()
 {
-  /*
     while(SerialUSB.available())
     {
-    buffer_rx[buffer_rx_ptr] = SerialUSB.read();
-    buffer_rx_ptr = buffer_rx_ptr + 1;
-    if (buffer_rx_ptr == CMD_LENGTH)
-    {
-      buffer_rx_ptr = 0;
-      if(buffer_rx[0]==0)
+      buffer_rx[buffer_rx_ptr] = SerialUSB.read();
+      buffer_rx_ptr = buffer_rx_ptr + 1;
+      if (buffer_rx_ptr == CMD_LENGTH)
       {
-        RR = buffer_rx[1];
-        cycle_period_ms = (60/RR)*1000;
+        buffer_rx_ptr = 0;
+        if(buffer_rx[0]==CMD_Vt)
+          Vt = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*Vt_FS;
+        else if(buffer_rx[0]==CMD_Ti)
+        {
+          Ti = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*Ti_FS;
+          time_inspiratory_ms = Ti*1000;
+        }
+        else if(buffer_rx[0]==CMD_RR)
+        {
+          RR = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*RR_FS;
+          cycle_period_ms = (60/RR)*1000;
+        }
+        else if(buffer_rx[0]==CMD_PEEP)
+          PEEP = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*PEEP_FS;
+        else if(buffer_rx[0]==CMD_valve1)
+          set_valve1_state(buffer_rx[1]);
+        else if(buffer_rx[0]==CMD_valve2)
+          set_valve2_state(buffer_rx[1]);
       }
-      else if(buffer_rx[0]==1)
-      {
-        Ti = (float(buffer_rx[1])/256)*Ti_FS;
-        time_inspiratory_ms = Ti*1000;
-      }
-      else if(buffer_rx[0]==2)
-        Vt = (float(buffer_rx[1])/256)*Vt_FS;
-      else if(buffer_rx[0]==3)
-        PEEP = (float(buffer_rx[1])/256)*PEEP_FS;
-      else if(buffer_rx[0]==4)
-        set_valve1_state(buffer_rx[1]);
-      else if(buffer_rx[0]==5)
-        set_valve2_state(buffer_rx[1]);
     }
-    }
-  */
 
   if (flag_read_sensor)
   {

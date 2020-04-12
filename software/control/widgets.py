@@ -82,6 +82,96 @@ class stepperMotorWidget(QFrame):
 	def move_y_backward(self):
 		self.stepperMotorController.move_y(-self.entry_dY.value())
 
+class ControlPanel(QFrame):
+	def __init__(self, ventController, main=None, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.ventController = ventController
+		self.add_components()
+		self.setFrameStyle(QFrame.Panel | QFrame.Raised)
+
+	def add_components(self):
+
+		self.entry_VT = QDoubleSpinBox()
+		self.entry_VT.setMinimum(100)
+		self.entry_VT.setMaximum(500)
+		self.entry_VT.setSingleStep(10)
+		self.entry_VT.setValue(250)
+
+		self.entry_Ti = QDoubleSpinBox()
+		self.entry_Ti.setMinimum(0.3)
+		self.entry_Ti.setMaximum(5)
+		self.entry_Ti.setSingleStep(0.1)
+		self.entry_Ti.setValue(1)
+
+		self.entry_Ti = QDoubleSpinBox()
+		self.entry_Ti.setMinimum(0.3)
+		self.entry_Ti.setMaximum(5)
+		self.entry_Ti.setSingleStep(0.1)
+		self.entry_Ti.setValue(1)
+
+		self.entry_RR = QDoubleSpinBox()
+		self.entry_RR.setMinimum(5)
+		self.entry_RR.setMaximum(60)
+		self.entry_RR.setSingleStep(1)
+		self.entry_RR.setValue(24)
+
+		self.entry_PEEP = QDoubleSpinBox()
+		self.entry_PEEP.setMinimum(5)
+		self.entry_PEEP.setMaximum(20)
+		self.entry_PEEP.setSingleStep(1)
+		self.entry_PEEP.setValue(5)
+
+		self.entry_Flow = QDoubleSpinBox()
+		self.entry_Flow.setMinimum(20)
+		self.entry_Flow.setMaximum(100)
+		self.entry_Flow.setSingleStep(5)
+		self.entry_Flow.setValue(100)
+
+		self.entry_FlowDeceleratingSlope = QDoubleSpinBox()
+		self.entry_FlowDeceleratingSlope.setMinimum(0)
+		self.entry_FlowDeceleratingSlope.setMaximum(100)
+		self.entry_FlowDeceleratingSlope.setSingleStep(5)
+		self.entry_FlowDeceleratingSlope.setValue(0)
+
+		grid_line0 = QGridLayout()
+		grid_line0.addWidget(QLabel('VT (ml)'), 0,0)
+		grid_line0.addWidget(self.entry_VT, 0,1)
+
+		grid_line1 = QGridLayout()
+		grid_line1.addWidget(QLabel('Ti (s)'), 0,0)
+		grid_line1.addWidget(self.entry_Ti, 0,1)
+
+		grid_line2 = QGridLayout()
+		grid_line2.addWidget(QLabel('RR (/min)'), 0,0)
+		grid_line2.addWidget(self.entry_RR, 0,1)
+
+		grid_line3 = QGridLayout()
+		grid_line3.addWidget(QLabel('PEEP (cmH2O)'), 0,0)
+		grid_line3.addWidget(self.entry_PEEP, 0,1)
+
+		grid_line4 = QGridLayout()
+		grid_line4.addWidget(QLabel('Flow'), 0,0)
+		grid_line4.addWidget(self.entry_Flow, 0,1)
+
+		grid_line5 = QGridLayout()
+		grid_line5.addWidget(QLabel('Slope'), 0,0)
+		grid_line5.addWidget(self.entry_FlowDeceleratingSlope, 0,1)
+
+		self.grid = QGridLayout()
+		self.grid.addLayout(grid_line0,0,0)
+		self.grid.addLayout(grid_line1,0,1)
+		self.grid.addLayout(grid_line2,0,2)
+		self.grid.addLayout(grid_line3,0,3)
+		# self.grid.addLayout(grid_line4,0,4)
+		# self.grid.addLayout(grid_line5,0,5)
+		self.setLayout(self.grid)
+
+		self.entry_VT.valueChanged.connect(self.ventController.setVT)
+		self.entry_Ti.valueChanged.connect(self.ventController.setTi)
+		self.entry_RR.valueChanged.connect(self.ventController.setRR)
+		self.entry_PEEP.valueChanged.connect(self.ventController.setPEEP)
+		# self.entry_Flow.valueChanged.connect(self.ventController.setFlow)
+		# self.entry_FlowDeceleratingSlope.valueChanged.connect(self.ventController.setFlowDeceleratingSlope)
 
 # from Deepak
 class PlotWidget(pg.GraphicsLayoutWidget):
