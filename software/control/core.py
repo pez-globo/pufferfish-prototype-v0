@@ -97,20 +97,8 @@ class Waveforms(QObject):
                 self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
                 self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
                 # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
-                # print(self.time)
         
         # leaving this block of code inside is preventing the old waveform from being cleared
         self.signal_Paw.emit(self.time,self.Paw)
         self.signal_Flow.emit(self.time,self.Flow)
         self.signal_Volume.emit(self.time,self.Volume)
-
-        
-        # print(self.Paw)
-        # print(self.Flow)
-        # print(self.Volume)
-        # print('----------')
-
-        # self.Paw = (self.Paw + 0.01)%5
-        # self.Volume = (self.Volume + 0.01)%5
-        # self.Flow = (self.Flow + 0.01)%5
-        # print(self.Paw)
