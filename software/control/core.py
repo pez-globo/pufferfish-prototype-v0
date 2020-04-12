@@ -53,6 +53,17 @@ class ValveController(QObject):
     def close_valve_2(self):
         self.microcontroller.toggle_valve_2(0)
 
+# class DataLogger(QObject):
+#     def __init__(self,microcontroller):
+#         QObject.__init__(self)
+#         self.file = open("~/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w")
+
+#     def log_data(self,time,paw,flow,volume):
+#         self.file.write(str(time)+','+str(paw)+','+str(flow)+','+str(volume))
+
+#     def close(self):
+#         self.file.close()
+
 class Waveforms(QObject):
 
     signal_Paw = Signal(float,float)
@@ -61,6 +72,7 @@ class Waveforms(QObject):
 
     def __init__(self,microcontroller):
         QObject.__init__(self)
+        self.file = open("/Users/hongquanli/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
         self.microcontroller = microcontroller
         self.Paw = 0
         self.Volume = 0
@@ -90,6 +102,7 @@ class Waveforms(QObject):
             self.Paw = (self.Paw + 0.2)%5
             self.Volume = (self.Volume + 0.2)%5
             self.Flow = (self.Flow + 0.2)%5
+            self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
         else:
             readout = self.microcontroller.read_received_packet_nowait()
             if readout is not None:
@@ -97,8 +110,12 @@ class Waveforms(QObject):
                 self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
                 self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
                 # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
+                self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
         
         # leaving this block of code inside is preventing the old waveform from being cleared
         self.signal_Paw.emit(self.time,self.Paw)
         self.signal_Flow.emit(self.time,self.Flow)
         self.signal_Volume.emit(self.time,self.Volume)
+
+    def close(self):
+        self.file.close()

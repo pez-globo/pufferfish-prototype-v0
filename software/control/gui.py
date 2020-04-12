@@ -33,6 +33,7 @@ class VentDevGUI(QMainWindow):
 		# load widgets
 		self.navigationWidget = widgets.stepperMotorWidget(self.stepperMotorController)
 		self.waveformDisplay = widgets.WaveformDisplay()
+
 		
 		# layout widgets
 		layout = QGridLayout() #layout = QStackedLayout()
@@ -53,4 +54,5 @@ class VentDevGUI(QMainWindow):
 
 
 	def closeEvent(self, event):
+		self.waveforms.close()
 		event.accept()
