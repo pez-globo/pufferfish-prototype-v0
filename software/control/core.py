@@ -86,13 +86,18 @@ class Waveforms(QObject):
         # Update the time variable. 
         self.time += self.time_diff
       
-        readout = self.microcontroller.read_received_packet_nowait()
-        if readout is not None:
-            self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
-            self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
-            self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
-            # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
-            # print(self.time)
+        if SIMULATION:
+            self.Paw = (self.Paw + 0.2)%5
+            self.Volume = (self.Volume + 0.2)%5
+            self.Flow = (self.Flow + 0.2)%5
+        else:
+            readout = self.microcontroller.read_received_packet_nowait()
+            if readout is not None:
+                self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
+                self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
+                self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
+                # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
+                # print(self.time)
         
         # leaving this block of code inside is preventing the old waveform from being cleared
         self.signal_Paw.emit(self.time,self.Paw)

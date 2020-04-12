@@ -12,6 +12,7 @@ from qtpy.QtGui import *
 import control.widgets as widgets
 import control.core as core
 import control.microcontroller as microcontroller
+from control._def import *
 
 class VentDevGUI(QMainWindow):
 
@@ -22,8 +23,10 @@ class VentDevGUI(QMainWindow):
 		super().__init__(*args, **kwargs)
 
 		# load objects
-		# self.microcontroller = microcontroller.Microcontroller_Simulation()
-		self.microcontroller = microcontroller.Microcontroller()
+		if SIMULATION:
+			self.microcontroller = microcontroller.Microcontroller_Simulation()
+		else:
+			self.microcontroller = microcontroller.Microcontroller()
 		self.stepperMotorController = core.ValveController(self.microcontroller)
 		self.waveforms = core.Waveforms(self.microcontroller)
 
