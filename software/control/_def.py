@@ -61,7 +61,7 @@ class MicrocontrollerDef:
     MSG_LENGTH = 8
     CMD_LENGTH = 4
     N_BYTES_DATA = 2
-    FLOW_FS = 200.0
+    FLOW_FS = 300.0
     VOLUME_FS = 800.0
     PAW_FS = 60.0
     TIMER_PERIOD_ms = 0.5
