@@ -146,10 +146,12 @@ class Waveforms(QObject):
         
         # reduce display refresh rate
         self.counter = self.counter + 1
-        if self.counter>=1:
-            self.time_diff = self.time_now - self.time_prev
-            self.time_prev = self.time_now
-            self.time += self.time_diff
+        if self.counter>=500:
+            self.counter = 0
+            self.file.flush()
+            # self.time_diff = self.time_now - self.time_prev
+            # self.time_prev = self.time_now
+            # self.time += self.time_diff
 
             # self.counter = 0
             # self.signal_Paw.emit(self.time,self.Paw)
