@@ -28,9 +28,9 @@ class VentDevGUI(QMainWindow):
 		else:
 			self.microcontroller = microcontroller.Microcontroller()
 		self.stepperMotorController = core.ValveController(self.microcontroller)
-		self.waveforms = core.Waveforms(self.microcontroller)
 		self.ventController = core.VentController(self.microcontroller)
-
+		self.waveforms = core.Waveforms(self.microcontroller,self.ventController)
+		
 		# load widgets
 		self.navigationWidget = widgets.stepperMotorWidget(self.stepperMotorController)
 		self.waveformDisplay = widgets.WaveformDisplay()

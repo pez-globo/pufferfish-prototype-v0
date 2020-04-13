@@ -57,18 +57,27 @@ class VentController(QObject):
     def __init__(self,microcontroller):
         QObject.__init__(self)
         self.microcontroller = microcontroller
+        self.Vt = MicrocontrollerDef.Vt_DEFAULT
+        self.Ti = MicrocontrollerDef.Ti_DEFAULT
+        self.RR = MicrocontrollerDef.RR_DEFAULT
+        self.PEEP = MicrocontrollerDef.PEEP_DEFAULT
+
 
     def setVT(self,value):
         self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Vt,value/MicrocontrollerDef.VT_FS)
+        self.Vt = value
 
     def setTi(self,value):
         self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Ti,value/MicrocontrollerDef.TI_FS)
+        self.Ti = value
 
     def setRR(self,value):
         self.microcontroller.set_parameter(MicrocontrollerDef.CMD_RR,value/MicrocontrollerDef.RR_FS)
+        self.RR = value
 
     def setPEEP(self,value):
         self.microcontroller.set_parameter(MicrocontrollerDef.CMD_PEEP,value/MicrocontrollerDef.PEEP_FS)
+        self.PEEP = value
 
     def setFlow(self,value):
         self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Flow,value/100)
@@ -94,10 +103,11 @@ class Waveforms(QObject):
     signal_Volume = Signal(float,float)
     signal_Flow = Signal(float,float)
 
-    def __init__(self,microcontroller):
+    def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
         self.file = open("/Users/hongquanli/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
         self.microcontroller = microcontroller
+        self.ventController = ventController
         self.Paw = 0
         self.Volume = 0
         self.Flow = 0
@@ -131,7 +141,7 @@ class Waveforms(QObject):
                 self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
                 self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
                 # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
-                self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
+                self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+','+str(self.ventController.Vt)+','+str(self.ventController.Ti)+','+str(self.ventController.RR)+','+str(self.ventController.PEEP) +'\n')
         
         # reduce display refresh rate
         self.counter = self.counter + 1
