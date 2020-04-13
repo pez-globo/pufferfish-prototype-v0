@@ -178,7 +178,7 @@ void timer_interruptHandler()
   }
 
   // breathing control - stop inspiratory flow when Vt is reached
-  if (volume >= Vt-40) // compensate for system response time
+  if (volume >= Vt-45) // compensate for system response time
     set_valve1_state(0);
 
   // breathing control - change to exhalation when Ti is reached
