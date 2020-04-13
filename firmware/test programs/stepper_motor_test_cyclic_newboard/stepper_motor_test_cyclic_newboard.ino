@@ -16,10 +16,10 @@ TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 
 #include <AccelStepper.h>
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
-static const long steps_per_mm_XY = 120; // for PL35L-024-VLB8
-constexpr float MAX_VELOCITY_Y_mm = 10; // for PL35L-024-VLB8
+static const long steps_per_mm_XY = 100; // for PL35L-024-VLB8
+constexpr float MAX_VELOCITY_Y_mm = 20; // for PL35L-024-VLB8
 //constexpr float MAX_VELOCITY_Y_mm = 1; // for PL35L-024-VLB8
-constexpr float MAX_ACCELERATION_Y_mm = 300; // 50 ms to reach 15 mm/s
+constexpr float MAX_ACCELERATION_Y_mm = 200; // 50 ms to reach 15 mm/s
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
 
@@ -30,6 +30,9 @@ void setup() {
   pinMode(Y_step, OUTPUT);
   pinMode(Y_gnd, OUTPUT);
   digitalWrite(Y_gnd, LOW);
+  pinMode(13, OUTPUT);
+  digitalWrite(13, LOW);
+   
 
   // initialize stepper driver
   STEPPER_SERIAL.begin(115200);
@@ -56,8 +59,10 @@ void setup() {
 
 void loop() {
 
-  stepper_Y.runToNewPosition(-2*steps_per_mm_XY);
-  stepper_Y.runToNewPosition(2*steps_per_mm_XY);
-  delay(2000);
+  stepper_Y.runToNewPosition(-4*steps_per_mm_XY);
+  stepper_Y.runToNewPosition(0);
+  digitalWrite(13, HIGH);
+  delay(100);
+  digitalWrite(13, LOW);
   
 }

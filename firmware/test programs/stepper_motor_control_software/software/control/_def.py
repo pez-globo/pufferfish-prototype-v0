@@ -28,7 +28,7 @@ class AF:
         pass
 
 class Motion:
-    STEPS_PER_MM_XY = 1600 # microsteps
+    STEPS_PER_MM_XY = 400 # microsteps
     STEPS_PER_MM_Z = 5333  # microsteps
     def __init__(self):
         pass

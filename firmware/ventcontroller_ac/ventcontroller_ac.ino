@@ -44,13 +44,17 @@ static const int N_BYTES_POS = 3;
 static const int pin_valve1 = 30;
 static const int pin_valve2 = 31;
 
-static const float flow_FS = 200;
+static const float flow_FS = 300;
 static const float volume_FS = 800;
 static const float paw_FS = 60;
 static const float Ti_FS = 5;
 static const float Vt_FS = 800;
 static const float PEEP_FS = 30;
 static const float RR_FS = 60;
+
+static const float alpha = 2*3.45*0.0001; // correction coefficient
+//static const float alpha = 3.45*0.0; // correction coefficient
+
 
 static const uint8_t CMD_Vt = 0;
 static const uint8_t CMD_Ti = 1;
@@ -178,7 +182,8 @@ void timer_interruptHandler()
   }
 
   // breathing control - stop inspiratory flow when Vt is reached
-  if (volume >= Vt-45) // compensate for system response time
+  //if (volume >= Vt-35) // compensate for system response time
+  if (volume >= Vt-45) // compensate for system response time, for 10 psi
     set_valve1_state(0);
 
   // breathing control - change to exhalation when Ti is reached
@@ -190,7 +195,8 @@ void timer_interruptHandler()
     is_in_expiratory_phase = true;
     set_valve1_state(0);
     // only allow expiratory flow when Paw is >= PEEP
-    if (paw > PEEP && PEEP_is_reached == false)
+    // if (paw > PEEP && PEEP_is_reached == false)
+    if (paw + alpha*flow*flow  > PEEP && PEEP_is_reached == false) // take into account of flow induced pressure
       set_valve2_state(1);
     else
     {
@@ -252,7 +258,8 @@ void loop()
 
   if (flag_send_data)
   {
-    tmp_long = (65536 / 2) * paw / paw_FS;
+    // tmp_long = (65536 / 2) * paw / paw_FS;
+    tmp_long = (65536 / 2) * (paw + alpha*flow*flow) / paw_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[0] = byte(tmp_uint16 >> 8);
     buffer_tx[1] = byte(tmp_uint16 % 256);

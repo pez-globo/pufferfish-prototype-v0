@@ -430,12 +430,13 @@ class NavigationController(QObject):
     def move_x(self,delta):
         self.microcontroller.move_x(delta)
         self.x_pos = self.x_pos + delta
-        #self.xPos.emit(self.x_pos)
+        self.xPos.emit(self.x_pos)
 
     def move_y(self,delta):
         self.microcontroller.move_y(delta)
         self.y_pos = self.y_pos + delta
-        #self.yPos.emit(self.y_pos)
+        print(self.y_pos)
+        self.yPos.emit(self.y_pos)
 
     def move_z(self,delta):
         self.microcontroller.move_z(delta)

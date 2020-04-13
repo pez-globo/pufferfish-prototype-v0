@@ -85,6 +85,8 @@ class stepperMotorWidget(QFrame):
 class ControlPanel(QFrame):
 	def __init__(self, ventController, main=None, *args, **kwargs):
 		super().__init__(*args, **kwargs)
+		self.font = QFont()
+		self.font.setPixelSize(16)
 		self.ventController = ventController
 		self.add_components()
 		self.setFrameStyle(QFrame.Panel | QFrame.Raised)
@@ -92,63 +94,69 @@ class ControlPanel(QFrame):
 	def add_components(self):
 
 		self.entry_VT = QDoubleSpinBox()
+		self.entry_VT.setFont(self.font)
 		self.entry_VT.setMinimum(100)
 		self.entry_VT.setMaximum(500)
 		self.entry_VT.setSingleStep(10)
 		self.entry_VT.setValue(MicrocontrollerDef.Vt_DEFAULT)
 
 		self.entry_Ti = QDoubleSpinBox()
+		self.entry_Ti.setFont(self.font)
 		self.entry_Ti.setMinimum(0.3)
 		self.entry_Ti.setMaximum(5)
 		self.entry_Ti.setSingleStep(0.1)
 		self.entry_Ti.setValue(MicrocontrollerDef.Ti_DEFAULT)
 
 		self.entry_RR = QDoubleSpinBox()
+		self.entry_RR.setFont(self.font)
 		self.entry_RR.setMinimum(5)
 		self.entry_RR.setMaximum(60)
 		self.entry_RR.setSingleStep(1)
 		self.entry_RR.setValue(MicrocontrollerDef.RR_DEFAULT)
 
 		self.entry_PEEP = QDoubleSpinBox()
+		self.entry_PEEP.setFont(self.font)
 		self.entry_PEEP.setMinimum(0)
 		self.entry_PEEP.setMaximum(20)
 		self.entry_PEEP.setSingleStep(0.5)
 		self.entry_PEEP.setValue(MicrocontrollerDef.PEEP_DEFAULT)
 
 		self.entry_Flow = QDoubleSpinBox()
+		self.entry_Flow.setFont(self.font)
 		self.entry_Flow.setMinimum(20)
 		self.entry_Flow.setMaximum(100)
 		self.entry_Flow.setSingleStep(5)
 		self.entry_Flow.setValue(100)
 
 		self.entry_FlowDeceleratingSlope = QDoubleSpinBox()
+		self.entry_FlowDeceleratingSlope.setFont(self.font)
 		self.entry_FlowDeceleratingSlope.setMinimum(0)
 		self.entry_FlowDeceleratingSlope.setMaximum(100)
 		self.entry_FlowDeceleratingSlope.setSingleStep(5)
 		self.entry_FlowDeceleratingSlope.setValue(0)
 
 		grid_line0 = QGridLayout()
-		grid_line0.addWidget(QLabel('VT (ml)'), 0,0)
+		grid_line0.addWidget(QLabel('VT (ml)',font=self.font), 0,0)
 		grid_line0.addWidget(self.entry_VT, 0,1)
 
 		grid_line1 = QGridLayout()
-		grid_line1.addWidget(QLabel('Ti (s)'), 0,0)
+		grid_line1.addWidget(QLabel('Ti (s)',font=self.font), 0,0)
 		grid_line1.addWidget(self.entry_Ti, 0,1)
 
 		grid_line2 = QGridLayout()
-		grid_line2.addWidget(QLabel('RR (/min)'), 0,0)
+		grid_line2.addWidget(QLabel('RR (/min)',font=self.font), 0,0)
 		grid_line2.addWidget(self.entry_RR, 0,1)
 
 		grid_line3 = QGridLayout()
-		grid_line3.addWidget(QLabel('PEEP (cmH2O)'), 0,0)
+		grid_line3.addWidget(QLabel('PEEP (cmH2O)',font=self.font), 0,0)
 		grid_line3.addWidget(self.entry_PEEP, 0,1)
 
 		grid_line4 = QGridLayout()
-		grid_line4.addWidget(QLabel('Flow'), 0,0)
+		grid_line4.addWidget(QLabel('Flow',font=self.font), 0,0)
 		grid_line4.addWidget(self.entry_Flow, 0,1)
 
 		grid_line5 = QGridLayout()
-		grid_line5.addWidget(QLabel('Slope'), 0,0)
+		grid_line5.addWidget(QLabel('Slope',font=self.font), 0,0)
 		grid_line5.addWidget(self.entry_FlowDeceleratingSlope, 0,1)
 
 		self.grid = QGridLayout()
