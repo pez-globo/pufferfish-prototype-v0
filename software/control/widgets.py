@@ -270,8 +270,8 @@ class WaveformDisplay(QFrame):
 	def add_components(self):
 		self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
 		self.plotWidgets['Airway Pressure'].plot1.setYRange(min=0,max=50)
-		self.plotWidgets['Flow Rate'].plot1.setYRange(min=-160,max=160)
-		self.plotWidgets['Volume'].plot1.setYRange(min=0,max=500)
+		self.plotWidgets['Flow Rate'].plot1.setYRange(min=-80,max=80)
+		self.plotWidgets['Volume'].plot1.setYRange(min=0,max=600)
 
 		grid = QGridLayout() 
 		for ii, key in enumerate(PLOTS):

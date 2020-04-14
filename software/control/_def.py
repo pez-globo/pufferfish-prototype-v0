@@ -61,7 +61,7 @@ class MicrocontrollerDef:
     MSG_LENGTH = 8
     CMD_LENGTH = 4
     N_BYTES_DATA = 2
-    FLOW_FS = 300.0
+    FLOW_FS = 100.0
     VOLUME_FS = 800.0
     PAW_FS = 60.0
     TIMER_PERIOD_ms = 0.5
@@ -83,9 +83,9 @@ class MicrocontrollerDef:
 
 
 class WAVEFORMS:
-    UPDATE_INTERVAL_MS = 50 # In milliseconds
+    UPDATE_INTERVAL_MS = 20 # In milliseconds
     DISPLAY_RANGE_S = 20 # In seconds
-    CYCLE_GAP = 5 # In sample num
+    CYCLE_GAP = 10 # In sample num
 
 PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}

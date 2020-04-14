@@ -122,7 +122,8 @@ class Waveforms(QObject):
         self.time_diff = 0
         self.time_prev = time.time()
 
-        self.counter = 0
+        self.counter_display = 0
+        self.counter_file_flush = 0
 
     def update_waveforms(self):
         # self.time = self.time + (1/1000)*WAVEFORMS.UPDATE_INTERVAL_MS
@@ -145,16 +146,21 @@ class Waveforms(QObject):
                 self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+','+str(self.ventController.Vt)+','+str(self.ventController.Ti)+','+str(self.ventController.RR)+','+str(self.ventController.PEEP) +'\n')
         
         # reduce display refresh rate
-        self.counter = self.counter + 1
-        if self.counter>=1:
+        self.counter_display = self.counter_display + 1
+        if self.counter_display>=3:
             self.time_diff = self.time_now - self.time_prev
             self.time_prev = self.time_now
             self.time += self.time_diff
-
-            self.counter = 0
+            self.counter_display = 0
             self.signal_Paw.emit(self.time,self.Paw)
             self.signal_Flow.emit(self.time,self.Flow)
             self.signal_Volume.emit(self.time,self.Volume)
+
+        # file flushing
+        self.counter_file_flush = self.counter_file_flush + 1
+        if self.counter_file_flush>=500:
+            self.counter_file_flush = 0
+            self.file.flush()
 
     def close(self):
         self.file.close()

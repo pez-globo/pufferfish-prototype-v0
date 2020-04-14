@@ -19,7 +19,7 @@ TruStabilityPressureSensor pressure_sensor( SLAVE_SELECT_PIN, -61.183, 61.183 );
 SDP8XXSensor sdp;
 
 #include <DueTimer.h>
-static const float TIMER_PERIOD_us = 500; // in us
+static const float TIMER_PERIOD_us = 2500; // in us
 
 static inline int sgn(int val) {
   if (val < 0) return -1;
@@ -27,7 +27,7 @@ static inline int sgn(int val) {
   return 1;
 }
 
-static const int CMD_LENGTH = 2;
+static const int CMD_LENGTH = 4;
 static const int MSG_LENGTH = 8;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
@@ -37,7 +37,7 @@ static const int N_BYTES_POS = 3;
 static const int pin_valve1 = 30;
 static const int pin_valve2 = 31;
 
-static const float flow_FS = 300;
+static const float flow_FS = 100;
 static const float volume_FS = 800;
 static const float paw_FS = 60;
 static const float Ti_FS = 5;
@@ -54,7 +54,8 @@ static const uint8_t CMD_FlowDeceleratingSlope = 5;
 static const uint8_t CMD_valve1 = 10;
 static const uint8_t CMD_valve2 = 11;
 
-static const float coefficient_dP2flow = 1.66;
+static const float coefficient_dP2flow = 0.6438;
+static const float coefficient_dp2flow_offset = 1.1029;
 
 volatile float dP = 0;
 volatile float flow = 0;
@@ -83,7 +84,10 @@ volatile bool PEEP_is_reached = false;
 volatile bool is_semi_closed = false;
 
 volatile float valve_opening_percentage = 1;
-volatile float decelerating_rate = 0.0004; // 0.5 ms between each timer event - inspiration lasts 1s => 2000 steps
+// 0.0004*6 for tidal volume of 300 and 400
+volatile float decelerating_rate = 0.0004*6; // 0.5 ms between each timer event - inspiration lasts 1s => 2000 steps
+// 0.0004*4 for tidal volume of 300 and 400
+//volatile float decelerating_rate = 0.0004*4; // 0.5 ms between each timer event - inspiration lasts 1s => 2000 steps
 static const long travel = 3; // linear actuator travel
 
 
@@ -110,7 +114,7 @@ TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 static const long steps_per_mm_XY = 120; // for PL35L-024-VLB8
 constexpr float MAX_VELOCITY_Y_mm = 40; // for PL35L-024-VLB8
-constexpr float MAX_ACCELERATION_Y_mm = 300; // 50 ms to reach 15 mm/s
+constexpr float MAX_ACCELERATION_Y_mm = 400; // 50 ms to reach 15 mm/s
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
 
@@ -234,7 +238,7 @@ void timer_interruptHandler()
 //      is_semi_closed = true;
 //      stepper_Y.moveTo(-valve_opening_percentage*travel*steps_per_mm_XY);
 //    }
-    if (cycle_time_ms > 200 && is_in_inspiratory_phase )
+    if (cycle_time_ms > 100 && is_in_inspiratory_phase )
     {
       valve_opening_percentage = valve_opening_percentage - decelerating_rate;
       stepper_Y.moveTo(-valve_opening_percentage * travel * steps_per_mm_XY);
@@ -276,7 +280,6 @@ void timer_interruptHandler()
     counter_send_data = 0;
     flag_send_data = true;
   }
-
 }
 
 void loop()
@@ -315,7 +318,14 @@ void loop()
       paw = pressure_sensor.pressure();
     if (sdp.readContinuous() == 0)
       dP = sdp.getDifferentialPressure();
-    flow = dP * coefficient_dP2flow;
+      
+    if(abs(dP)<0.3)
+      flow = 0;
+    else if(dP >=3 )
+      flow = dP * coefficient_dP2flow + coefficient_dp2flow_offset;
+    else
+      flow = dP * coefficient_dP2flow - coefficient_dp2flow_offset;
+    
     volume = volume + flow * 1000 * (TIMER_PERIOD_us / 1000000 / 60);
     flag_read_sensor = false;
   }

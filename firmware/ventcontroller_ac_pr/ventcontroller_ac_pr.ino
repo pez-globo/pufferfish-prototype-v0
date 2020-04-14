@@ -18,13 +18,23 @@
 TruStabilityPressureSensor pressure_sensor( SLAVE_SELECT_PIN, -61.183, 61.183 ); // unit: cmH2O
 SDP8XXSensor sdp;
 
+/*
+  // create Honeywell_ABP instance
+  Honeywell_ABP abp(
+  0x28,   // I2C address
+  0,      // minimum pressure
+  100,      // maximum pressure
+  "mbar"   // pressure unit
+  );
+*/
+
 static inline int sgn(int val) {
   if (val < 0) return -1;
   if (val == 0) return 0;
   return 1;
 }
 
-static const int CMD_LENGTH = 2;
+static const int CMD_LENGTH = 4;
 static const int MSG_LENGTH = 8;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
@@ -34,34 +44,50 @@ static const int N_BYTES_POS = 3;
 static const int pin_valve1 = 30;
 static const int pin_valve2 = 31;
 
+static const float flow_FS = 100;
+static const float volume_FS = 800;
+static const float paw_FS = 60;
+static const float Ti_FS = 5;
+static const float Vt_FS = 800;
+static const float PEEP_FS = 30;
+static const float RR_FS = 60;
+
+static const float alpha = 0*3.45*0.0001; // correction coefficient
+//static const float alpha = 3.45*0.0; // correction coefficient
+
 static const int pin_valve_pr_gnd = 32;
 static const int pin_valve_pr = 33;
 
-static const float flow_FS = 200;
-static const float volume_FS = 1500;
-static const float paw_FS = 50;
-static const float Ti_FS = 5;
-static const float Vt_FS = 1500;
-static const float PEEP_FS = 30;
+static const uint8_t CMD_Vt = 0;
+static const uint8_t CMD_Ti = 1;
+static const uint8_t CMD_RR = 2;
+static const uint8_t CMD_PEEP = 3;
+static const uint8_t CMD_Flow = 4;
+static const uint8_t CMD_FlowDeceleratingSlope = 5;
+static const uint8_t CMD_valve1 = 10;
+static const uint8_t CMD_valve2 = 11;
 
-static const float coefficient_dP2flow = 1.66;
+static const float coefficient_dP2flow = 0.6438;
+static const float coefficient_dp2flow_offset = 1.1029;
 
 volatile float dP = 0;
 volatile float flow = 0;
 volatile float volume = 0;
 volatile float paw = 0;
 
-float RR = 12;
-float Ti = 1;
-float Vt = 250;
+float RR = 18;
+float Ti = 1.2;
+float Vt = 300;
 float PEEP = 5;
-float paw_trigger_th = 4;
+float paw_trigger_delta = -3;
+float paw_trigger_th = 2;
+
 float paw_max = 25;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
 float time_inspiratory_ms = Ti * 1000;
-float frequency_send_data = 20;
+float frequency_send_data = 25;
 float counter_send_data = 0;
 
 volatile bool flag_send_data = false;
@@ -80,7 +106,7 @@ static const long DISPLAY_RANGE_S = 20;
 
 
 #include <DueTimer.h>
-static const float TIMER_PERIOD_us = 500; // in us
+static const float TIMER_PERIOD_us = 2500; // in us
 
 void setup() {
 
@@ -173,10 +199,11 @@ void timer_interruptHandler()
     set_valve_pr_state(1);
 
   // breathing control - stop inspiratory flow when Vt is reached
-  if (volume >= Vt)
+  //if (volume >= Vt-35) // compensate for system response time
+  if (volume >= Vt-30) // compensate for system response time, for 10 psi
   {
-    set_valve1_state(0);
     set_valve_pr_state(0);
+    set_valve1_state(0);
   }
 
   // breathing control - change to exhalation when Ti is reached
@@ -187,9 +214,9 @@ void timer_interruptHandler()
     is_in_inspiratory_phase = false;
     is_in_expiratory_phase = true;
     set_valve1_state(0);
-    set_valve_pr_state(0);
     // only allow expiratory flow when Paw is >= PEEP
-    if (paw > PEEP && PEEP_is_reached == false)
+    // if (paw > PEEP && PEEP_is_reached == false)
+    if (paw + alpha*flow*flow  > PEEP && PEEP_is_reached == false) // take into account of flow induced pressure
       set_valve2_state(1);
     else
     {
@@ -210,35 +237,33 @@ void timer_interruptHandler()
 
 void loop()
 {
-  /*
     while(SerialUSB.available())
     {
-    buffer_rx[buffer_rx_ptr] = SerialUSB.read();
-    buffer_rx_ptr = buffer_rx_ptr + 1;
-    if (buffer_rx_ptr == CMD_LENGTH)
-    {
-      buffer_rx_ptr = 0;
-      if(buffer_rx[0]==0)
+      buffer_rx[buffer_rx_ptr] = SerialUSB.read();
+      buffer_rx_ptr = buffer_rx_ptr + 1;
+      if (buffer_rx_ptr == CMD_LENGTH)
       {
-        RR = buffer_rx[1];
-        cycle_period_ms = (60/RR)*1000;
+        buffer_rx_ptr = 0;
+        if(buffer_rx[0]==CMD_Vt)
+          Vt = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*Vt_FS;
+        else if(buffer_rx[0]==CMD_Ti)
+        {
+          Ti = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*Ti_FS;
+          time_inspiratory_ms = Ti*1000;
+        }
+        else if(buffer_rx[0]==CMD_RR)
+        {
+          RR = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*RR_FS;
+          cycle_period_ms = (60/RR)*1000;
+        }
+        else if(buffer_rx[0]==CMD_PEEP)
+          PEEP = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*PEEP_FS;
+        else if(buffer_rx[0]==CMD_valve1)
+          set_valve1_state(buffer_rx[1]);
+        else if(buffer_rx[0]==CMD_valve2)
+          set_valve2_state(buffer_rx[1]);
       }
-      else if(buffer_rx[0]==1)
-      {
-        Ti = (float(buffer_rx[1])/256)*Ti_FS;
-        time_inspiratory_ms = Ti*1000;
-      }
-      else if(buffer_rx[0]==2)
-        Vt = (float(buffer_rx[1])/256)*Vt_FS;
-      else if(buffer_rx[0]==3)
-        PEEP = (float(buffer_rx[1])/256)*PEEP_FS;
-      else if(buffer_rx[0]==4)
-        set_valve1_state(buffer_rx[1]);
-      else if(buffer_rx[0]==5)
-        set_valve2_state(buffer_rx[1]);
     }
-    }
-  */
 
   if (flag_read_sensor)
   {
@@ -246,7 +271,13 @@ void loop()
       paw = pressure_sensor.pressure();
     if (sdp.readContinuous() == 0)
       dP = sdp.getDifferentialPressure();
-    flow = dP * coefficient_dP2flow;
+    if(abs(dP)<0.3)
+      flow = 0;
+    else if(dP >=3 )
+      flow = dP * coefficient_dP2flow + coefficient_dp2flow_offset;
+    else
+      flow = dP * coefficient_dP2flow - coefficient_dp2flow_offset;
+    
     volume = volume + flow * 1000 * (TIMER_PERIOD_us / 1000000 / 60);
     flag_read_sensor = false;
   }
@@ -254,6 +285,7 @@ void loop()
   if (flag_send_data)
   {
     tmp_long = (65536 / 2) * paw / paw_FS;
+    // tmp_long = (65536 / 2) * (paw + alpha*flow*flow) / paw_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[0] = byte(tmp_uint16 >> 8);
     buffer_tx[1] = byte(tmp_uint16 % 256);
@@ -270,13 +302,14 @@ void loop()
     buffer_tx[6] = byte(timebase >> 8);
     buffer_tx[7] = byte(timebase % 256);
 
-    SerialUSB.write(buffer_tx,MSG_LENGTH);
-    flag_send_data = false;
+     SerialUSB.write(buffer_tx,MSG_LENGTH);
+     flag_send_data = false;
 
     //    SerialUSB.print(paw);
     //    SerialUSB.print("\t ");
-    //    SerialUSB.print(flow);
+    //    SerialUSB.print(dP);
     //    SerialUSB.print("\t ");
+    //    SerialUSB.println(flow);
     //    SerialUSB.println(volume);
 
   }
