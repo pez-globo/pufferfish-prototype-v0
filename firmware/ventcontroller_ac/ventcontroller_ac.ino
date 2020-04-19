@@ -52,9 +52,13 @@ static const float Vt_FS = 800;
 static const float PEEP_FS = 30;
 static const float RR_FS = 60;
 
-static const float alpha = 0*3.45*0.0001; // correction coefficient
-//static const float alpha = 3.45*0.0; // correction coefficient
+static const float p1 = 0.0013; // correction coefficient
+static const float p2 = 0.0687; // correction coefficient
+static const float p3 = -0.2016; // correction coefficient
 
+//static const float p1 = 0; // correction coefficient
+//static const float p2 = 0; // correction coefficient
+//static const float p3 = 0; // correction coefficient
 
 static const uint8_t CMD_Vt = 0;
 static const uint8_t CMD_Ti = 1;
@@ -77,8 +81,8 @@ float RR = 18;
 float Ti = 1.2;
 float Vt = 300;
 float PEEP = 5;
-float paw_trigger_delta = -3;
 float paw_trigger_th = 2;
+//float paw_trigger_th = -3;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
@@ -99,7 +103,6 @@ long tmp_long;
 
 uint16_t timebase = 0; // in number of TIMER_PERIOD_us
 static const long DISPLAY_RANGE_S = 20;
-
 
 #include <DueTimer.h>
 static const float TIMER_PERIOD_us = 2500; // in us
@@ -197,7 +200,7 @@ void timer_interruptHandler()
     set_valve1_state(0);
     // only allow expiratory flow when Paw is >= PEEP
     // if (paw > PEEP && PEEP_is_reached == false)
-    if (paw + alpha*flow*flow  > PEEP && PEEP_is_reached == false) // take into account of flow induced pressure
+    if (paw  > PEEP && PEEP_is_reached == false) // take into account of flow induced pressure
       set_valve2_state(1);
     else
     {
@@ -258,6 +261,9 @@ void loop()
       flow = dP * coefficient_dP2flow + coefficient_dp2flow_offset;
     else
       flow = dP * coefficient_dP2flow - coefficient_dp2flow_offset;
+
+    // correct for pressure drop
+    paw = paw - sgn(flow)*((p1*flow*flow) + p2*abs(flow) + p3);
     
     volume = volume + flow * 1000 * (TIMER_PERIOD_us / 1000000 / 60);
     flag_read_sensor = false;
