@@ -1,0 +1,7 @@
+[run]
+source = ventapp
+
+[report]
+exclude_lines =
+    pragma: no cover
+    pass
