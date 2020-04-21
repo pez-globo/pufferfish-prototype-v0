@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "ventapp"
+version = "0.0.0"
+description = "TODO: Add Description"
+authors = []
+packages = [
+  { include = "ventapp"}
+]
+
+[tool.poetry.scripts]
+ventapp = 'ventapp.main:main'
+
+[tool.poetry.dependencies]
+python = "^3.7"
+numpy = "^1.18.2"
+pyqtgraph = "^0.10.0"
+qtpy = "^1.9.0"
+pyqt5 = "^5.14.2"
+pyserial = "^3.4"
+
+[tool.poetry.dev-dependencies]
+pylint = "^2.4.4"
+tox = "^3.14.6"
+coverage = "^5.0.4"
+pytest = "^5.4.1"
+pytest-cov = "^2.8.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
