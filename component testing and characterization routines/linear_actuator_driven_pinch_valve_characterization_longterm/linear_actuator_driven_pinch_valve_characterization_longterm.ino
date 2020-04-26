@@ -97,24 +97,27 @@ uint16_t timebase = 0; // in number of TIMER_PERIOD_us
 static const long DISPLAY_RANGE_S = 20;
 
 // stepper
+#define STEPPER_SERIAL Serial3
+#include <AccelStepper.h>
+
+static const uint8_t X_driver_ADDRESS = 0b00;
+static const float R_SENSE = 0.11f;
+TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
+
+// for PL35L-024-VLB8
+static const long steps_per_mm_XY = 120; 
+constexpr float MAX_VELOCITY_Y_mm = 40; 
+constexpr float MAX_ACCELERATION_Y_mm = 300; 
+static const long Y_NEG_LIMIT_MM = -12;
+static const long Y_POS_LIMIT_MM = 12;
+
 static const int Y_dir = 34;
 static const int Y_step = 35;
 static const int Y_driver_uart = 25;
 static const int Y_en = 36;
 static const int Y_gnd = 37;
 
-#define STEPPER_SERIAL Serial1
-static const uint8_t X_driver_ADDRESS = 0b00;
-static const float R_SENSE = 0.11f;
-TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
-
-#include <AccelStepper.h>
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
-static const long steps_per_mm_XY = 120; // for PL35L-024-VLB8
-constexpr float MAX_VELOCITY_Y_mm = 40; // for PL35L-024-VLB8
-constexpr float MAX_ACCELERATION_Y_mm = 300; // 50 ms to reach 15 mm/s
-static const long Y_NEG_LIMIT_MM = -12;
-static const long Y_POS_LIMIT_MM = 12;
 
 
 void setup() {
