@@ -120,6 +120,8 @@ static const int Y_driver_uart = 25;
 static const int Y_en = 36;
 static const int Y_gnd = 37;
 
+AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
+
 // Limit-switch integration
 #define LIMIT_1 32
 // Direction of stepper movement based on valve closing/opening. 
@@ -127,14 +129,9 @@ static const int Y_gnd = 37;
 #define CLOSE -1   
 
 bool limit_finding_in_progress = false, limit_finding_complete = true;
-
 bool homing_in_progress = false, at_home = false, homing_procedure_complete = false;
-
-
 long int cycles_since_last_homing = 0;
 long int homing_cycles = 1000*num_cycle_open_close; // No:of interrupt cycles between homing runs. 
-
-
 bool reached_limit_closed = false, reached_limit_open = false;
 
 // Limit-switch state
@@ -154,27 +151,24 @@ float cycle_find_limit_switch_time = 0;
 bool sent_homing_data = false;
 bool homing_at_startup_complete = false;
 
-AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
-
+long Pos_switch_closed;
+long Pos_switch_open;
 
 void FindLimits()
 {
   lim_1_prev = lim_1;
-  // We may also want to debounce this signal.
-
-  ReadLimitSwitchDigital();
-
   
+  // We may also want to debounce this signal.
+  ReadLimitSwitchDigital();
 
   // If switch transitions from Open to Closed when stepping in OPEN direction. 
   if(!lim_1 && lim_1_prev && reached_limit_closed==false)
   {
       reached_limit_closed = true;
       // Store the position as one limit
-      Pos_switch_closed = stepperY.currentPosition();
+      Pos_switch_closed = stepper_Y.currentPosition();
       // Switch direction to start closing the valve.
       step_direction = CLOSE;
-     
   }
   
   // If switch transitions from Closed to Open when stepping in CLOSE direction. This is when the switch is released.
@@ -182,35 +176,27 @@ void FindLimits()
   {
       reached_limit_open = true;
       // Store the position as one limit
-      Pos_switch_open = stepperY.currentPosition();
-     
+      Pos_switch_open = stepper_Y.currentPosition();
   }
-  if(reached_limit_closed && reached_limit_closed)
+  if(reached_limit_closed && reached_limit_open)
   {
     limit_finding_complete = true;
-    limit_finding_in_progress = false;
-    
-    
+    limit_finding_in_progress = false;    
   }
 
-  stepperY.move(step_direction*step_size);
-
- 
-
-  
-
+  stepper_Y.move(step_direction*step_size);
   
 }
 
-voud MoveToHome()
+void MoveToHome()
 { 
   if(homing_in_progress == false)
   {
-    stepperY.moveTo(step_direction*int(steps_per_mm_XY*distance_to_valve_closed));
+    stepper_Y.moveTo(step_direction*int(steps_per_mm_XY*distance_to_valve_closed));
     homing_in_progress == true;
   }
 
-  if(homing_in_progress == true && stepperY.distanceToGo()==0)
+  if(homing_in_progress == true && stepper_Y.distanceToGo()==0)
   {
 
     homing_procedure_complete = true;
@@ -219,17 +205,12 @@ voud MoveToHome()
     // Reset the current position as the valve-closed position.
     valve_opening_percentage = 0;
     cycles_since_last_homing = 0;
-    
-    
   }
-  
-  
 }
 
 void ReadLimitSwitchDigital()
 {
   lim_1 = digitalRead(LIMIT_1);
-  
 }
 
 void timer_interruptHandler()
@@ -249,8 +230,6 @@ void timer_interruptHandler()
   // update homing cycles counter
   cycles_since_last_homing++;
 
-  
-
   // If it's time to home and the valve has closed after the last-breathing cycle.
   if((cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false) || homing_at_startup_complete == false)
   {
@@ -261,15 +240,9 @@ void timer_interruptHandler()
     limit_finding_complete = false;
     homing_procedure_complete = false;
     sent_homing_data = false;
-    
     step_direction = OPEN;
-
     homing_at_startup_complete = true;
-    
-    
   }
-
-  
 
   if(homing_in_progress==false && limit_finding_in_progress==false)
   {
@@ -286,10 +259,8 @@ void timer_interruptHandler()
     }
     
     valve_opening_percentage = valve_opening_percentage + step_direction*valve_actuation_rate;
-    
     stepper_Y.moveTo(-valve_opening_percentage * travel * steps_per_mm_XY);
   }
-
 }
 
 void setup() {
@@ -384,7 +355,7 @@ void loop()
   //  }
 
   // Update the stepper position:
-  stepper_pos = stepperY.currentPosition();
+  stepper_pos = stepper_Y.currentPosition();
   
   if (flag_read_sensor)
   {
@@ -421,23 +392,18 @@ void loop()
     buffer_tx_ptr = 0;
   }
 
-
+  // find limit position (valve open) at startup
   if(limit_finding_in_progress == true && limit_finding_complete == false )
-  {
       FindLimits();
-  }
+  // run homing
   else if(limit_finding_complete == true && homing_procedure_complete == false)
   {
       // Ensure the valve is closing
       step_direction = CLOSE;
       // Move till you fully close the valve (home position)
       MoveToHome();
-    
   }
-  
-  
   stepper_Y.run();
-
 }
 
 // utils

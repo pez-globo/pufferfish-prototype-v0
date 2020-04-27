@@ -1,6 +1,8 @@
 # set QT_API environment variable
 import os 
 os.environ["QT_API"] = "pyqt5"
+os.environ["QT_API"] = "pyside2"
+
 import qtpy
 
 # qt libraries
