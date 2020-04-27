@@ -148,6 +148,12 @@ int step_size = 100;
 // Distance in mm from limit-switch position to valve-closed position (needs to be characterized for each valve design).
 float distance_to_valve_closed = 5;
 
+// Use this to find the amount of time taken to find the limit switch from valve 0 position. 
+// Proposed idea is to use this as a diagnostic test. 
+float cycle_find_limit_switch_time = 0;
+bool sent_homing_data = false;
+bool homing_at_startup_complete = false;
+
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 
 
@@ -235,19 +241,30 @@ void timer_interruptHandler()
   // update cycle timer
   cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us / 1000;
 
+  if(limit_finding_in_progress == true && limit_finding_complete == false)
+  {
+    cycle_find_limit_switch_time = cycle_find_limit_switch_time + TIMER_PERIOD_us / 1000;
+  }
+
   // update homing cycles counter
   cycles_since_last_homing++;
 
+  
+
   // If it's time to home and the valve has closed after the last-breathing cycle.
-  if(cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false)
+  if((cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false) || homing_at_startup_complete == false)
   {
     // Start Limit finding and Homing procedure. 
+    cycle_find_limit_switch_time = 0;
     
     limit_finding_in_progress = true;
     limit_finding_complete = false;
     homing_procedure_complete = false;
+    sent_homing_data = false;
     
     step_direction = OPEN;
+
+    homing_at_startup_complete = true;
     
     
   }
@@ -332,6 +349,8 @@ void setup() {
   stepper_Y.setMaxSpeed(MAX_VELOCITY_Y_mm * steps_per_mm_XY);
   stepper_Y.setAcceleration(MAX_ACCELERATION_Y_mm * steps_per_mm_XY);
   stepper_Y.enableOutputs();
+
+  homing_at_startup_complete = false;
   
 }
 
@@ -378,6 +397,18 @@ void loop()
 
     tmp_long = (65536 / 2) * flow / flow_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
+
+    // Also send the time to find limit switch
+    if(limit_finding_complete == true && homing_procedure_complete == true && sent_homing_data == false)
+    { 
+      // Insert code here to send cycle_find_limit_switch_time after each homing run. 
+
+      sent_homing_data = true;
+    }
+    else
+    {
+      // If homing data has already been sent, then just send 0. 
+    }
 
     buffer_tx[buffer_tx_ptr++] = stepper_pos;
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
