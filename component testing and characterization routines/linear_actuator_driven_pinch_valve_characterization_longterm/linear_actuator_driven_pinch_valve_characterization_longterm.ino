@@ -326,7 +326,6 @@ void setup() {
 }
 
 
-
 void loop()
 {
   
@@ -369,21 +368,23 @@ void loop()
     tmp_long = (65536 / 2) * flow / flow_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
 
-    // Also send the time to find limit switch
-    if(limit_finding_complete == true && homing_procedure_complete == true && sent_homing_data == false)
-    { 
-      // Insert code here to send cycle_find_limit_switch_time after each homing run. 
-
-      sent_homing_data = true;
-    }
-    else
-    {
-      // If homing data has already been sent, then just send 0. 
-    }
+    //    // Also send the time to find limit switch
+    //    if(limit_finding_complete == true && homing_procedure_complete == true && sent_homing_data == false)
+    //    { 
+    //      // Insert code here to send cycle_find_limit_switch_time after each homing run. 
+    //
+    //      sent_homing_data = true;
+    //    }
+    //    else
+    //    {
+    //      // If homing data has already been sent, then just send 0. 
+    //    }
 
     buffer_tx[buffer_tx_ptr++] = stepper_pos;
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+    buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time)
+    
   }
   
   if(buffer_tx_ptr==MSG_LENGTH)
