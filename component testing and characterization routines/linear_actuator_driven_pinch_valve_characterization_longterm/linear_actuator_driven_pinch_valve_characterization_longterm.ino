@@ -84,10 +84,13 @@ volatile bool PEEP_is_reached = false;
 volatile bool is_semi_closed = false;
 
 volatile float valve_opening_percentage = 0;
-volatile float increament_direction = 1;
-volatile float decelerating_rate = 0.00005; // 0.5 ms between each timer event - inspiration lasts 1s => 2000 steps
-static const long travel = 3; // linear actuator travel
+volatile float valve_actuation_rate = 0.0005; // 2000 cycles for valve-open to close and vice-versa
 
+int num_cycle_open_close = 1/valve_actuation_rate;
+
+// Rate at which valve is opened and closed. 0.5 ms between each timer event - inspiration lasts 1s => 2000 steps
+static const long travel = 3; // linear actuator travel
+volatile long int stepper_pos = 0;
 
 uint16_t tmp_uint16;
 int16_t tmp_int16;
@@ -117,8 +120,160 @@ static const int Y_driver_uart = 25;
 static const int Y_en = 36;
 static const int Y_gnd = 37;
 
+// Limit-switch integration
+#define LIMIT_1 32
+// Direction of stepper movement based on valve closing/opening. 
+#define OPEN 1
+#define CLOSE -1   
+
+bool limit_finding_in_progress = false, limit_finding_complete = true;
+
+bool homing_in_progress = false, at_home = false, homing_procedure_complete = false;
+
+
+long int cycles_since_last_homing = 0;
+long int homing_cycles = 1000*num_cycle_open_close; // No:of interrupt cycles between homing runs. 
+
+
+bool reached_limit_closed = false, reached_limit_open = false;
+
+// Limit-switch state
+bool lim_1_prev=false, lim_1 = false;
+
+// Stepping Direction
+int step_direction = OPEN;
+// Step size during homing
+int step_size = 100;
+
+// Distance in mm from limit-switch position to valve-closed position (needs to be characterized for each valve design).
+float distance_to_valve_closed = 5;
+
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 
+
+void FindLimits()
+{
+  lim_1_prev = lim_1;
+  // We may also want to debounce this signal.
+
+  ReadLimitSwitchDigital();
+
+  
+
+  // If switch transitions from Open to Closed when stepping in OPEN direction. 
+  if(!lim_1 && lim_1_prev && reached_limit_closed==false)
+  {
+      reached_limit_closed = true;
+      // Store the position as one limit
+      Pos_switch_closed = stepperY.currentPosition();
+      // Switch direction to start closing the valve.
+      step_direction = CLOSE;
+     
+  }
+  
+  // If switch transitions from Closed to Open when stepping in CLOSE direction. This is when the switch is released.
+  if(lim_1 && !lim_1_prev && reached_limit_open==false && reached_limit_closed == true)
+  {
+      reached_limit_open = true;
+      // Store the position as one limit
+      Pos_switch_open = stepperY.currentPosition();
+     
+  }
+  if(reached_limit_closed && reached_limit_closed)
+  {
+    limit_finding_complete = true;
+    limit_finding_in_progress = false;
+    
+    
+  }
+
+  stepperY.move(step_direction*step_size);
+
+ 
+
+  
+
+  
+}
+
+voud MoveToHome()
+{ 
+  if(homing_in_progress == false)
+  {
+    stepperY.moveTo(step_direction*int(steps_per_mm_XY*distance_to_valve_closed));
+    homing_in_progress == true;
+  }
+
+  if(homing_in_progress == true && stepperY.distanceToGo()==0)
+  {
+
+    homing_procedure_complete = true;
+    homing_in_progress = false;
+    
+    // Reset the current position as the valve-closed position.
+    valve_opening_percentage = 0;
+    cycles_since_last_homing = 0;
+    
+    
+  }
+  
+  
+}
+
+void ReadLimitSwitchDigital()
+{
+  lim_1 = digitalRead(LIMIT_1);
+  
+}
+
+void timer_interruptHandler()
+{
+  
+  // read sensor value
+  flag_read_sensor = true;
+  
+  // update cycle timer
+  cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us / 1000;
+
+  // update homing cycles counter
+  cycles_since_last_homing++;
+
+  // If it's time to home and the valve has closed after the last-breathing cycle.
+  if(cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false)
+  {
+    // Start Limit finding and Homing procedure. 
+    
+    limit_finding_in_progress = true;
+    limit_finding_complete = false;
+    homing_procedure_complete = false;
+    
+    step_direction = OPEN;
+    
+    
+  }
+
+  
+
+  if(homing_in_progress==false && limit_finding_in_progress==false)
+  {
+    // if valve is fully-closed, start opening the valve
+    if (valve_opening_percentage<=0)
+    {
+      step_direction = OPEN;
+      valve_opening_percentage = 0;
+    }
+    else if (valve_opening_percentage>=1)
+    {
+      step_direction = CLOSE;
+      valve_opening_percentage = 1;
+    }
+    
+    valve_opening_percentage = valve_opening_percentage + step_direction*valve_actuation_rate;
+    
+    stepper_Y.moveTo(-valve_opening_percentage * travel * steps_per_mm_XY);
+  }
+
+}
 
 void setup() {
 
@@ -180,29 +335,7 @@ void setup() {
   
 }
 
-void timer_interruptHandler()
-{
-  
-  // read sensor value
-  flag_read_sensor = true;
 
-  // update cycle timer
-  cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us / 1000;
-
-  if (valve_opening_percentage<=0)
-  {
-    increament_direction = 1;
-    valve_opening_percentage = 0;
-  }
-  else if (valve_opening_percentage>=1)
-  {
-    increament_direction = -1;
-    valve_opening_percentage = 1;
-  }
-  valve_opening_percentage = valve_opening_percentage + increament_direction*decelerating_rate;
-  stepper_Y.moveTo(-valve_opening_percentage * travel * steps_per_mm_XY);
-
-}
 
 void loop()
 {
@@ -231,6 +364,9 @@ void loop()
   //    }
   //  }
 
+  // Update the stepper position:
+  stepper_pos = stepperY.currentPosition();
+  
   if (flag_read_sensor)
   {
     if (pressure_sensor.readSensor() == 0)
@@ -253,6 +389,21 @@ void loop()
     SerialUSB.write(buffer_tx, MSG_LENGTH);
     buffer_tx_ptr = 0;
   }
+
+
+  if(limit_finding_in_progress == true && limit_finding_complete == false )
+  {
+      FindLimits();
+  }
+  else if(limit_finding_complete == true && homing_procedure_complete == false)
+  {
+      // Ensure the valve is closing
+      step_direction = CLOSE;
+      // Move till you fully close the valve (home position)
+      MoveToHome();
+    
+  }
+  
   
   stepper_Y.run();
 
