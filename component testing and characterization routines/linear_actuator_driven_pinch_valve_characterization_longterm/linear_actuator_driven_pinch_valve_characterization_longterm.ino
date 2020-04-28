@@ -1,6 +1,8 @@
 #include <TMCStepper.h>
 #include <TMCStepper_UTILITY.h>
 #include <Wire.h>
+#include <AccelStepper.h>
+
 // https://github.com/ethanjli/arduino-sdp
 #include <sdpsensor.h>
 #include <HoneywellTruStabilitySPI.h>
@@ -17,6 +19,8 @@
 #define SLAVE_SELECT_PIN 0
 TruStabilityPressureSensor pressure_sensor( SLAVE_SELECT_PIN, -61.183, 61.183 ); // unit: cmH2O
 SDP8XXSensor sdp;
+
+#define MICROSTEPPING_N 4
 
 #include <DueTimer.h>
 static const float TIMER_PERIOD_us = 2500; // in us
@@ -84,12 +88,12 @@ volatile bool PEEP_is_reached = false;
 volatile bool is_semi_closed = false;
 
 volatile float valve_opening_percentage = 0;
-volatile float valve_actuation_rate = 0.0005; // 2000 cycles for valve-open to close and vice-versa
+volatile float valve_actuation_rate = 0.0025; // 2000 cycles for valve-open to close and vice-versa
 
-int num_cycle_open_close = 1/valve_actuation_rate;
+long int num_cycle_open_close = 1.0/valve_actuation_rate;
 
 // Rate at which valve is opened and closed. 0.5 ms between each timer event - inspiration lasts 1s => 2000 steps
-static const long travel = 3; // linear actuator travel
+static const long travel = 5; // linear actuator travel
 volatile long int stepper_pos = 0;
 
 uint16_t tmp_uint16;
@@ -101,21 +105,21 @@ static const long DISPLAY_RANGE_S = 20;
 
 // stepper
 #define STEPPER_SERIAL Serial3
-#include <AccelStepper.h>
-
+static const int UART_CS_S0 = 46;
+static const int UART_CS_S1 = 47;
 static const uint8_t X_driver_ADDRESS = 0b00;
 static const float R_SENSE = 0.11f;
 TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 
 // for PL35L-024-VLB8
-static const long steps_per_mm_XY = 120; 
-constexpr float MAX_VELOCITY_Y_mm = 40; 
-constexpr float MAX_ACCELERATION_Y_mm = 300; 
+static const long steps_per_mm_XY = 30; 
+constexpr float MAX_VELOCITY_Y_mm = 10; 
+constexpr float MAX_ACCELERATION_Y_mm = 100; 
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
 
-static const int Y_dir = 34;
-static const int Y_step = 35;
+static const int Y_dir = 24;
+static const int Y_step = 22;
 static const int Y_driver_uart = 25;
 static const int Y_en = 36;
 static const int Y_gnd = 37;
@@ -131,16 +135,16 @@ AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 bool limit_finding_in_progress = false, limit_finding_complete = true;
 bool homing_in_progress = false, at_home = false, homing_procedure_complete = false;
 long int cycles_since_last_homing = 0;
-long int homing_cycles = 1000*num_cycle_open_close; // No:of interrupt cycles between homing runs. 
+long int homing_cycles = 4000; // No:of interrupt cycles between homing runs. 
 bool reached_limit_closed = false, reached_limit_open = false;
 
 // Limit-switch state
 bool lim_1_prev=false, lim_1 = false;
 
 // Stepping Direction
-int step_direction = OPEN;
+int step_direction = 1;
 // Step size during homing
-int step_size = 100;
+int step_size = 4;
 
 // Distance in mm from limit-switch position to valve-closed position (needs to be characterized for each valve design).
 float distance_to_valve_closed = 5;
@@ -156,11 +160,13 @@ long Pos_switch_open;
 
 void FindLimits()
 {
+  
+  stepper_Y.move(step_direction*step_size*MICROSTEPPING_N);
   lim_1_prev = lim_1;
   
   // We may also want to debounce this signal.
   ReadLimitSwitchDigital();
-
+  
   // If switch transitions from Open to Closed when stepping in OPEN direction. 
   if(!lim_1 && lim_1_prev && reached_limit_closed==false)
   {
@@ -168,23 +174,29 @@ void FindLimits()
       // Store the position as one limit
       Pos_switch_closed = stepper_Y.currentPosition();
       // Switch direction to start closing the valve.
-      step_direction = CLOSE;
+      step_direction = -step_direction;
   }
   
   // If switch transitions from Closed to Open when stepping in CLOSE direction. This is when the switch is released.
-  if(lim_1 && !lim_1_prev && reached_limit_open==false && reached_limit_closed == true)
-  {
-      reached_limit_open = true;
-      // Store the position as one limit
-      Pos_switch_open = stepper_Y.currentPosition();
-  }
-  if(reached_limit_closed && reached_limit_open)
+//  if(lim_1 && !lim_1_prev && reached_limit_open==false && reached_limit_closed == true)
+//  {
+//      reached_limit_open = true;
+//      // Store the position as one limit
+//      Pos_switch_open = stepper_Y.currentPosition();
+//  }
+//  if(reached_limit_closed && reached_limit_open)
+//  {
+//    limit_finding_complete = true;
+//    limit_finding_in_progress = false;    
+//  }
+
+ if(reached_limit_closed)
   {
     limit_finding_complete = true;
     limit_finding_in_progress = false;    
   }
 
-  stepper_Y.move(step_direction*step_size);
+  
   
 }
 
@@ -192,7 +204,7 @@ void MoveToHome()
 { 
   if(homing_in_progress == false)
   {
-    stepper_Y.moveTo(step_direction*int(steps_per_mm_XY*distance_to_valve_closed));
+    stepper_Y.moveTo(step_direction*steps_per_mm_XY*MICROSTEPPING_N*distance_to_valve_closed);
     homing_in_progress == true;
   }
 
@@ -224,14 +236,15 @@ void timer_interruptHandler()
 
   if(limit_finding_in_progress == true && limit_finding_complete == false)
   {
-    cycle_find_limit_switch_time = cycle_find_limit_switch_time + TIMER_PERIOD_us / 1000;
+    cycle_find_limit_switch_time = cycle_find_limit_switch_time + 1;
   }
 
   // update homing cycles counter
   cycles_since_last_homing++;
 
   // If it's time to home and the valve has closed after the last-breathing cycle.
-  if((cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false) || homing_at_startup_complete == false)
+//  if((cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false) || homing_at_startup_complete == false)
+  if((cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false))
   {
     // Start Limit finding and Homing procedure. 
     cycle_find_limit_switch_time = 0;
@@ -240,7 +253,7 @@ void timer_interruptHandler()
     limit_finding_complete = false;
     homing_procedure_complete = false;
     sent_homing_data = false;
-    step_direction = OPEN;
+    step_direction = 1;
     homing_at_startup_complete = true;
   }
 
@@ -249,17 +262,17 @@ void timer_interruptHandler()
     // if valve is fully-closed, start opening the valve
     if (valve_opening_percentage<=0)
     {
-      step_direction = OPEN;
+      step_direction = 1;
       valve_opening_percentage = 0;
     }
     else if (valve_opening_percentage>=1)
     {
-      step_direction = CLOSE;
+      step_direction = -1;
       valve_opening_percentage = 1;
     }
     
     valve_opening_percentage = valve_opening_percentage + step_direction*valve_actuation_rate;
-    stepper_Y.moveTo(-valve_opening_percentage * travel * steps_per_mm_XY);
+    stepper_Y.moveTo(valve_opening_percentage * travel * steps_per_mm_XY*MICROSTEPPING_N);
   }
 }
 
@@ -270,25 +283,27 @@ void setup() {
   while (!SerialUSB);           // Wait until connection is established
   buffer_rx_ptr = 0;
 
-  SPI.begin(); // start SPI communication
-  pressure_sensor.begin(); // run sensor initialization
-
-  Wire.begin();
-  sdp.stopContinuous(); // stop continuous measurement if it's running
-  // init sensirion sensor
-  while (true)
-  {
-    int ret = sdp.init();
-    if (ret == 0)
-      break;
-    else
-      delay(100);
-  }
-  sdp.startContinuous(true);
-  sdp.startContinuousWait(true);
+//  SPI.begin(); // start SPI communication
+//  pressure_sensor.begin(); // run sensor initialization
+//
+//  Wire.begin();
+//  sdp.stopContinuous(); // stop continuous measurement if it's running
+//  // init sensirion sensor
+//  while (true)
+//  {
+//    int ret = sdp.init();
+//    if (ret == 0)
+//      break;
+//    else
+//      delay(100);
+//  }
+//  sdp.startContinuous(true);
+//  sdp.startContinuousWait(true);
 
   pinMode(13, OUTPUT);
   digitalWrite(13, HIGH);
+
+  pinMode(LIMIT_1,INPUT_PULLUP);
 
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
@@ -299,29 +314,36 @@ void setup() {
   pinMode(Y_step, OUTPUT);
   pinMode(Y_gnd, OUTPUT);
   digitalWrite(Y_gnd, LOW);
+  
+  pinMode(UART_CS_S0, OUTPUT);
+  pinMode(UART_CS_S1, OUTPUT);
+
 
   // initialize stepper driver
   STEPPER_SERIAL.begin(115200);
 
-  digitalWrite(Y_driver_uart, true);
+  select_driver(2);
   while (!STEPPER_SERIAL);
   Y_driver.begin();
   Y_driver.I_scale_analog(false);
-  Y_driver.rms_current(450); //I_run and holdMultiplier
-  Y_driver.microsteps(4);
+  Y_driver.rms_current(200,0.2); //I_run and holdMultiplier
+  Y_driver.microsteps(MICROSTEPPING_N);
   Y_driver.pwm_autoscale(true);
   Y_driver.TPOWERDOWN(2);
-  Y_driver.en_spreadCycle(true);
+  Y_driver.en_spreadCycle(false);
   Y_driver.toff(4);
-  digitalWrite(Y_driver_uart, false);
 
   stepper_Y.setEnablePin(Y_en);
   stepper_Y.setPinsInverted(false, false, true);
-  stepper_Y.setMaxSpeed(MAX_VELOCITY_Y_mm * steps_per_mm_XY);
-  stepper_Y.setAcceleration(MAX_ACCELERATION_Y_mm * steps_per_mm_XY);
+  stepper_Y.setMaxSpeed(MAX_VELOCITY_Y_mm * steps_per_mm_XY * MICROSTEPPING_N);
+  stepper_Y.setAcceleration(MAX_ACCELERATION_Y_mm * steps_per_mm_XY * MICROSTEPPING_N);
   stepper_Y.enableOutputs();
 
   homing_at_startup_complete = false;
+
+  stepper_Y.runToNewPosition(50);
+  delay(500);
+  stepper_Y.runToNewPosition(0);
   
 }
 
@@ -358,33 +380,43 @@ void loop()
   
   if (flag_read_sensor)
   {
-    if (pressure_sensor.readSensor() == 0)
-      paw = pressure_sensor.pressure();
-    if (sdp.readContinuous() == 0)
-      dP = sdp.getDifferentialPressure();
-    flow = dP * coefficient_dP2flow;
-    flag_read_sensor = false;
+//    if (pressure_sensor.readSensor() == 0)
+//      paw = pressure_sensor.pressure();
+//    if (sdp.readContinuous() == 0)
+//      dP = sdp.getDifferentialPressure();
+//    flow = dP * coefficient_dP2flow;
+//    flag_read_sensor = false;
 
     tmp_long = (65536 / 2) * flow / flow_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
 
-    //    // Also send the time to find limit switch
-    //    if(limit_finding_complete == true && homing_procedure_complete == true && sent_homing_data == false)
-    //    { 
-    //      // Insert code here to send cycle_find_limit_switch_time after each homing run. 
-    //
-    //      sent_homing_data = true;
-    //    }
-    //    else
-    //    {
-    //      // If homing data has already been sent, then just send 0. 
-    //    }
+    //        // Also send the time to find limit switch
+    //        if(limit_finding_complete == true && homing_procedure_complete == true && sent_homing_data == false)
+    //        { 
+    //          // Insert code here to send cycle_find_limit_switch_time after each homing run. 
+    //    
+    //          sent_homing_data = true;
+    //        }
+    //        else
+    //        {
+    //          // If homing data has already been sent, then just send 0. 
+    //        }
 
     buffer_tx[buffer_tx_ptr++] = stepper_pos;
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-    buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time)
     
+    if(limit_finding_complete == true && homing_procedure_complete == true && sent_homing_data == false)
+    { 
+      // Insert code here to send cycle_find_limit_switch_time after each homing run. 
+      buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time);
+      sent_homing_data = true;
+    }
+    else
+    {
+      // If homing data has already been sent, then just send 0. 
+      buffer_tx[buffer_tx_ptr++] = byte(0);
+    }
   }
   
   if(buffer_tx_ptr==MSG_LENGTH)
@@ -399,8 +431,6 @@ void loop()
   // run homing
   else if(limit_finding_complete == true && homing_procedure_complete == false)
   {
-      // Ensure the valve is closing
-      step_direction = CLOSE;
       // Move till you fully close the valve (home position)
       MoveToHome();
   }
@@ -412,4 +442,18 @@ long signed2NBytesUnsigned(long signedLong, int N)
 {
   long NBytesUnsigned = signedLong + pow(256L, N) / 2;
   return NBytesUnsigned;
+}
+
+void select_driver(int id)
+{
+  if(id==1)
+  {
+    digitalWrite(UART_CS_S0, LOW);
+    digitalWrite(UART_CS_S1, LOW);
+  }
+  if(id==2)
+  {
+    digitalWrite(UART_CS_S0, HIGH);
+    digitalWrite(UART_CS_S1, LOW);
+  }
 }

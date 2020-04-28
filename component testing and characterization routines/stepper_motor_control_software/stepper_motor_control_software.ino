@@ -83,7 +83,7 @@ void setup() {
   while(!STEPPER_SERIAL);
   Y_driver.begin();
   Y_driver.I_scale_analog(false);  
-  Y_driver.rms_current(200); //I_run and holdMultiplier
+  Y_driver.rms_current(200,0.2); //I_run and holdMultiplier
   Y_driver.microsteps(4);
   Y_driver.pwm_autoscale(true);
   Y_driver.TPOWERDOWN(2);
