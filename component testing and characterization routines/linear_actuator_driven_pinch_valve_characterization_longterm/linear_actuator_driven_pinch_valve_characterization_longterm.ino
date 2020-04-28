@@ -139,7 +139,8 @@ long int homing_cycles = 4000; // No:of interrupt cycles between homing runs.
 bool reached_limit_closed = false, reached_limit_open = false;
 
 // Limit-switch state
-bool lim_1_prev=false, lim_1 = false;
+bool lim_switch_reading = HIGH, lim_switch_reading_prev = HIGH;
+bool lim_switch_state = HIGH, lim_switch_state_prev = HIGH; // State of the limit switch: false when closed, true when open
 
 // Stepping Direction
 int step_direction = 1;
@@ -158,17 +159,19 @@ bool homing_at_startup_complete = false;
 long Pos_switch_closed;
 long Pos_switch_open;
 
+unsigned long last_debounce_time = 0;  // the last time the output pin was toggled
+unsigned long debounce_delay = 50;    // the debounce time; increase if the output flickers
+
 void FindLimits()
 {
   
   stepper_Y.move(step_direction*step_size*MICROSTEPPING_N);
-  lim_1_prev = lim_1;
   
   // We may also want to debounce this signal.
   ReadLimitSwitchDigital();
   
   // If switch transitions from Open to Closed when stepping in OPEN direction. 
-  if(!lim_1 && lim_1_prev && reached_limit_closed==false)
+  if(!lim_switch_state && lim_switch_state_prev && reached_limit_closed==false)
   {
       reached_limit_closed = true;
       // Store the position as one limit
@@ -178,7 +181,7 @@ void FindLimits()
   }
   
   // If switch transitions from Closed to Open when stepping in CLOSE direction. This is when the switch is released.
-//  if(lim_1 && !lim_1_prev && reached_limit_open==false && reached_limit_closed == true)
+//  if(lim_switch_state && !lim_switch_state_prev && reached_limit_open==false && reached_limit_closed == true)
 //  {
 //      reached_limit_open = true;
 //      // Store the position as one limit
@@ -222,7 +225,25 @@ void MoveToHome()
 
 void ReadLimitSwitchDigital()
 {
-  lim_1 = digitalRead(LIMIT_1);
+  lim_switch_reading = digitalRead(LIMIT_1);
+
+  if(lim_switch_reading != lim_switch_reading_prev)
+  {
+    // State of the switch has changed either due to a real change or a noise.
+    last_debounce_time = millis();
+  }
+  if(millis() - last_debounce_time > debounce_delay)
+  {
+    // The switch has stayed in the new state for at least debouce_delay
+    // Therefore take it as the new limit switch state
+      lim_switch_state_prev =  lim_switch_state
+      lim_switch_state = lim_switch_reading
+      
+  }
+
+  lim_switch_reading_prev = lim_switch_reading;
+  
+  
 }
 
 void timer_interruptHandler()
