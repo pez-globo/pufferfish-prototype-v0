@@ -236,8 +236,8 @@ void ReadLimitSwitchDigital()
   {
     // The switch has stayed in the new state for at least debouce_delay
     // Therefore take it as the new limit switch state
-      lim_switch_state_prev =  lim_switch_state
-      lim_switch_state = lim_switch_reading
+      lim_switch_state_prev =  lim_switch_state;
+      lim_switch_state = lim_switch_reading;
       
   }
 
