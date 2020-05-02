@@ -20,7 +20,7 @@
 TruStabilityPressureSensor pressure_sensor( SLAVE_SELECT_PIN, -61.183, 61.183 ); // unit: cmH2O
 SDP8XXSensor sdp;
 
-#define MICROSTEPPING_N 4
+#define MICROSTEPPING_N 32
 
 #include <DueTimer.h>
 static const float TIMER_PERIOD_us = 2500; // in us
@@ -93,7 +93,7 @@ volatile float valve_actuation_rate = 0.0025; // 2000 cycles for valve-open to c
 long int num_cycle_open_close = 1.0/valve_actuation_rate;
 
 // Rate at which valve is opened and closed. 0.5 ms between each timer event - inspiration lasts 1s => 2000 steps
-static const long travel = 5; // linear actuator travel
+static const long travel = 3; // linear actuator travel
 volatile long int stepper_pos = 0;
 
 uint16_t tmp_uint16;
@@ -114,7 +114,7 @@ TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 // for PL35L-024-VLB8
 static const long steps_per_mm_XY = 30; 
 constexpr float MAX_VELOCITY_Y_mm = 10; 
-constexpr float MAX_ACCELERATION_Y_mm = 100; 
+constexpr float MAX_ACCELERATION_Y_mm = 200; 
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
 
@@ -131,11 +131,12 @@ AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 // Direction of stepper movement based on valve closing/opening. 
 #define OPEN 1
 #define CLOSE -1   
+bool homing_in_progress = false, at_home = false, homing_complete = false;
 
-bool limit_finding_in_progress = false, limit_finding_complete = true;
-bool homing_in_progress = false, at_home = false, homing_procedure_complete = false;
+bool limit_finding_in_progress = false, limit_finding_complete = false;
+
 long int cycles_since_last_homing = 0;
-long int homing_cycles = 4000; // No:of interrupt cycles between homing runs. 
+long int homing_cycles = 2000; // No:of interrupt cycles between homing runs. 
 bool reached_limit_closed = false, reached_limit_open = false;
 
 // Limit-switch state
@@ -148,7 +149,7 @@ int step_direction = 1;
 int step_size = 4;
 
 // Distance in mm from limit-switch position to valve-closed position (needs to be characterized for each valve design).
-float distance_to_valve_closed = 5;
+float distance_to_valve_closed = 15.0;
 
 // Use this to find the amount of time taken to find the limit switch from valve 0 position. 
 // Proposed idea is to use this as a diagnostic test. 
@@ -162,42 +163,46 @@ long Pos_switch_open;
 unsigned long last_debounce_time = 0;  // the last time the output pin was toggled
 unsigned long debounce_delay = 50;    // the debounce time; increase if the output flickers
 
+void initialize_homing_state()
+{
+  valve_opening_percentage = 0;
+  cycles_since_last_homing = 0;
+  reached_limit_closed = false;
+  reached_limit_open = false;
+  limit_finding_in_progress = false;
+  limit_finding_complete = false;
+
+  homing_in_progress = false;
+  
+  
+}
+
 void FindLimits()
 {
-  
-  stepper_Y.move(step_direction*step_size*MICROSTEPPING_N);
-  
-  // We may also want to debounce this signal.
-  ReadLimitSwitchDigital();
-  
+ 
   // If switch transitions from Open to Closed when stepping in OPEN direction. 
-  if(!lim_switch_state && lim_switch_state_prev && reached_limit_closed==false)
+  if(lim_switch_state==LOW && lim_switch_state_prev==HIGH && reached_limit_closed==false)
   {
       reached_limit_closed = true;
       // Store the position as one limit
-      Pos_switch_closed = stepper_Y.currentPosition();
-      // Switch direction to start closing the valve.
-      step_direction = -step_direction;
+      Pos_switch_closed = stepper_Y.currentPosition();  
+      step_direction = -1;   
   }
   
   // If switch transitions from Closed to Open when stepping in CLOSE direction. This is when the switch is released.
-//  if(lim_switch_state && !lim_switch_state_prev && reached_limit_open==false && reached_limit_closed == true)
-//  {
-//      reached_limit_open = true;
-//      // Store the position as one limit
-//      Pos_switch_open = stepper_Y.currentPosition();
-//  }
-//  if(reached_limit_closed && reached_limit_open)
-//  {
-//    limit_finding_complete = true;
-//    limit_finding_in_progress = false;    
-//  }
-
- if(reached_limit_closed)
+  if(lim_switch_state && !lim_switch_state_prev && reached_limit_open==false && reached_limit_closed == true)
+  {
+      reached_limit_open = true;
+      // Store the position as one limit
+      Pos_switch_open = stepper_Y.currentPosition();
+  }
+  if(reached_limit_closed && reached_limit_open)
   {
     limit_finding_complete = true;
     limit_finding_in_progress = false;    
   }
+
+  stepper_Y.move(step_direction*step_size*MICROSTEPPING_N);
 
   
   
@@ -205,21 +210,27 @@ void FindLimits()
 
 void MoveToHome()
 { 
+  
   if(homing_in_progress == false)
-  {
-    stepper_Y.moveTo(step_direction*steps_per_mm_XY*MICROSTEPPING_N*distance_to_valve_closed);
-    homing_in_progress == true;
+  { 
+    
+    // Change the direction CLOSE
+    step_direction = -1;
+    // Set the current position as 0
+    stepper_Y.move(step_direction*steps_per_mm_XY*MICROSTEPPING_N*distance_to_valve_closed);
+    homing_in_progress = true;
+  
   }
 
   if(homing_in_progress == true && stepper_Y.distanceToGo()==0)
   {
 
-    homing_procedure_complete = true;
-    homing_in_progress = false;
+    homing_complete = true;
     
-    // Reset the current position as the valve-closed position.
-    valve_opening_percentage = 0;
-    cycles_since_last_homing = 0;
+    initialize_homing_state();
+
+    stepper_Y.setCurrentPosition(0);
+    
   }
 }
 
@@ -260,47 +271,52 @@ void timer_interruptHandler()
     cycle_find_limit_switch_time = cycle_find_limit_switch_time + 1;
   }
 
-  // update homing cycles counter
-  cycles_since_last_homing++;
-
   // If it's time to home and the valve has closed after the last-breathing cycle.
-//  if((cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false) || homing_at_startup_complete == false)
-  if((cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0 && limit_finding_in_progress == false && homing_in_progress == false))
+  if((cycles_since_last_homing >= homing_cycles && valve_opening_percentage<=0) || homing_at_startup_complete == false)
   {
     // Start Limit finding and Homing procedure. 
     cycle_find_limit_switch_time = 0;
+    cycles_since_last_homing = 0;
     
     limit_finding_in_progress = true;
+    
     limit_finding_complete = false;
-    homing_procedure_complete = false;
+    homing_complete = false;
     sent_homing_data = false;
     step_direction = 1;
     homing_at_startup_complete = true;
-  }
-
-  if(homing_in_progress==false && limit_finding_in_progress==false)
-  {
-    // if valve is fully-closed, start opening the valve
-    if (valve_opening_percentage<=0)
-    {
-      step_direction = 1;
-      valve_opening_percentage = 0;
-    }
-    else if (valve_opening_percentage>=1)
-    {
-      step_direction = -1;
-      valve_opening_percentage = 1;
-    }
     
-    valve_opening_percentage = valve_opening_percentage + step_direction*valve_actuation_rate;
-    stepper_Y.moveTo(valve_opening_percentage * travel * steps_per_mm_XY*MICROSTEPPING_N);
+  }
+  else
+  {
+   
+    // If not in homing routine then update the valve position
+    if(homing_in_progress==false && limit_finding_in_progress==false && limit_finding_complete == false)
+    {
+      // if it's not time to home then update homing cycles counter
+      cycles_since_last_homing++;
+      // if valve is fully-closed, start opening the valve
+      if (valve_opening_percentage<=0)
+      {
+        step_direction = 1;
+        valve_opening_percentage = 0;
+      }
+      else if (valve_opening_percentage>=1)
+      {
+        step_direction = -1;
+        valve_opening_percentage = 1;
+      }
+      
+      valve_opening_percentage = valve_opening_percentage + step_direction*valve_actuation_rate;
+      stepper_Y.moveTo(valve_opening_percentage * travel * steps_per_mm_XY*MICROSTEPPING_N);
+    }
   }
 }
 
 void setup() {
 
   // Initialize Native USB port
-  SerialUSB.begin(2000000);
+  SerialUSB.begin(9600);
   while (!SerialUSB);           // Wait until connection is established
   buffer_rx_ptr = 0;
 
@@ -347,7 +363,7 @@ void setup() {
   while (!STEPPER_SERIAL);
   Y_driver.begin();
   Y_driver.I_scale_analog(false);
-  Y_driver.rms_current(200,0.2); //I_run and holdMultiplier
+  Y_driver.rms_current(100,0.1); //I_run and holdMultiplier
   Y_driver.microsteps(MICROSTEPPING_N);
   Y_driver.pwm_autoscale(true);
   Y_driver.TPOWERDOWN(2);
@@ -361,17 +377,13 @@ void setup() {
   stepper_Y.enableOutputs();
 
   homing_at_startup_complete = false;
-
-  stepper_Y.runToNewPosition(50);
-  delay(500);
-  stepper_Y.runToNewPosition(0);
   
 }
 
 
 void loop()
 {
-  
+  ReadLimitSwitchDigital();
   //  while (SerialUSB.available())
   //  {
   //    buffer_rx[buffer_rx_ptr] = SerialUSB.read();
@@ -410,54 +422,48 @@ void loop()
 
     tmp_long = (65536 / 2) * flow / flow_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
-
-    //        // Also send the time to find limit switch
-    //        if(limit_finding_complete == true && homing_procedure_complete == true && sent_homing_data == false)
-    //        { 
-    //          // Insert code here to send cycle_find_limit_switch_time after each homing run. 
-    //    
-    //          sent_homing_data = true;
-    //        }
-    //        else
-    //        {
-    //          // If homing data has already been sent, then just send 0. 
-    //        }
-
+    
     buffer_tx[buffer_tx_ptr++] = stepper_pos;
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
     
-    if(limit_finding_complete == true && homing_procedure_complete == true && sent_homing_data == false)
+    if(limit_finding_complete == true && sent_homing_data == false)
     { 
       // Insert code here to send cycle_find_limit_switch_time after each homing run. 
       buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time);
       sent_homing_data = true;
+      SerialUSB.println(cycle_find_limit_switch_time);
     }
     else
     {
       // If homing data has already been sent, then just send 0. 
       buffer_tx[buffer_tx_ptr++] = byte(0);
+//      SerialUSB.println(cycle_find_limit_switch_time);
     }
   }
   
   if(buffer_tx_ptr==MSG_LENGTH)
   {
-    SerialUSB.write(buffer_tx, MSG_LENGTH);
+//    SerialUSB.write(buffer_tx, MSG_LENGTH);
     buffer_tx_ptr = 0;
   }
-
+  
   // find limit position (valve open) at startup
-  if(limit_finding_in_progress == true && limit_finding_complete == false )
-      FindLimits();
-  // run homing
-  else if(limit_finding_complete == true && homing_procedure_complete == false)
+  if(limit_finding_in_progress == true && limit_finding_complete == false)
   {
+      FindLimits();
+
+  }
+  else if(limit_finding_complete == true && homing_complete == false)
+  {     
+      // run homing
       // Move till you fully close the valve (home position)
       MoveToHome();
   }
   stepper_Y.run();
-}
 
+
+}
 // utils
 long signed2NBytesUnsigned(long signedLong, int N)
 {

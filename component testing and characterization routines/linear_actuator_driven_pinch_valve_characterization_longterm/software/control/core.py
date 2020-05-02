@@ -105,7 +105,7 @@ class Waveforms(QObject):
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
-        self.file = open("/Users/hongquanli/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
+        self.file = open("/Users/Deepak/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
         self.file.write('Time (s),Paw (cmH2O),Flow (l/min),Volume (ml),Vt (ml),Ti (s),RR (/min),PEEP (cmH2O)\n')
         self.microcontroller = microcontroller
         self.ventController = ventController
