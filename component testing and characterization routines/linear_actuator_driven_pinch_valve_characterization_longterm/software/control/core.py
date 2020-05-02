@@ -138,10 +138,11 @@ class Waveforms(QObject):
         else:
             readout = self.microcontroller.read_received_packet_nowait()
             if readout is not None:
-                for i in range(MicrocontrollerDef.MSG_LENGTH/4):
-                    self.pos = readout[4*i] 
-                    self.flow = (utils.unsigned_to_signed(readout[4*i+1:4*i+3],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
-                    self.file.write(str(self.time_now)+','+str(self.pos)+','+str(self.flow)+'\n')
+                for i in range(MicrocontrollerDef.MSG_LENGTH/5):
+                    self.pos = readout[5*i] 
+                    self.flow = (utils.unsigned_to_signed(readout[5*i+1:5*i+3],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
+                    self.delta = int(readout[5*i+3])*256 + int(readout[5*i+4])
+                    self.file.write(str(self.time_now)+','+str(self.pos)+','+str(self.flow)+','+str(self.delta)+'\n')
         
         # reduce display refresh rate
         self.counter = self.counter + 1
