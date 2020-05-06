@@ -32,7 +32,7 @@ static inline int sgn(int val) {
 }
 
 static const int CMD_LENGTH = 2;
-static const int MSG_LENGTH = 504;
+static const int MSG_LENGTH = 500;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
@@ -153,7 +153,7 @@ float distance_to_valve_closed = 15;
 
 // Use this to find the amount of time taken to find the limit switch from valve 0 position. 
 // Proposed idea is to use this as a diagnostic test. 
-float cycle_find_limit_switch_time = 0;
+long cycle_find_limit_switch_time = 0;
 bool sent_homing_data = false;
 bool homing_at_startup_complete = false;
 
@@ -322,7 +322,7 @@ void timer_interruptHandler()
 void setup() {
 
   // Initialize Native USB port
-  SerialUSB.begin(9600);
+  SerialUSB.begin(2000000);
   while (!SerialUSB);           // Wait until connection is established
   buffer_rx_ptr = 0;
 
@@ -429,14 +429,15 @@ void loop()
     tmp_long = (65536 / 2) * flow / flow_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     
-    buffer_tx[buffer_tx_ptr++] = stepper_pos;
+    buffer_tx[buffer_tx_ptr++] = stepper_pos/4;
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
     
     if(limit_finding_complete == true && sent_homing_data == false)
     { 
       // Insert code here to send cycle_find_limit_switch_time after each homing run. 
-      buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time);
+      buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time >> 8);
+      buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time % 256);
       sent_homing_data = true;
       SerialUSB.print("Closed, ");
       SerialUSB.println(limit_switch_closed_finding_time);
@@ -447,13 +448,14 @@ void loop()
     {
       // If homing data has already been sent, then just send 0. 
       buffer_tx[buffer_tx_ptr++] = byte(0);
+      buffer_tx[buffer_tx_ptr++] = byte(0);
 //      SerialUSB.println(cycle_find_limit_switch_time);
     }
   }
   
   if(buffer_tx_ptr==MSG_LENGTH)
   {
-//    SerialUSB.write(buffer_tx, MSG_LENGTH);
+    SerialUSB.write(buffer_tx, MSG_LENGTH);
     buffer_tx_ptr = 0;
   }
   
