@@ -7,6 +7,10 @@ SFM3200 sfm3200;
 void setup() {
   SerialUSB.begin(2000000);     
   while(!SerialUSB);            // Wait until connection is established
+
+  pinMode(1,OUTPUT);
+  digitalWrite(1,HIGH);
+  delayMicroseconds(500000);
   
   Wire.begin();
   // initialize the sensor
@@ -36,9 +40,9 @@ void loop() {
     SerialUSB.print(sfm3200.get_flow());
     SerialUSB.print("slm \n");
   } 
-  else {
-    SerialUSB.print("Error in readSample(), ret = ");
-    SerialUSB.println(ret);
-  }
-  delayMicroseconds(1000);
+  //  else {
+  //    SerialUSB.print("Error in readSample(), ret = ");
+  //    SerialUSB.println(ret);
+  //  }
+  delayMicroseconds(5000);
 }

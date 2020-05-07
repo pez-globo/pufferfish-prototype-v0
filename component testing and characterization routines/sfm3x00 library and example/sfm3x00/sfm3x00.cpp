@@ -77,7 +77,7 @@ int SFMSensor::get_scale_offset()
     return 2;
   }
   // to do: check CRC
-  flow_scale = (int16_t)data[0] << 8 | data[1];
+  flow_scale = (uint16_t)data[0] << 8 | data[1];
 
   // get offset
   ret = I2CHelper::i2c_write(mI2CAddress, cmd2, CMD_LEN);
@@ -89,7 +89,7 @@ int SFMSensor::get_scale_offset()
     return 2;
   }
   // to do: check CRC
-  flow_offset = (int16_t)data[0] << 8 | data[1];
+  flow_offset = (uint16_t)data[0] << 8 | data[1];
 
   return 0;
 }
@@ -111,8 +111,8 @@ int SFMSensor::read_sample()
     return 2;
   }
   // to do: check CRC
-  int16_t flow_raw = (int16_t)data[0] << 8 | data[1];
-  mFlow = (flow_raw - flow_offset) / float(flow_scale);
+  uint16_t flow_raw = (uint16_t)data[0] << 8 | data[1];
+  mFlow = (float(flow_raw) - float(flow_offset)) / float(flow_scale);
 
   return 0;
 }
