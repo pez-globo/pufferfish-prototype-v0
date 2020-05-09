@@ -13,10 +13,10 @@ class MicroscopeMode:
         pass
 
 class WaitTime:
-    BASE = 0.0
-    X = 0.0     # per mm
-    Y = 0.0	 # per mm
-    Z = 0.0     # per mm
+    BASE = 0.001
+    X = 0.004     # per mm
+    Y = 0.004	 # per mm
+    Z = 0.002     # per mm
     def __init__(self):
         pass
 
@@ -28,8 +28,8 @@ class AF:
         pass
 
 class Motion:
-    STEPS_PER_MM_XY = 1 # change the unit from per mm to per step
-    STEPS_PER_MM_Z = 1  # change the unit from per mm to per step
+    STEPS_PER_MM_XY = 1600 # microsteps
+    STEPS_PER_MM_Z = 5333  # microsteps
     def __init__(self):
         pass
 '''
@@ -58,6 +58,37 @@ class PosUpdate:
     INTERVAL_MS = 25
 
 class MicrocontrollerDef:
-    MSG_LENGTH = 9
+    MSG_LENGTH = 8
     CMD_LENGTH = 4
-    N_BYTES_POS = 3
+    N_BYTES_DATA = 2
+    FLOW_FS = 100.0
+    VOLUME_FS = 800.0
+    PAW_FS = 60.0
+    TIMER_PERIOD_ms = 0.5
+    VT_FS = 800.0
+    PEEP_FS = 30.0
+    TI_FS = 5.0
+    RR_FS = 60.0
+    CMD_Vt = 0
+    CMD_Ti = 1
+    CMD_RR = 2
+    CMD_PEEP = 3
+    CMD_Flow = 4
+    CMD_FlowDeceleratingSlope = 5
+
+    Ti_DEFAULT = 1.2
+    RR_DEFAULT = 18
+    PEEP_DEFAULT = 5
+    Vt_DEFAULT = 300
+
+
+class WAVEFORMS:
+    UPDATE_INTERVAL_MS = 20 # In milliseconds
+    DISPLAY_RANGE_S = 20 # In seconds
+    CYCLE_GAP = 10 # In sample num
+
+PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
+PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
+PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
+
+SIMULATION = True

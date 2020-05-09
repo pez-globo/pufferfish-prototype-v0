@@ -353,8 +353,8 @@ class NavigationWidget(QFrame):
         self.label_Xpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.entry_dX = QDoubleSpinBox()
         self.entry_dX.setMinimum(0) 
-        self.entry_dX.setMaximum(20) 
-        self.entry_dX.setSingleStep(0.1)
+        self.entry_dX.setMaximum(2000) 
+        self.entry_dX.setSingleStep(1)
         self.entry_dX.setValue(0)
         self.btn_moveX_forward = QPushButton('Forward')
         self.btn_moveX_forward.setDefault(False)
@@ -366,8 +366,8 @@ class NavigationWidget(QFrame):
         self.label_Ypos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.entry_dY = QDoubleSpinBox()
         self.entry_dY.setMinimum(0)
-        self.entry_dY.setMaximum(20)
-        self.entry_dY.setSingleStep(0.1)
+        self.entry_dY.setMaximum(2000)
+        self.entry_dY.setSingleStep(1)
         self.entry_dY.setValue(0)
         self.btn_moveY_forward = QPushButton('Forward')
         self.btn_moveY_forward.setDefault(False)
@@ -379,8 +379,8 @@ class NavigationWidget(QFrame):
         self.label_Zpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.entry_dZ = QDoubleSpinBox()
         self.entry_dZ.setMinimum(0) 
-        self.entry_dZ.setMaximum(1000) 
-        self.entry_dZ.setSingleStep(0.2)
+        self.entry_dZ.setMaximum(2000) 
+        self.entry_dZ.setSingleStep(1)
         self.entry_dZ.setValue(0)
         self.btn_moveZ_forward = QPushButton('Forward')
         self.btn_moveZ_forward.setDefault(False)
@@ -423,7 +423,6 @@ class NavigationWidget(QFrame):
         
     def move_x_forward(self):
         self.navigationController.move_x(self.entry_dX.value())
-        print('move x')
     def move_x_backward(self):
         self.navigationController.move_x(-self.entry_dX.value())
     def move_y_forward(self):
@@ -431,9 +430,9 @@ class NavigationWidget(QFrame):
     def move_y_backward(self):
         self.navigationController.move_y(-self.entry_dY.value())
     def move_z_forward(self):
-        self.navigationController.move_z(self.entry_dZ.value()/1000)
+        self.navigationController.move_z(self.entry_dZ.value())
     def move_z_backward(self):
-        self.navigationController.move_z(-self.entry_dZ.value()/1000)
+        self.navigationController.move_z(-self.entry_dZ.value())
 
 class AutoFocusWidget(QFrame):
     def __init__(self, autofocusController, main=None, *args, **kwargs):
