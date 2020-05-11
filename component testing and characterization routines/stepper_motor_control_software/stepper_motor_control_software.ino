@@ -34,7 +34,7 @@ TMC2209Stepper Z_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 static const int X_dir = 28;
 static const int X_step = 26;
 static const int X_en = 36;
-static const int X_N_microstepping = 1;
+static const int X_N_microstepping = 2;
 static const long steps_per_mm_X = 78.74*X_N_microstepping; 
 constexpr float MAX_VELOCITY_X_mm = 7.62; 
 constexpr float MAX_ACCELERATION_X_mm = 100;
@@ -48,7 +48,7 @@ static const long X_POS_LIMIT_MM = 12;
 static const int Y_dir = 24;
 static const int Y_step = 22;
 static const int Y_en = 36;
-static const int Y_N_microstepping = 1;
+static const int Y_N_microstepping = 2;
 static const long steps_per_mm_Y = 78.74*Y_N_microstepping; 
 constexpr float MAX_VELOCITY_Y_mm = 7.62; 
 constexpr float MAX_ACCELERATION_Y_mm = 100;
@@ -57,7 +57,7 @@ static const long Y_POS_LIMIT_MM = 12;
 
 static const int Z_dir = 23;
 static const int Z_step = 25;
-static const int Z_N_microstepping = 1;
+static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 82.02*Y_N_microstepping; 
 constexpr float MAX_VELOCITY_Z_mm = 18.29; 
 constexpr float MAX_ACCELERATION_Z_mm = 100;
@@ -108,7 +108,7 @@ void setup() {
   X_driver.begin();
   X_driver.I_scale_analog(false);  
   X_driver.rms_current(300,0.2); //I_run and holdMultiplier
-  X_driver.microsteps(4);
+  X_driver.microsteps(X_N_microstepping);
   X_driver.pwm_autoscale(true);
   X_driver.TPOWERDOWN(2);
   X_driver.en_spreadCycle(false);
@@ -123,7 +123,7 @@ void setup() {
   Y_driver.begin();
   Y_driver.I_scale_analog(false);  
   Y_driver.rms_current(300,0.2); //I_run and holdMultiplier
-  Y_driver.microsteps(4);
+  Y_driver.microsteps(Y_N_microstepping);
   Y_driver.pwm_autoscale(true);
   Y_driver.TPOWERDOWN(2);
   Y_driver.en_spreadCycle(false);
@@ -138,7 +138,7 @@ void setup() {
   Z_driver.begin();
   Z_driver.I_scale_analog(false);  
   Z_driver.rms_current(500,0.2); //I_run and holdMultiplier
-  Z_driver.microsteps(4);
+  Z_driver.microsteps(Z_N_microstepping);
   Z_driver.pwm_autoscale(true);
   Z_driver.TPOWERDOWN(2);
   Z_driver.en_spreadCycle(false);
