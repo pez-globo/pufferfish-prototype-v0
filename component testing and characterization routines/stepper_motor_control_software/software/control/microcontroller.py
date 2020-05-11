@@ -80,7 +80,7 @@ class Microcontroller():
             n_microsteps = 65535
         cmd = bytearray(self.tx_buffer_length)
         cmd[0] = 2
-        cmd[1] = 1-direction
+        cmd[1] = direction
         cmd[2] = int(n_microsteps) >> 8
         cmd[3] = int(n_microsteps) & 0xff
         self.serial.write(cmd)

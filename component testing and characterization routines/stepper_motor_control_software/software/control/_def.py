@@ -13,10 +13,10 @@ class MicroscopeMode:
         pass
 
 class WaitTime:
-    BASE = 0.05
-    X = 0.05     # per mm
-    Y = 0.05	 # per mm
-    Z = 0.2     # per mm
+    BASE = 0.0
+    X = 0.0     # per mm
+    Y = 0.0	 # per mm
+    Z = 0.0     # per mm
     def __init__(self):
         pass
 
@@ -28,8 +28,8 @@ class AF:
         pass
 
 class Motion:
-    STEPS_PER_MM_XY = 120 # microsteps
-    STEPS_PER_MM_Z = 5333  # microsteps
+    STEPS_PER_MM_XY = 1 # change the unit from per mm to per step
+    STEPS_PER_MM_Z = 1  # change the unit from per mm to per step
     def __init__(self):
         pass
 '''
