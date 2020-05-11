@@ -143,6 +143,7 @@ class Waveforms(QObject):
                     self.flow = (utils.unsigned_to_signed(readout[5*i+1:5*i+3],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
                     self.delta = int(readout[5*i+3])*256 + int(readout[5*i+4])
                     self.file.write(str(self.time_now)+','+str(self.pos)+','+str(self.flow)+','+str(self.delta)+'\n')
+                    print(str(self.time_now)+'\t'+str(self.pos)+'\t'+str(self.flow)+','+str(self.delta))
         
         # reduce display refresh rate
         self.counter = self.counter + 1

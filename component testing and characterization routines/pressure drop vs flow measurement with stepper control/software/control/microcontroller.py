@@ -86,6 +86,25 @@ class Microcontroller():
         self.serial.write(cmd)
         time.sleep(WaitTime.BASE + WaitTime.Z*abs(delta))
 
+    def close_x(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = 3
+        cmd[1] = 0
+        self.serial.write(cmd)
+        print('trying to close x')
+    def close_y(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = 3
+        cmd[1] = 1
+        self.serial.write(cmd)
+        print('trying to close y')
+    def close_z(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = 3
+        cmd[1] = 2
+        self.serial.write(cmd)
+        print('trying to close z')
+
     def send_command(self,command):
         cmd = bytearray(self.tx_buffer_length)
         '''

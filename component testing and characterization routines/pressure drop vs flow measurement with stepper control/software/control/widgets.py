@@ -360,6 +360,8 @@ class NavigationWidget(QFrame):
         self.btn_moveX_forward.setDefault(False)
         self.btn_moveX_backward = QPushButton('Backward')
         self.btn_moveX_backward.setDefault(False)
+        self.btn_close_valveX = QPushButton('close the valve')
+        self.btn_close_valveX.setDefault(False)
         
         self.label_Ypos = QLabel()
         self.label_Ypos.setNum(0)
@@ -373,6 +375,8 @@ class NavigationWidget(QFrame):
         self.btn_moveY_forward.setDefault(False)
         self.btn_moveY_backward = QPushButton('Backward')
         self.btn_moveY_backward.setDefault(False)
+        self.btn_close_valveY = QPushButton('close the valve')
+        self.btn_close_valveY.setDefault(False)
 
         self.label_Zpos = QLabel()
         self.label_Zpos.setNum(0)
@@ -386,6 +390,8 @@ class NavigationWidget(QFrame):
         self.btn_moveZ_forward.setDefault(False)
         self.btn_moveZ_backward = QPushButton('Backward')
         self.btn_moveZ_backward.setDefault(False)
+        self.btn_close_valveZ = QPushButton('close the valve')
+        self.btn_close_valveZ.setDefault(False)
         
         grid_line0 = QGridLayout()
         grid_line0.addWidget(QLabel('X (mm)'), 0,0)
@@ -393,6 +399,7 @@ class NavigationWidget(QFrame):
         grid_line0.addWidget(self.entry_dX, 0,2)
         grid_line0.addWidget(self.btn_moveX_forward, 0,3)
         grid_line0.addWidget(self.btn_moveX_backward, 0,4)
+        grid_line0.addWidget(self.btn_close_valveX, 0,5)
 
         grid_line1 = QGridLayout()
         grid_line1.addWidget(QLabel('Y (mm)'), 0,0)
@@ -400,6 +407,7 @@ class NavigationWidget(QFrame):
         grid_line1.addWidget(self.entry_dY, 0,2)
         grid_line1.addWidget(self.btn_moveY_forward, 0,3)
         grid_line1.addWidget(self.btn_moveY_backward, 0,4)
+        grid_line1.addWidget(self.btn_close_valveY, 0,5)
 
         grid_line2 = QGridLayout()
         grid_line2.addWidget(QLabel('Z (um)'), 0,0)
@@ -407,6 +415,7 @@ class NavigationWidget(QFrame):
         grid_line2.addWidget(self.entry_dZ, 0,2)
         grid_line2.addWidget(self.btn_moveZ_forward, 0,3)
         grid_line2.addWidget(self.btn_moveZ_backward, 0,4)
+        grid_line2.addWidget(self.btn_close_valveZ, 0,5)
 
         self.grid = QGridLayout()
         self.grid.addLayout(grid_line0,0,0)
@@ -420,6 +429,9 @@ class NavigationWidget(QFrame):
         self.btn_moveY_backward.clicked.connect(self.move_y_backward)
         self.btn_moveZ_forward.clicked.connect(self.move_z_forward)
         self.btn_moveZ_backward.clicked.connect(self.move_z_backward)
+        self.btn_close_valveX.clicked.connect(self.navigationController.close_x)
+        self.btn_close_valveY.clicked.connect(self.navigationController.close_y)
+        self.btn_close_valveZ.clicked.connect(self.navigationController.close_z)
         
     def move_x_forward(self):
         self.navigationController.move_x(self.entry_dX.value())

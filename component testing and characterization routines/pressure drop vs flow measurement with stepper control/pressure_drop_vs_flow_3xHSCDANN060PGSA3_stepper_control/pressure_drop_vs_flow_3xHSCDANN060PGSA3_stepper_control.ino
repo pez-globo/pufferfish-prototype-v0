@@ -19,6 +19,11 @@ uint16_t tmp_uint16;
 float flow_FS = 200;
 float pressure_FS = 60;
 
+bool flag_close_valve1_in_progress = false;
+bool flag_close_valve2_in_progress = false;
+bool flag_close_valve3_in_progress = false;
+float flow_th = 0.2;
+
 static inline int sgn(int val) {
  if (val < 0) return -1;
  if (val==0) return 0;
@@ -256,6 +261,15 @@ void loop()
         stepper_Z.runToNewPosition(Z_commanded_target_position);
         // Z_commanded_movement_in_progress = true;
       }
+      if(buffer_rx[0]==3)
+      {
+        if(buffer_rx[1]==0)
+          flag_close_valve1_in_progress = true;
+        if(buffer_rx[1]==1)
+          flag_close_valve2_in_progress = true;
+        if(buffer_rx[1]==2)
+          flag_close_valve3_in_progress = true;
+      }
     }
   }
   
@@ -274,6 +288,54 @@ void loop()
     mPressure_2 = hsc_sensor_2.pressure();
     mPressure_3 = hsc_sensor_3.pressure();
   }
+
+  // close the valve
+  if (flag_close_valve1_in_progress && ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
+  {
+    if(mFlow >= 0.2)
+    {
+        X_commanded_target_position = (stepper_X.currentPosition()+1);
+        stepper_X.runToNewPosition(X_commanded_target_position);
+    }
+    else
+    {
+        X_commanded_target_position = (stepper_X.currentPosition()+1);
+        stepper_X.runToNewPosition(Z_commanded_target_position);
+        stepper_X.setCurrentPosition(0);
+        flag_close_valve1_in_progress = false;
+    }
+  }
+  if (flag_close_valve2_in_progress && ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
+  {
+    if(mFlow >= 0.2)
+    {
+        Y_commanded_target_position = (stepper_Y.currentPosition()+1);
+        stepper_Y.runToNewPosition(Y_commanded_target_position);
+    }
+    else
+    {
+        Y_commanded_target_position = (stepper_Y.currentPosition()+1);
+        stepper_Y.runToNewPosition(Y_commanded_target_position);
+        stepper_Y.setCurrentPosition(0);
+        flag_close_valve2_in_progress = false;
+    }
+  }
+  if (flag_close_valve3_in_progress && ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
+  {
+    if(mFlow >= 0.2)
+    {
+        Z_commanded_target_position = (stepper_Z.currentPosition()+1);
+        stepper_Z.runToNewPosition(Z_commanded_target_position);
+    }
+    else
+    {
+        Z_commanded_target_position = (stepper_Z.currentPosition()+1);
+        stepper_Z.runToNewPosition(Z_commanded_target_position);
+        stepper_Z.setCurrentPosition(0);
+        flag_close_valve3_in_progress = false;
+    }
+  }
+  
 
   if (ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
   {
