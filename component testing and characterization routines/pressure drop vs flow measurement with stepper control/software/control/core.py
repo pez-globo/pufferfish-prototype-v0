@@ -78,6 +78,21 @@ class NavigationController(QObject):
         self.z_pos = 0
         self.zPos.emit(self.z_pos)
 
+    def cycle_x(self):
+        self.microcontroller.cycle_x()
+        self.x_pos = 0
+        self.xPos.emit(self.x_pos)
+
+    def cycle_y(self):
+        self.microcontroller.cycle_y()
+        self.y_pos = 0
+        self.yPos.emit(self.y_pos)
+
+    def cycle_z(self):
+        self.microcontroller.cycle_z()
+        self.z_pos = 0
+        self.zPos.emit(self.z_pos)
+
     # def update_pos(self):
     #     pos = self.microcontroller.read_received_packet_nowait()
     #     if pos is None:
@@ -107,7 +122,7 @@ class NavigationController(QObject):
                 pressure_2 = ((data[i*N_BYTES_PER_RECORD+10]*256+data[i*N_BYTES_PER_RECORD+11])/65536.0)*PRESSURE_FS
                 pressure_3 = ((data[i*N_BYTES_PER_RECORD+12]*256+data[i*N_BYTES_PER_RECORD+13])/65536.0)*PRESSURE_FS
                 self.file.write(str(stepper1_pos)+','+str(stepper2_pos)+','+str(stepper3_pos)+','+str(flow)+','+str(pressure_1)+','+str(pressure_2)+','+str(pressure_3)+'\n')
-                print(str(stepper1_pos)+'\t'+str(stepper2_pos)+'\t'+str(stepper3_pos)+'\t'+str(flow)+'\t'+str(pressure_1)+'\t'+str(pressure_2)+'\t'+str(pressure_3))
+                print(str(stepper1_pos)+'\t'+str(stepper2_pos)+'\t'+str(stepper3_pos)+'\t'+"{:.2f}".format(flow)+'\t'+"{:.2f}".format(pressure_1)+'\t'+"{:.2f}".format(pressure_2)+'\t'+"{:.2f}".format(pressure_3))
             self.file.flush()
 
 

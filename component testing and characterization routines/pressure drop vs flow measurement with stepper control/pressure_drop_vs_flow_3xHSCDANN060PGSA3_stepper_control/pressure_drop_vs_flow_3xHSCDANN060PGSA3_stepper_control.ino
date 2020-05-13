@@ -14,6 +14,10 @@ static const bool USE_SERIAL_MONITOR = false;
 #include <AccelStepper.h>
 #include <DueTimer.h>
 
+static const float TIMER_PERIOD_us = 3000; // in us
+static const int timer_div = 5;
+volatile int timer_div_counter = 0;
+
 long tmp_long;
 uint16_t tmp_uint16;
 float flow_FS = 200;
@@ -23,6 +27,33 @@ bool flag_close_valve1_in_progress = false;
 bool flag_close_valve2_in_progress = false;
 bool flag_close_valve3_in_progress = false;
 float flow_th = 0.2;
+
+volatile bool flag_read_sensor = true;
+volatile bool flag_write_data = true;
+
+volatile bool flag_valve1_flow_detected = false;
+volatile bool flag_valve2_flow_detected = false;
+volatile bool flag_valve3_flow_detected = false;
+
+volatile bool flag_valve1_close_position_reset = false;
+volatile bool flag_valve2_close_position_reset = false;
+volatile bool flag_valve3_close_position_reset = false;
+
+volatile bool flag_valve1_doing_cyclic_motion = false;
+volatile bool flag_valve2_doing_cyclic_motion = false;
+volatile bool flag_valve3_doing_cyclic_motion = false;
+
+int valve1_cyclic_motion_dir = 1;
+int valve2_cyclic_motion_dir = 1;
+int valve3_cyclic_motion_dir = 1;
+
+int valve1_cyclic_motion_step_size = 1;
+int valve2_cyclic_motion_step_size = 1;
+int valve3_cyclic_motion_step_size = 1;
+
+long cyclic_motion_limit_valve1 = 500;
+long cyclic_motion_limit_valve2 = 500;
+long cyclic_motion_limit_valve3 = 500;
 
 static inline int sgn(int val) {
  if (val < 0) return -1;
@@ -227,6 +258,9 @@ void setup()
   hsc_sensor_1.begin(); // run sensor initialization
   hsc_sensor_2.begin(); // run sensor initialization
   hsc_sensor_3.begin(); // run sensor initialization
+
+  Timer3.attachInterrupt(timer_interruptHandler);
+  Timer3.start(TIMER_PERIOD_us);
   
 }
 
@@ -240,21 +274,21 @@ void loop()
     if (buffer_rx_ptr == CMD_LENGTH) 
     {
       buffer_rx_ptr = 0;
-      if(buffer_rx[0]==0)
+      if(buffer_rx[0]==0 && flag_valve1_doing_cyclic_motion==false)
       {
         long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
         X_commanded_target_position = (stepper_X.currentPosition()+relative_position);
         stepper_X.runToNewPosition(X_commanded_target_position);
         // X_commanded_movement_in_progress = true;
       }
-      if(buffer_rx[0]==1)
+      if(buffer_rx[0]==1 && flag_valve2_doing_cyclic_motion==false)
       {
         long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
         Y_commanded_target_position = (stepper_Y.currentPosition()+relative_position);
         stepper_Y.runToNewPosition(Y_commanded_target_position);
         // Y_commanded_movement_in_progress = true;
       }
-      if(buffer_rx[0]==2)
+      if(buffer_rx[0]==2 && flag_valve3_doing_cyclic_motion==false)
       {
         long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
         Z_commanded_target_position = (stepper_Z.currentPosition()+relative_position);
@@ -264,29 +298,117 @@ void loop()
       if(buffer_rx[0]==3)
       {
         if(buffer_rx[1]==0)
+        {
+          flag_valve1_doing_cyclic_motion = false;
           flag_close_valve1_in_progress = true;
+        }
         if(buffer_rx[1]==1)
+        {
+          flag_valve2_doing_cyclic_motion = false;
           flag_close_valve2_in_progress = true;
+        }
         if(buffer_rx[1]==2)
+        {
+          flag_valve3_doing_cyclic_motion = false;
           flag_close_valve3_in_progress = true;
+        }
+      }
+      if(buffer_rx[0]==4)
+      {
+        if(buffer_rx[1]==0 && flag_valve1_close_position_reset==true)
+          flag_valve1_doing_cyclic_motion = true;
+        if(buffer_rx[1]==1 && flag_valve2_close_position_reset==true)
+          flag_valve2_doing_cyclic_motion = true;
+        if(buffer_rx[1]==2 && flag_valve3_close_position_reset==true)
+          flag_valve3_doing_cyclic_motion = true;
       }
     }
   }
-  
-  ret_sfm3000 = sfm3000.read_sample();
-  ret_hsc_sensor_1 = hsc_sensor_1.readSensor();
-  ret_hsc_sensor_2 = hsc_sensor_2.readSensor();
-  ret_hsc_sensor_3 = hsc_sensor_3.readSensor();
-  // ret_hsc_sensor_4 = hsc_sensor_1.readSensor();
-  
-  if (ret_sfm3000 == 0) 
-    mFlow = sfm3000.get_flow();
-  
-  if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
+
+  if(flag_read_sensor)
   {
-    mPressure_1 = hsc_sensor_1.pressure();
-    mPressure_2 = hsc_sensor_2.pressure();
-    mPressure_3 = hsc_sensor_3.pressure();
+    ret_sfm3000 = sfm3000.read_sample();
+    ret_hsc_sensor_1 = hsc_sensor_1.readSensor();
+   ret_hsc_sensor_2 = hsc_sensor_2.readSensor();
+   ret_hsc_sensor_3 = hsc_sensor_3.readSensor();
+    // ret_hsc_sensor_4 = hsc_sensor_1.readSensor();
+    
+    if (ret_sfm3000 == 0) 
+      mFlow = sfm3000.get_flow();
+    
+    if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
+    {
+      mPressure_1 = hsc_sensor_1.pressure();
+     mPressure_2 = hsc_sensor_2.pressure();
+     mPressure_3 = hsc_sensor_3.pressure();
+    }
+    flag_read_sensor = false;
+    
+    // note if no sensor is connected, uncomment the following
+    //    ret_sfm3000 = 0;
+    //    ret_hsc_sensor_1 = 0;
+    //    ret_hsc_sensor_2 = 0;
+    //    ret_hsc_sensor_3 = 0;
+  }
+
+  if(flag_write_data)
+  {
+    // only write data if the last read is successful
+    if (ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
+    {
+      if(USE_SERIAL_MONITOR)
+      {
+        // SerialUSB.print("flow rate (slm): ");
+        SerialUSB.print(mFlow);
+        SerialUSB.print(",");
+        //SerialUSB.print(" pressure (cmH2O): ");
+        SerialUSB.print(mPressure_1);
+        SerialUSB.print(",");
+        SerialUSB.print(mPressure_2);
+        SerialUSB.print(",");
+        SerialUSB.print(mPressure_3);
+        SerialUSB.print("\n");
+      }
+      else
+      {
+        tmp_uint16 = signed2NBytesUnsigned(stepper_X.currentPosition(), 2);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+  
+        tmp_uint16 = signed2NBytesUnsigned(stepper_Y.currentPosition(), 2);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+  
+        tmp_uint16 = signed2NBytesUnsigned(stepper_Z.currentPosition(), 2);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+  
+        tmp_long = (65536 / 2) * mFlow / flow_FS;
+        tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+  
+        tmp_uint16 = 65536 * mPressure_1 / pressure_FS;
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+  
+        tmp_uint16 = 65536 * mPressure_2 / pressure_FS;
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+  
+        tmp_uint16 = 65536 * mPressure_3 / pressure_FS;
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+      }
+    }
+    // send data to computer
+    if(buffer_tx_ptr==MSG_LENGTH)
+    {
+      SerialUSB.write(buffer_tx, MSG_LENGTH);
+      buffer_tx_ptr = 0;
+    }
+    // clear the flag
+    flag_write_data = false;
   }
 
   // close the valve
@@ -294,106 +416,131 @@ void loop()
   {
     if(mFlow >= 0.2)
     {
-        X_commanded_target_position = (stepper_X.currentPosition()+1);
-        stepper_X.runToNewPosition(X_commanded_target_position);
+      flag_valve1_flow_detected = true;
+      X_commanded_target_position = (stepper_X.currentPosition()+1);
+      stepper_X.runToNewPosition(X_commanded_target_position);
     }
     else
     {
+      if(flag_valve1_flow_detected && mFlow < 0.2)
+      {
         X_commanded_target_position = (stepper_X.currentPosition()+1);
         stepper_X.runToNewPosition(Z_commanded_target_position);
         stepper_X.setCurrentPosition(0);
         flag_close_valve1_in_progress = false;
+        flag_valve1_flow_detected = false;
+        flag_valve1_close_position_reset = true;
+      }
+      else
+      {
+        flag_close_valve1_in_progress = false;
+        flag_valve1_flow_detected = false;
+        flag_valve1_close_position_reset = false;
+      }
     }
   }
   if (flag_close_valve2_in_progress && ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
   {
     if(mFlow >= 0.2)
     {
-        Y_commanded_target_position = (stepper_Y.currentPosition()+1);
-        stepper_Y.runToNewPosition(Y_commanded_target_position);
+      flag_valve1_flow_detected = true;
+      Y_commanded_target_position = (stepper_Y.currentPosition()+1);
+      stepper_Y.runToNewPosition(Y_commanded_target_position);
     }
     else
     {
+      if(flag_valve2_flow_detected)
+      {
         Y_commanded_target_position = (stepper_Y.currentPosition()+1);
         stepper_Y.runToNewPosition(Y_commanded_target_position);
         stepper_Y.setCurrentPosition(0);
+        flag_valve1_flow_detected = false;
         flag_close_valve2_in_progress = false;
+        flag_valve2_close_position_reset = true;
+      }
+      else
+      {
+        flag_close_valve1_in_progress = false;
+        flag_valve1_flow_detected = false;
+        flag_valve1_close_position_reset = false;
+      }
     }
   }
   if (flag_close_valve3_in_progress && ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
   {
     if(mFlow >= 0.2)
     {
-        Z_commanded_target_position = (stepper_Z.currentPosition()+1);
-        stepper_Z.runToNewPosition(Z_commanded_target_position);
+      flag_valve3_flow_detected = true;
+      Z_commanded_target_position = (stepper_Z.currentPosition()+1);
+      stepper_Z.runToNewPosition(Z_commanded_target_position);
     }
     else
     {
+      if(flag_valve3_flow_detected)
+      {
         Z_commanded_target_position = (stepper_Z.currentPosition()+1);
         stepper_Z.runToNewPosition(Z_commanded_target_position);
         stepper_Z.setCurrentPosition(0);
+        flag_valve3_flow_detected = false;
         flag_close_valve3_in_progress = false;
+        flag_valve3_close_position_reset = true;
+      }
+      else
+      {
+        flag_close_valve3_in_progress = false;
+        flag_valve3_flow_detected = false;
+        flag_valve3_close_position_reset = false;
+      }
     }
   }
   
+  // delayMicroseconds(5000);
 
-  if (ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
-  {
-    if(USE_SERIAL_MONITOR)
-    {
-      // SerialUSB.print("flow rate (slm): ");
-      SerialUSB.print(mFlow);
-      SerialUSB.print(",");
-      //SerialUSB.print(" pressure (cmH2O): ");
-      SerialUSB.print(mPressure_1);
-      SerialUSB.print(",");
-      SerialUSB.print(mPressure_2);
-      SerialUSB.print(",");
-      SerialUSB.print(mPressure_3);
-      SerialUSB.print("\n");
-    }
-    else
-    {
-      tmp_uint16 = signed2NBytesUnsigned(stepper_X.currentPosition(), 2);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-
-      tmp_uint16 = signed2NBytesUnsigned(stepper_Y.currentPosition(), 2);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-
-      tmp_uint16 = signed2NBytesUnsigned(stepper_Z.currentPosition(), 2);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-
-      tmp_long = (65536 / 2) * mFlow / flow_FS;
-      tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-
-      tmp_uint16 = 65536 * mPressure_1 / pressure_FS;
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-
-      tmp_uint16 = 65536 * mPressure_2 / pressure_FS;
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-
-      tmp_uint16 = 65536 * mPressure_3 / pressure_FS;
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-      buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-      
-    }
-  }
-
-  // send data to computer
-  if(buffer_tx_ptr==MSG_LENGTH)
-  {
-    SerialUSB.write(buffer_tx, MSG_LENGTH);
-    buffer_tx_ptr = 0;
-  }
+  // run steppers
+  stepper_X.run();
+  stepper_Y.run();
+  stepper_Z.run();
   
-  delayMicroseconds(5000);
+}
+
+void timer_interruptHandler()
+{
+  flag_read_sensor = true;
+  flag_write_data = true;
+
+  // to have multiple readings for each linear actuator position
+  timer_div_counter++;
+  if(timer_div_counter>=timer_div)
+  {
+    timer_div_counter = 0;
+    if(flag_valve1_doing_cyclic_motion)
+    {
+      if(stepper_X.currentPosition()>=0)
+        valve1_cyclic_motion_dir = -1;
+      if(stepper_X.currentPosition()<=-cyclic_motion_limit_valve1)
+        valve1_cyclic_motion_dir = 1;
+      X_commanded_target_position = (stepper_X.currentPosition()+valve1_cyclic_motion_dir*valve1_cyclic_motion_step_size);
+      stepper_X.moveTo(X_commanded_target_position);
+    }
+    if(flag_valve2_doing_cyclic_motion)
+    {
+      if(stepper_Y.currentPosition()>=0)
+        valve2_cyclic_motion_dir = -1;
+      if(stepper_Y.currentPosition()<=-cyclic_motion_limit_valve2)
+        valve2_cyclic_motion_dir = 1;
+      Y_commanded_target_position = (stepper_Y.currentPosition()+valve2_cyclic_motion_dir*valve2_cyclic_motion_step_size);
+      stepper_Y.moveTo(Y_commanded_target_position);
+    }
+    if(flag_valve3_doing_cyclic_motion)
+    {
+      if(stepper_Z.currentPosition()>=0)
+        valve3_cyclic_motion_dir = -1;
+      if(stepper_Z.currentPosition()<=-cyclic_motion_limit_valve3)
+        valve3_cyclic_motion_dir = 1;
+      Z_commanded_target_position = (stepper_Z.currentPosition()+valve3_cyclic_motion_dir*valve3_cyclic_motion_step_size);
+      stepper_Z.moveTo(Z_commanded_target_position);
+    }
+  }
 }
 
 // utils
