@@ -5,6 +5,7 @@
 //    Green:    6 (RJ45)  SCK
 
 static const bool USE_SERIAL_MONITOR = false;
+static const bool ENABLE_SENSORS = false;
 
 #include <Wire.h>
 #include <sfm3x00.h>
@@ -228,37 +229,40 @@ void setup()
   stepper_Z.setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
   stepper_Z.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
   stepper_Z.enableOutputs();
-  
-  // initialize the SFM sensor
-  Wire.begin();
-  while(true) 
+
+  if(ENABLE_SENSORS)
   {
-    int ret = sfm3000.init();
-    if (ret == 0) 
+    // initialize the SFM sensor
+    Wire.begin();
+    while(true) 
     {
-      if(USE_SERIAL_MONITOR)
-        SerialUSB.print("init(): success\n");
-      break;
-    } 
-    else 
-    {
-      if(USE_SERIAL_MONITOR)
+      int ret = sfm3000.init();
+      if (ret == 0) 
       {
-        SerialUSB.print("init(): failed, ret = ");
-        SerialUSB.println(ret);
+        if(USE_SERIAL_MONITOR)
+          SerialUSB.print("init(): success\n");
+        break;
+      } 
+      else 
+      {
+        if(USE_SERIAL_MONITOR)
+        {
+          SerialUSB.print("init(): failed, ret = ");
+          SerialUSB.println(ret);
+        }
+        delay(1000);
       }
-      delay(1000);
     }
+    // get scale and offset factor for the SFM sensor
+    sfm3000.get_scale_offset();
+  
+    // init the HSC sensor
+    SPI.begin(); // start SPI communication
+    hsc_sensor_1.begin(); // run sensor initialization
+    hsc_sensor_2.begin(); // run sensor initialization
+    hsc_sensor_3.begin(); // run sensor initialization
   }
-  // get scale and offset factor for the SFM sensor
-  sfm3000.get_scale_offset();
-
-  // init the HSC sensor
-  SPI.begin(); // start SPI communication
-  hsc_sensor_1.begin(); // run sensor initialization
-  hsc_sensor_2.begin(); // run sensor initialization
-  hsc_sensor_3.begin(); // run sensor initialization
-
+  
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
   
@@ -327,21 +331,32 @@ void loop()
 
   if(flag_read_sensor)
   {
-    ret_sfm3000 = sfm3000.read_sample();
-    ret_hsc_sensor_1 = hsc_sensor_1.readSensor();
-   ret_hsc_sensor_2 = hsc_sensor_2.readSensor();
-   ret_hsc_sensor_3 = hsc_sensor_3.readSensor();
-    // ret_hsc_sensor_4 = hsc_sensor_1.readSensor();
-    
-    if (ret_sfm3000 == 0) 
-      mFlow = sfm3000.get_flow();
-    
-    if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
+    if(ENABLE_SENSORS)
     {
-      mPressure_1 = hsc_sensor_1.pressure();
-     mPressure_2 = hsc_sensor_2.pressure();
-     mPressure_3 = hsc_sensor_3.pressure();
+      ret_sfm3000 = sfm3000.read_sample();
+      ret_hsc_sensor_1 = hsc_sensor_1.readSensor();
+      ret_hsc_sensor_2 = hsc_sensor_2.readSensor();
+      ret_hsc_sensor_3 = hsc_sensor_3.readSensor();
+      // ret_hsc_sensor_4 = hsc_sensor_1.readSensor();
+      
+      if (ret_sfm3000 == 0) 
+        mFlow = sfm3000.get_flow();
+      
+      if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
+      {
+        mPressure_1 = hsc_sensor_1.pressure();
+        mPressure_2 = hsc_sensor_2.pressure();
+        mPressure_3 = hsc_sensor_3.pressure();
+      }
     }
+    else
+    {
+      ret_sfm3000 = 0;
+      ret_hsc_sensor_1 = 0;
+      ret_hsc_sensor_2 = 0;
+      ret_hsc_sensor_3 = 0;
+    }
+    
     flag_read_sensor = false;
     
     // note if no sensor is connected, uncomment the following
