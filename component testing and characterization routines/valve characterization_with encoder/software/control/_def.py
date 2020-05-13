@@ -63,6 +63,6 @@ class MicrocontrollerDef:
     CMD_LENGTH = 4
     N_BYTES_POS = 3
 
-N_BYTES_PER_RECORD = 14
+N_BYTES_PER_RECORD = 4
 FLOW_FS = 200
 PRESSURE_FS = 60
