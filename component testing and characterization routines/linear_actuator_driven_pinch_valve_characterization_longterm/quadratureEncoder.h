@@ -23,7 +23,7 @@ class quadratureEncoder
 
 		quadratureEncoder(int pin_A, int pin_B, int mode);
 
-		void decoder();
+		void decoder(bool EncoderAPrev, bool EncoderBPrev, bool EncoderASet, bool EncoderBSet);
 
 		void HandleInterrupt();
 
