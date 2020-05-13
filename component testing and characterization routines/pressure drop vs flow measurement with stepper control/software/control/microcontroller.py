@@ -105,6 +105,25 @@ class Microcontroller():
         self.serial.write(cmd)
         print('trying to close z')
 
+    def cycle_x(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = 4
+        cmd[1] = 0
+        self.serial.write(cmd)
+        print('trying to cycle x')
+    def cycle_y(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = 4
+        cmd[1] = 1
+        self.serial.write(cmd)
+        print('trying to cycle y')
+    def cycle_z(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = 4
+        cmd[1] = 2
+        self.serial.write(cmd)
+        print('trying to cycle z')
+
     def send_command(self,command):
         cmd = bytearray(self.tx_buffer_length)
         '''

@@ -4,7 +4,7 @@
 //    Blue:     4 (RJ45)  VCC (5V)
 //    Green:    6 (RJ45)  SCK
 
-static const bool USE_SERIAL_MONITOR = false;
+static const bool USE_SERIAL_MONITOR = true;
 
 #include <Wire.h>
 #include <sfm3x00.h>
@@ -14,9 +14,7 @@ static const bool USE_SERIAL_MONITOR = false;
 #include <AccelStepper.h>
 #include <DueTimer.h>
 
-static const float TIMER_PERIOD_us = 3000; // in us
-static const int timer_div = 5;
-volatile int timer_div_counter = 0;
+static const float TIMER_PERIOD_us = 5000; // in us
 
 long tmp_long;
 uint16_t tmp_uint16;
@@ -259,98 +257,35 @@ void setup()
   hsc_sensor_2.begin(); // run sensor initialization
   hsc_sensor_3.begin(); // run sensor initialization
 
-  Timer3.attachInterrupt(timer_interruptHandler);
-  Timer3.start(TIMER_PERIOD_us);
-  
 }
 
 void loop() 
 {
-
-  // read one meesage from the buffer
-  while (SerialUSB.available()) { 
-    buffer_rx[buffer_rx_ptr] = SerialUSB.read();
-    buffer_rx_ptr = buffer_rx_ptr + 1;
-    if (buffer_rx_ptr == CMD_LENGTH) 
-    {
-      buffer_rx_ptr = 0;
-      if(buffer_rx[0]==0 && flag_valve1_doing_cyclic_motion==false)
-      {
-        long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
-        X_commanded_target_position = (stepper_X.currentPosition()+relative_position);
-        stepper_X.runToNewPosition(X_commanded_target_position);
-        // X_commanded_movement_in_progress = true;
-      }
-      if(buffer_rx[0]==1 && flag_valve2_doing_cyclic_motion==false)
-      {
-        long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
-        Y_commanded_target_position = (stepper_Y.currentPosition()+relative_position);
-        stepper_Y.runToNewPosition(Y_commanded_target_position);
-        // Y_commanded_movement_in_progress = true;
-      }
-      if(buffer_rx[0]==2 && flag_valve3_doing_cyclic_motion==false)
-      {
-        long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
-        Z_commanded_target_position = (stepper_Z.currentPosition()+relative_position);
-        stepper_Z.runToNewPosition(Z_commanded_target_position);
-        // Z_commanded_movement_in_progress = true;
-      }
-      if(buffer_rx[0]==3)
-      {
-        if(buffer_rx[1]==0)
-        {
-          flag_valve1_doing_cyclic_motion = false;
-          flag_close_valve1_in_progress = true;
-        }
-        if(buffer_rx[1]==1)
-        {
-          flag_valve2_doing_cyclic_motion = false;
-          flag_close_valve2_in_progress = true;
-        }
-        if(buffer_rx[1]==2)
-        {
-          flag_valve3_doing_cyclic_motion = false;
-          flag_close_valve3_in_progress = true;
-        }
-      }
-      if(buffer_rx[0]==4)
-      {
-        if(buffer_rx[1]==0 && flag_valve1_close_position_reset==true)
-          flag_valve1_doing_cyclic_motion = true;
-        if(buffer_rx[1]==1 && flag_valve2_close_position_reset==true)
-          flag_valve2_doing_cyclic_motion = true;
-        if(buffer_rx[1]==2 && flag_valve3_close_position_reset==true)
-          flag_valve3_doing_cyclic_motion = true;
-      }
-    }
-  }
-
+  flag_read_sensor = true;
   if(flag_read_sensor)
   {
-    ret_sfm3000 = sfm3000.read_sample();
-    ret_hsc_sensor_1 = hsc_sensor_1.readSensor();
-   ret_hsc_sensor_2 = hsc_sensor_2.readSensor();
-   ret_hsc_sensor_3 = hsc_sensor_3.readSensor();
-    // ret_hsc_sensor_4 = hsc_sensor_1.readSensor();
-    
-    if (ret_sfm3000 == 0) 
-      mFlow = sfm3000.get_flow();
-    
-    if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
+    for(int i = 0;i<1000;i++)
     {
-      mPressure_1 = hsc_sensor_1.pressure();
-     mPressure_2 = hsc_sensor_2.pressure();
-     mPressure_3 = hsc_sensor_3.pressure();
+      ret_sfm3000 = sfm3000.read_sample();
+      ret_hsc_sensor_1 = hsc_sensor_1.readSensor();
+      ret_hsc_sensor_2 = hsc_sensor_2.readSensor();
+      ret_hsc_sensor_3 = hsc_sensor_3.readSensor();
+      // ret_hsc_sensor_4 = hsc_sensor_1.readSensor();
+      
+      if (ret_sfm3000 == 0) 
+        mFlow = sfm3000.get_flow();
+      
+      if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
+      {
+        mPressure_1 = hsc_sensor_1.pressure();
+       mPressure_2 = hsc_sensor_2.pressure();
+       mPressure_3 = hsc_sensor_3.pressure();
+      }
     }
     flag_read_sensor = false;
-    
-    // note if no sensor is connected, uncomment the following
-    //    ret_sfm3000 = 0;
-    //    ret_hsc_sensor_1 = 0;
-    //    ret_hsc_sensor_2 = 0;
-    //    ret_hsc_sensor_3 = 0;
   }
 
+  flag_write_data = true;
   if(flag_write_data)
   {
     // only write data if the last read is successful
@@ -369,177 +304,8 @@ void loop()
         SerialUSB.print(mPressure_3);
         SerialUSB.print("\n");
       }
-      else
-      {
-        tmp_uint16 = signed2NBytesUnsigned(stepper_X.currentPosition(), 2);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-  
-        tmp_uint16 = signed2NBytesUnsigned(stepper_Y.currentPosition(), 2);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-  
-        tmp_uint16 = signed2NBytesUnsigned(stepper_Z.currentPosition(), 2);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-  
-        tmp_long = (65536 / 2) * mFlow / flow_FS;
-        tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-  
-        tmp_uint16 = 65536 * mPressure_1 / pressure_FS;
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-  
-        tmp_uint16 = 65536 * mPressure_2 / pressure_FS;
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-  
-        tmp_uint16 = 65536 * mPressure_3 / pressure_FS;
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-      }
     }
-    // send data to computer
-    if(buffer_tx_ptr==MSG_LENGTH)
-    {
-      SerialUSB.write(buffer_tx, MSG_LENGTH);
-      buffer_tx_ptr = 0;
-    }
-    // clear the flag
     flag_write_data = false;
-  }
-
-  // close the valve
-  if (flag_close_valve1_in_progress && ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
-  {
-    if(mFlow >= 0.2)
-    {
-      flag_valve1_flow_detected = true;
-      X_commanded_target_position = (stepper_X.currentPosition()+1);
-      stepper_X.runToNewPosition(X_commanded_target_position);
-    }
-    else
-    {
-      if(flag_valve1_flow_detected && mFlow < 0.2)
-      {
-        X_commanded_target_position = (stepper_X.currentPosition()+1);
-        stepper_X.runToNewPosition(Z_commanded_target_position);
-        stepper_X.setCurrentPosition(0);
-        flag_close_valve1_in_progress = false;
-        flag_valve1_flow_detected = false;
-        flag_valve1_close_position_reset = true;
-      }
-      else
-      {
-        flag_close_valve1_in_progress = false;
-        flag_valve1_flow_detected = false;
-        flag_valve1_close_position_reset = false;
-      }
-    }
-  }
-  if (flag_close_valve2_in_progress && ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
-  {
-    if(mFlow >= 0.2)
-    {
-      flag_valve1_flow_detected = true;
-      Y_commanded_target_position = (stepper_Y.currentPosition()+1);
-      stepper_Y.runToNewPosition(Y_commanded_target_position);
-    }
-    else
-    {
-      if(flag_valve2_flow_detected)
-      {
-        Y_commanded_target_position = (stepper_Y.currentPosition()+1);
-        stepper_Y.runToNewPosition(Y_commanded_target_position);
-        stepper_Y.setCurrentPosition(0);
-        flag_valve1_flow_detected = false;
-        flag_close_valve2_in_progress = false;
-        flag_valve2_close_position_reset = true;
-      }
-      else
-      {
-        flag_close_valve1_in_progress = false;
-        flag_valve1_flow_detected = false;
-        flag_valve1_close_position_reset = false;
-      }
-    }
-  }
-  if (flag_close_valve3_in_progress && ret_sfm3000 + ret_hsc_sensor_1 + ret_hsc_sensor_2 + ret_hsc_sensor_3 == 0)
-  {
-    if(mFlow >= 0.2)
-    {
-      flag_valve3_flow_detected = true;
-      Z_commanded_target_position = (stepper_Z.currentPosition()+1);
-      stepper_Z.runToNewPosition(Z_commanded_target_position);
-    }
-    else
-    {
-      if(flag_valve3_flow_detected)
-      {
-        Z_commanded_target_position = (stepper_Z.currentPosition()+1);
-        stepper_Z.runToNewPosition(Z_commanded_target_position);
-        stepper_Z.setCurrentPosition(0);
-        flag_valve3_flow_detected = false;
-        flag_close_valve3_in_progress = false;
-        flag_valve3_close_position_reset = true;
-      }
-      else
-      {
-        flag_close_valve3_in_progress = false;
-        flag_valve3_flow_detected = false;
-        flag_valve3_close_position_reset = false;
-      }
-    }
-  }
-  
-  // delayMicroseconds(5000);
-
-  // run steppers
-  stepper_X.run();
-  stepper_Y.run();
-  stepper_Z.run();
-  
-}
-
-void timer_interruptHandler()
-{
-  flag_read_sensor = true;
-  flag_write_data = true;
-
-  // to have multiple readings for each linear actuator position
-  timer_div_counter++;
-  if(timer_div_counter>=timer_div)
-  {
-    timer_div_counter = 0;
-    if(flag_valve1_doing_cyclic_motion)
-    {
-      if(stepper_X.currentPosition()>=0)
-        valve1_cyclic_motion_dir = -1;
-      if(stepper_X.currentPosition()<=-cyclic_motion_limit_valve1)
-        valve1_cyclic_motion_dir = 1;
-      X_commanded_target_position = (stepper_X.currentPosition()+valve1_cyclic_motion_dir*valve1_cyclic_motion_step_size);
-      stepper_X.moveTo(X_commanded_target_position);
-    }
-    if(flag_valve2_doing_cyclic_motion)
-    {
-      if(stepper_Y.currentPosition()>=0)
-        valve2_cyclic_motion_dir = -1;
-      if(stepper_Y.currentPosition()<=-cyclic_motion_limit_valve2)
-        valve2_cyclic_motion_dir = 1;
-      Y_commanded_target_position = (stepper_Y.currentPosition()+valve2_cyclic_motion_dir*valve2_cyclic_motion_step_size);
-      stepper_Y.moveTo(Y_commanded_target_position);
-    }
-    if(flag_valve3_doing_cyclic_motion)
-    {
-      if(stepper_Z.currentPosition()>=0)
-        valve3_cyclic_motion_dir = -1;
-      if(stepper_Z.currentPosition()<=-cyclic_motion_limit_valve3)
-        valve3_cyclic_motion_dir = 1;
-      Z_commanded_target_position = (stepper_Z.currentPosition()+valve3_cyclic_motion_dir*valve3_cyclic_motion_step_size);
-      stepper_Z.moveTo(Z_commanded_target_position);
-    }
   }
 }
 
