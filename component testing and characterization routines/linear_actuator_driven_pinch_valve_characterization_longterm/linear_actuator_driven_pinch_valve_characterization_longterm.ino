@@ -88,7 +88,7 @@ volatile bool PEEP_is_reached = false;
 volatile bool is_semi_closed = false;
 
 volatile float valve_opening_percentage = 0;
-volatile float valve_actuation_rate = 0.0025; // 2000 cycles for valve-open to close and vice-versa
+volatile float valve_actuation_rate = 0.005; // 2000 cycles for valve-open to close and vice-versa
 
 long int num_cycle_open_close = 1.0/valve_actuation_rate;
 
@@ -113,7 +113,7 @@ TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 
 // for PL35L-024-VLB8
 static const long steps_per_mm_XY = 30; 
-constexpr float MAX_VELOCITY_Y_mm = 10; 
+constexpr float MAX_VELOCITY_Y_mm = 20; 
 constexpr float MAX_ACCELERATION_Y_mm = 200; 
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
@@ -136,7 +136,7 @@ bool homing_in_progress = false, at_home = false, homing_complete = false;
 bool limit_finding_in_progress = false, limit_finding_complete = false;
 
 long int cycles_since_last_homing = 0;
-long int homing_cycles = 2000; // No:of interrupt cycles between homing runs. 
+long int homing_cycles = 20000; // No:of interrupt cycles between homing runs. 
 bool reached_limit_closed = false, reached_limit_open = false;
 
 // Limit-switch state
@@ -146,10 +146,10 @@ bool lim_switch_state = HIGH, lim_switch_state_prev = HIGH; // State of the limi
 // Stepping Direction
 int step_direction = 1;
 // Step size during homing
-int step_size = 4;
+int step_size = 20;
 
 // Distance in mm from limit-switch position to valve-closed position (needs to be characterized for each valve design).
-float distance_to_valve_closed = 15.0;
+float distance_to_valve_closed = 15;
 
 // Use this to find the amount of time taken to find the limit switch from valve 0 position. 
 // Proposed idea is to use this as a diagnostic test. 
@@ -162,6 +162,8 @@ long Pos_switch_open;
 
 unsigned long last_debounce_time = 0;  // the last time the output pin was toggled
 unsigned long debounce_delay = 50;    // the debounce time; increase if the output flickers
+
+unsigned long limit_switch_finding_start_time = 0, limit_switch_closed_finding_time = 0, limit_switch_open_finding_time = 0;
 
 void initialize_homing_state()
 {
@@ -182,7 +184,9 @@ void FindLimits()
  
   // If switch transitions from Open to Closed when stepping in OPEN direction. 
   if(lim_switch_state==LOW && lim_switch_state_prev==HIGH && reached_limit_closed==false)
-  {
+  {   
+      limit_switch_closed_finding_time = millis() - limit_switch_finding_start_time;  
+
       reached_limit_closed = true;
       // Store the position as one limit
       Pos_switch_closed = stepper_Y.currentPosition();  
@@ -191,7 +195,8 @@ void FindLimits()
   
   // If switch transitions from Closed to Open when stepping in CLOSE direction. This is when the switch is released.
   if(lim_switch_state && !lim_switch_state_prev && reached_limit_open==false && reached_limit_closed == true)
-  {
+  {   
+      limit_switch_open_finding_time = millis() - limit_switch_finding_start_time;
       reached_limit_open = true;
       // Store the position as one limit
       Pos_switch_open = stepper_Y.currentPosition();
@@ -199,7 +204,7 @@ void FindLimits()
   if(reached_limit_closed && reached_limit_open)
   {
     limit_finding_complete = true;
-    limit_finding_in_progress = false;    
+    limit_finding_in_progress = false;  
   }
 
   stepper_Y.move(step_direction*step_size*MICROSTEPPING_N);
@@ -277,6 +282,7 @@ void timer_interruptHandler()
     // Start Limit finding and Homing procedure. 
     cycle_find_limit_switch_time = 0;
     cycles_since_last_homing = 0;
+    limit_switch_finding_start_time = millis();
     
     limit_finding_in_progress = true;
     
@@ -363,7 +369,7 @@ void setup() {
   while (!STEPPER_SERIAL);
   Y_driver.begin();
   Y_driver.I_scale_analog(false);
-  Y_driver.rms_current(100,0.1); //I_run and holdMultiplier
+  Y_driver.rms_current(50,0.1); //I_run and holdMultiplier
   Y_driver.microsteps(MICROSTEPPING_N);
   Y_driver.pwm_autoscale(true);
   Y_driver.TPOWERDOWN(2);
@@ -433,7 +439,10 @@ void loop()
       buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time >> 8);
       buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time % 256);
       sent_homing_data = true;
-      //SerialUSB.println(cycle_find_limit_switch_time);
+      SerialUSB.print("Closed, ");
+      SerialUSB.println(limit_switch_closed_finding_time);
+      SerialUSB.print("Open, ");
+      SerialUSB.println(limit_switch_open_finding_time);
     }
     else
     {
