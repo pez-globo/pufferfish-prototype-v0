@@ -47,13 +47,13 @@ int valve1_cyclic_motion_dir = 1;
 int valve2_cyclic_motion_dir = 1;
 int valve3_cyclic_motion_dir = 1;
 
-int valve1_cyclic_motion_step_size = 1;
-int valve2_cyclic_motion_step_size = 1;
-int valve3_cyclic_motion_step_size = 1;
+int valve1_cyclic_motion_step_size = 2;
+int valve2_cyclic_motion_step_size = 2;
+int valve3_cyclic_motion_step_size = 2;
 
-long cyclic_motion_limit_valve1 = 500;
-long cyclic_motion_limit_valve2 = 500;
-long cyclic_motion_limit_valve3 = 500;
+long cyclic_motion_limit_valve1 = 250;
+long cyclic_motion_limit_valve2 = 250;
+long cyclic_motion_limit_valve3 = 250;
 
 static inline int sgn(int val) {
  if (val < 0) return -1;
@@ -407,6 +407,8 @@ void loop()
       SerialUSB.write(buffer_tx, MSG_LENGTH);
       buffer_tx_ptr = 0;
     }
+    if(buffer_tx_ptr>MSG_LENGTH)
+      buffer_tx_ptr = 0;
     // clear the flag
     flag_write_data = false;
   }
