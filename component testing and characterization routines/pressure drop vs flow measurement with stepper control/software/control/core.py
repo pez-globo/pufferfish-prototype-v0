@@ -41,7 +41,7 @@ class NavigationController(QObject):
         self.file.write('stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n')
 
         self.timer_collect_data = QTimer()
-        self.timer_collect_data.setInterval(100) # check every 100 ms
+        self.timer_collect_data.setInterval(10) # check every 100 ms
         self.timer_collect_data.timeout.connect(self.collect_data)
         self.timer_collect_data.start()
 
