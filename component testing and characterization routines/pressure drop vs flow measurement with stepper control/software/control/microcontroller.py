@@ -194,6 +194,7 @@ class Microcontroller():
         if self.serial.in_waiting==0:
             return None
         if self.serial.in_waiting % self.rx_buffer_length != 0:
+            print(str(self.serial.in_waiting) + '/' + str(self.rx_buffer_length))
             print(self.serial.in_waiting)
             return None
         

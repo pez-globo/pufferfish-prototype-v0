@@ -113,7 +113,7 @@ class NavigationController(QObject):
         data = self.microcontroller.read_received_packet_nowait()
         if data is not None:
             print('data collected')
-            for i in range(int(MicrocontrollerDef.MSG_LENGTH/N_BYTES_PER_RECORD)):
+            for i in range(int(MicrocontrollerDef.MSG_LENGTH_USED/N_BYTES_PER_RECORD)):
                 stepper1_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD*2+2],2)
                 stepper2_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD*2+4],2)
                 stepper3_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+4:i*N_BYTES_PER_RECORD*2+6],2)
