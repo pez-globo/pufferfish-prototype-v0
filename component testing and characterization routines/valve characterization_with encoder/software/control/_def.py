@@ -28,8 +28,13 @@ class AF:
         pass
 
 class Motion:
-    STEPS_PER_MM_XY = 1 # change the unit from per mm to per step
-    STEPS_PER_MM_Z = 1  # change the unit from per mm to per step
+    MICROSTEPS_X = 2
+    MICROSTEPS_Y = 2
+    MICROSTEPS_Z = 2
+
+    STEPS_PER_MM_XY = 78.74*MICROSTEPS_Y # change the unit from per mm to per step
+    STEPS_PER_MM_Z = 82.02*MICROSTEPS_Z  # change the unit from per mm to per step
+
     def __init__(self):
         pass
 '''
@@ -63,6 +68,10 @@ class MicrocontrollerDef:
     CMD_LENGTH = 4
     N_BYTES_POS = 3
 
+
+
 N_BYTES_PER_RECORD = 4
 FLOW_FS = 200
 PRESSURE_FS = 60
+# Encoder Counter per mm (1um per count RLS miniature linear encoder)
+ENCODER_COUNTS_PER_MM = 500

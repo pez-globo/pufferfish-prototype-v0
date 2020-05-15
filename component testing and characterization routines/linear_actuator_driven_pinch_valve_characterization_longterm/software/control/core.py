@@ -10,12 +10,16 @@ from qtpy.QtGui import *
 
 import control.utils as utils
 from control._def import *
+import control.CSV_Tool as CSV_Tool
+
 
 from queue import Queue
 import time
 import numpy as np
 import pyqtgraph as pg
 from datetime import datetime
+from pathlib import Path
+
 
 class ValveController(QObject):
 
@@ -105,8 +109,16 @@ class Waveforms(QObject):
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
-        self.file = open("/Users/Deepak/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
-        self.file.write('Time (s),Paw (cmH2O),Flow (l/min),Volume (ml),Vt (ml),Ti (s),RR (/min),PEEP (cmH2O)\n')
+
+        # self.file_header = ['Time','Stepper pos', 'Flow rate (slm)', 'Time to limit switch (ms)']
+
+        # self.csv_register = CSV_Tool.CSV_Register(header = self.file_header)
+        # self.csv_register.file_directory= str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + ".csv"
+        # self.csv_register.start_write()
+
+        self.file = open("/Users/Deepak/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + ".csv", "w+")
+        self.file.write('Time,Stepper pos,Flow rate (slm),Time to limit switch (ms)')
+        
         self.microcontroller = microcontroller
         self.ventController = ventController
         self.Paw = 0
@@ -137,12 +149,17 @@ class Waveforms(QObject):
             self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
         else:
             readout = self.microcontroller.read_received_packet_nowait()
+            
             if readout is not None:
-                for i in range(MicrocontrollerDef.MSG_LENGTH/5):
+                for i in range(int(MicrocontrollerDef.MSG_LENGTH/5)):
                     self.pos = readout[5*i] 
                     self.flow = (utils.unsigned_to_signed(readout[5*i+1:5*i+3],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
                     self.delta = int(readout[5*i+3])*256 + int(readout[5*i+4])
+
+                    # self.csv_register.write_line([self.time_now, self.pos, self.flow, self.delta])
+
                     self.file.write(str(self.time_now)+','+str(self.pos)+','+str(self.flow)+','+str(self.delta)+'\n')
+                    
                     print(str(self.time_now)+'\t'+str(self.pos)+'\t'+str(self.flow)+','+str(self.delta))
         
         # reduce display refresh rate

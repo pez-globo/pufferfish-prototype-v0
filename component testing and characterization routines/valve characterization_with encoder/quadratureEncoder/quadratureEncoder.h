@@ -12,8 +12,8 @@
   
 */
 
-#ifndef quadratureEncoder_h
-#define quadratureEncoder_h
+// #ifndef quadratureEncoder_h
+// #define quadratureEncoder_h
 
 #include "Arduino.h"
 
@@ -21,9 +21,9 @@ class quadratureEncoder
 {
 	public:
 
-		quadratureEncoder(int pin_A, int pin_B, int mode);
+		quadratureEncoder(int pin_A, int pin_B, int trigger_mode, int pin_mode);
 
-		void decoder(bool EncoderAPrev, bool EncoderBPrev, bool EncoderASet, bool EncoderBSet);
+		int Decoder(bool EncoderAPrev, bool EncoderBPrev, bool EncoderASet, bool EncoderBSet);
 
 		void HandleInterrupt();
 
@@ -37,8 +37,10 @@ class quadratureEncoder
 		volatile bool _EncoderBSet;
 		volatile bool _EncoderAPrev;
 		volatile bool _EncoderBPrev;
+		int _pin_A;
+		int _pin_B;
 
-}
+};
 
 
-#endif
+// #endif

@@ -92,6 +92,7 @@ class Microcontroller():
 
     def read_received_packet_nowait(self):
         # wait to receive data
+
         if self.serial.in_waiting==0:
             return None
         if self.serial.in_waiting % self.rx_buffer_length != 0:

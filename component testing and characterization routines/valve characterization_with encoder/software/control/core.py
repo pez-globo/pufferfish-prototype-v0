@@ -10,6 +10,8 @@ from qtpy.QtGui import *
 
 import control.utils as utils
 from control._def import *
+import control.CSV_Tool as CSV_Tool
+
 
 from queue import Queue
 from threading import Thread, Lock
@@ -25,6 +27,7 @@ class NavigationController(QObject):
     yPos = Signal(float)
     zPos = Signal(float)
 
+
     def __init__(self,microcontroller):
         QObject.__init__(self)
         self.microcontroller = microcontroller
@@ -37,8 +40,12 @@ class NavigationController(QObject):
         # self.timer_read_pos.timeout.connect(self.update_pos)
         # self.timer_read_pos.start()
 
-        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
-        self.file.write('stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n')
+        # self.file_header = ['stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n']
+
+
+        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + ".csv", "w+")
+        self.file.write('Time (s), Actuator pos (open-loop), Actuator pos (closed-loop)')
+        # self.file.write('stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n')
 
         self.timer_collect_data = QTimer()
         self.timer_collect_data.setInterval(100) # check every 100 ms
@@ -110,6 +117,8 @@ class NavigationController(QObject):
         pass
 
     def collect_data(self):
+
+        self.time_now = time.time()
         data = self.microcontroller.read_received_packet_nowait()
         if data is not None:
             print('data collected')
@@ -124,8 +133,8 @@ class NavigationController(QObject):
                 # self.file.write(str(stepper1_pos)+','+str(stepper2_pos)+','+str(stepper3_pos)+','+str(flow)+','+str(pressure_1)+','+str(pressure_2)+','+str(pressure_3)+'\n')
                 # print(str(stepper1_pos)+'\t'+str(stepper2_pos)+'\t'+str(stepper3_pos)+'\t'+"{:.2f}".format(flow)+'\t'+"{:.2f}".format(pressure_1)+'\t'+"{:.2f}".format(pressure_2)+'\t'+"{:.2f}".format(pressure_3))
 
-                stepper1_openLoop_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD*2+2],2)
-                stepper1_closedLoop_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD*2+4],2)
+                stepper1_openLoop_pos = Motion.STEPS_PER_MM_XY*utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD*2+2],2)
+                stepper1_closedLoop_pos = ENCODER_COUNTS_PER_MM*utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD*2+4],2)
                 
                 # stepper3_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+4:i*N_BYTES_PER_RECORD*2+6],2)
                 
@@ -135,7 +144,8 @@ class NavigationController(QObject):
                 # pressure_2 = ((data[i*N_BYTES_PER_RECORD+10]*256+data[i*N_BYTES_PER_RECORD+11])/65536.0)*PRESSURE_FS
                 # pressure_3 = ((data[i*N_BYTES_PER_RECORD+12]*256+data[i*N_BYTES_PER_RECORD+13])/65536.0)*PRESSURE_FS
 
-                self.file.write(str(stepper1_openLoop_pos)+','+str(stepper1_closedLoop_pos)+'\n')
+                self.file.write(str(self.time_now) + ',', +str(stepper1_openLoop_pos)+','+str(stepper1_closedLoop_pos)+'\n')
+
                 print(str(stepper1_openLoop_pos)+'\t'+str(stepper1_closedLoop_pos))
             
             self.file.flush()

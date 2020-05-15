@@ -136,7 +136,7 @@ bool homing_in_progress = false, at_home = false, homing_complete = false;
 bool limit_finding_in_progress = false, limit_finding_complete = false;
 
 long int cycles_since_last_homing = 0;
-long int homing_cycles = 20000; // No:of interrupt cycles between homing runs. 
+long int homing_cycles = 2000; // No:of interrupt cycles between homing runs. 
 bool reached_limit_closed = false, reached_limit_open = false;
 
 // Limit-switch state
@@ -322,7 +322,8 @@ void timer_interruptHandler()
 void setup() {
 
   // Initialize Native USB port
-  SerialUSB.begin(2000000);
+//  SerialUSB.begin(2000000);
+  SerialUSB.begin(9600);
   while (!SerialUSB);           // Wait until connection is established
   buffer_rx_ptr = 0;
 
@@ -424,25 +425,26 @@ void loop()
 //    if (sdp.readContinuous() == 0)
 //      dP = sdp.getDifferentialPressure();
 //    flow = dP * coefficient_dP2flow;
-//    flag_read_sensor = false;
+    
+    flag_read_sensor = false;
 
     tmp_long = (65536 / 2) * flow / flow_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     
-    buffer_tx[buffer_tx_ptr++] = stepper_pos/4;
+    buffer_tx[buffer_tx_ptr++] = stepper_pos;
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
     
     if(limit_finding_complete == true && sent_homing_data == false)
     { 
       // Insert code here to send cycle_find_limit_switch_time after each homing run. 
-      buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time >> 8);
-      buffer_tx[buffer_tx_ptr++] = byte(cycle_find_limit_switch_time % 256);
+      buffer_tx[buffer_tx_ptr++] = byte(limit_switch_closed_finding_time >> 8);
+      buffer_tx[buffer_tx_ptr++] = byte(limit_switch_closed_finding_time % 256);
       sent_homing_data = true;
-      SerialUSB.print("Closed, ");
-      SerialUSB.println(limit_switch_closed_finding_time);
-      SerialUSB.print("Open, ");
-      SerialUSB.println(limit_switch_open_finding_time);
+//      SerialUSB.print("Closed, ");
+//      SerialUSB.println(limit_switch_closed_finding_time);
+//      SerialUSB.print("Open, ");
+//      SerialUSB.println(limit_switch_open_finding_time);
     }
     else
     {
@@ -455,6 +457,7 @@ void loop()
   
   if(buffer_tx_ptr==MSG_LENGTH)
   {
+//    SerialUSB.println("Writing to buffer");
     SerialUSB.write(buffer_tx, MSG_LENGTH);
     buffer_tx_ptr = 0;
   }

@@ -1,0 +1,3 @@
+quadratureEncoder	KEYWORD1
+Decoder	KEYWORD2
+HandleInterrupt	KEYWORD2
