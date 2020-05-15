@@ -41,7 +41,7 @@ class NavigationController(QObject):
         self.file.write('stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n')
 
         self.timer_collect_data = QTimer()
-        self.timer_collect_data.setInterval(100) # check every 100 ms
+        self.timer_collect_data.setInterval(10) # check every 100 ms
         self.timer_collect_data.timeout.connect(self.collect_data)
         self.timer_collect_data.start()
 
@@ -113,7 +113,7 @@ class NavigationController(QObject):
         data = self.microcontroller.read_received_packet_nowait()
         if data is not None:
             print('data collected')
-            for i in range(int(MicrocontrollerDef.MSG_LENGTH/N_BYTES_PER_RECORD)):
+            for i in range(int(MicrocontrollerDef.MSG_LENGTH_USED/N_BYTES_PER_RECORD)):
                 stepper1_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD*2+2],2)
                 stepper2_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD*2+4],2)
                 stepper3_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+4:i*N_BYTES_PER_RECORD*2+6],2)

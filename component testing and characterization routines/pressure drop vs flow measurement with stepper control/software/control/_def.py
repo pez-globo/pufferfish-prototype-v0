@@ -58,7 +58,8 @@ class PosUpdate:
     INTERVAL_MS = 25
 
 class MicrocontrollerDef:
-    MSG_LENGTH = 504
+    MSG_LENGTH = 510
+    MSG_LENGTH_USED = 504
     FIELD_NUM = 7
     CMD_LENGTH = 4
     N_BYTES_POS = 3
