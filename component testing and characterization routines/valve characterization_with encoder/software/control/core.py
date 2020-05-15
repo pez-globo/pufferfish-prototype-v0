@@ -114,15 +114,30 @@ class NavigationController(QObject):
         if data is not None:
             print('data collected')
             for i in range(int(MicrocontrollerDef.MSG_LENGTH/N_BYTES_PER_RECORD)):
-                stepper1_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD*2+2],2)
-                stepper2_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD*2+4],2)
-                stepper3_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+4:i*N_BYTES_PER_RECORD*2+6],2)
-                flow = (utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+6:i*N_BYTES_PER_RECORD*2+8],2)/(65536/2))*FLOW_FS
-                pressure_1 = ((data[i*N_BYTES_PER_RECORD+8]*256+data[i*N_BYTES_PER_RECORD+9])/65536.0)*PRESSURE_FS
-                pressure_2 = ((data[i*N_BYTES_PER_RECORD+10]*256+data[i*N_BYTES_PER_RECORD+11])/65536.0)*PRESSURE_FS
-                pressure_3 = ((data[i*N_BYTES_PER_RECORD+12]*256+data[i*N_BYTES_PER_RECORD+13])/65536.0)*PRESSURE_FS
-                self.file.write(str(stepper1_pos)+','+str(stepper2_pos)+','+str(stepper3_pos)+','+str(flow)+','+str(pressure_1)+','+str(pressure_2)+','+str(pressure_3)+'\n')
-                print(str(stepper1_pos)+'\t'+str(stepper2_pos)+'\t'+str(stepper3_pos)+'\t'+"{:.2f}".format(flow)+'\t'+"{:.2f}".format(pressure_1)+'\t'+"{:.2f}".format(pressure_2)+'\t'+"{:.2f}".format(pressure_3))
+                # stepper1_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD*2+2],2)
+                # stepper2_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD*2+4],2)
+                # stepper3_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+4:i*N_BYTES_PER_RECORD*2+6],2)
+                # flow = (utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+6:i*N_BYTES_PER_RECORD*2+8],2)/(65536/2))*FLOW_FS
+                # pressure_1 = ((data[i*N_BYTES_PER_RECORD+8]*256+data[i*N_BYTES_PER_RECORD+9])/65536.0)*PRESSURE_FS
+                # pressure_2 = ((data[i*N_BYTES_PER_RECORD+10]*256+data[i*N_BYTES_PER_RECORD+11])/65536.0)*PRESSURE_FS
+                # pressure_3 = ((data[i*N_BYTES_PER_RECORD+12]*256+data[i*N_BYTES_PER_RECORD+13])/65536.0)*PRESSURE_FS
+                # self.file.write(str(stepper1_pos)+','+str(stepper2_pos)+','+str(stepper3_pos)+','+str(flow)+','+str(pressure_1)+','+str(pressure_2)+','+str(pressure_3)+'\n')
+                # print(str(stepper1_pos)+'\t'+str(stepper2_pos)+'\t'+str(stepper3_pos)+'\t'+"{:.2f}".format(flow)+'\t'+"{:.2f}".format(pressure_1)+'\t'+"{:.2f}".format(pressure_2)+'\t'+"{:.2f}".format(pressure_3))
+
+                stepper1_openLoop_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD*2+2],2)
+                stepper1_closedLoop_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD*2+4],2)
+                
+                # stepper3_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+4:i*N_BYTES_PER_RECORD*2+6],2)
+                
+                # flow = (utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+6:i*N_BYTES_PER_RECORD*2+8],2)/(65536/2))*FLOW_FS
+                
+                # pressure_1 = ((data[i*N_BYTES_PER_RECORD+8]*256+data[i*N_BYTES_PER_RECORD+9])/65536.0)*PRESSURE_FS
+                # pressure_2 = ((data[i*N_BYTES_PER_RECORD+10]*256+data[i*N_BYTES_PER_RECORD+11])/65536.0)*PRESSURE_FS
+                # pressure_3 = ((data[i*N_BYTES_PER_RECORD+12]*256+data[i*N_BYTES_PER_RECORD+13])/65536.0)*PRESSURE_FS
+
+                self.file.write(str(stepper1_openLoop_pos)+','+str(stepper1_closedLoop_pos)+'\n')
+                print(str(stepper1_openLoop_pos)+'\t'+str(stepper1_closedLoop_pos))
+            
             self.file.flush()
 
 

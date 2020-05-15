@@ -7,7 +7,6 @@
 //#define ENABLE_SENSORS
 
 static const bool USE_SERIAL_MONITOR = false;
-
 #include <Wire.h>
 
 #include <TMCStepper.h>
@@ -124,6 +123,8 @@ constexpr float MAX_ACCELERATION_Z_mm = 100;
 static const long Z_NEG_LIMIT_MM = -12;
 static const long Z_POS_LIMIT_MM = 12;
 
+
+
 AccelStepper stepper_X = AccelStepper(AccelStepper::DRIVER, X_step, X_dir);
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 AccelStepper stepper_Z = AccelStepper(AccelStepper::DRIVER, Z_step, Z_dir);
@@ -140,6 +141,20 @@ bool Z_commanded_movement_in_progress = false;
 #define SLAVE_SELECT_PIN_2 31
 #define SLAVE_SELECT_PIN_3 32
 #define SLAVE_SELECT_PIN_4 33
+
+  /*******************************************************************
+   ***************************** ENCODERS *****************************
+   *******************************************************************/
+
+#define Encoder_Pin_A 53            // Pin to read encoder channel A 
+#define Encoder_Pin_B 52            // Pin to read encoder channel B 
+
+volatile bool _Encoder_A_Set;
+volatile bool _Encoder_B_Set;
+volatile bool _Encoder_A_Prev;
+volatile bool _Encoder_B_Prev;
+volatile long int _EncoderTicks = 0;
+
 
 #ifdef ENABLE_SENSORS
   /*******************************************************************
@@ -272,10 +287,50 @@ void setup()
 
 #endif
 
+  // ENCODERS
+
+  pinMode(Encoder_Pin_A, INPUT_PULLUP);
+  pinMode(Encoder_Pin_B, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(Encoder_Pin_A), HandleInterrupt, CHANGE);
+
+
+
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
   
 }
+
+int Decoder(bool Encoder_A_Prev, bool Encoder_B_Prev, bool Encoder_A_Set, bool Encoder_B_Set)
+{
+  if(!Encoder_A_Prev && Encoder_A_Set)
+  {
+    if(Encoder_B_Set) return -1;
+    else return 1;
+  }
+  else if(Encoder_A_Prev && !Encoder_A_Set)
+  {
+    if(!Encoder_B_Set) return -1;
+    else return 1;
+  }
+  else return 0;
+  
+}
+void HandleInterrupt()
+{
+
+    _Encoder_B_Set = digitalRead(Encoder_Pin_B);
+    _Encoder_A_Set = digitalRead(Encoder_Pin_A);
+
+   //Dir=ParseEncoder();
+    bool Dir = Decoder(_Encoder_A_Prev, _Encoder_B_Prev, _Encoder_A_Set, _Encoder_B_Set);
+    _EncoderTicks += Dir;
+  
+
+    _Encoder_A_Prev = _Encoder_A_Set;
+    _Encoder_B_Prev = _Encoder_B_Set;
+
+}
+
 
 void loop() 
 {
@@ -428,11 +483,11 @@ void loop()
         
         if(USE_SERIAL_MONITOR)
           {
-//            // SerialUSB.print("flow rate (slm): ");
-//            SerialUSB.print(mFlow);
-//            SerialUSB.print(",");
-//            //SerialUSB.print(" pressure (cmH2O): ");
-//            SerialUSB.print(mPressure_1);
+              SerialUSB.print("Actuator open-loop position: ");
+              SerialUSB.print(stepper_X.currentPosition());
+              SerialUSB.print(",");
+              SerialUSB.print("Actuator closed-loop position:");
+              SerialUSB.print(EncoderTicks);
 //            SerialUSB.print(",");
 //            SerialUSB.print(mPressure_2);
 //            SerialUSB.print(",");
@@ -441,34 +496,47 @@ void loop()
           }
           else
           {
+            // Send data (3 steppers, 1 flow sensor, 3 pressure sensors) 
+//            tmp_uint16 = signed2NBytesUnsigned(stepper_X.currentPosition(), 2);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+//      
+//            tmp_uint16 = signed2NBytesUnsigned(stepper_Y.currentPosition(), 2);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+//
+//            tmp_uint16 = signed2NBytesUnsigned(stepper_Z.currentPosition(), 2);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+//            
+//      
+//            tmp_long = (65536 / 2) * 0/ flow_FS;
+//            tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+//      
+//            tmp_uint16 = 65536 * 0 / pressure_FS;
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+//      
+//            tmp_uint16 = 65536 * 0 / pressure_FS;
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+//      
+//            tmp_uint16 = 65536 * 0 / pressure_FS;
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+//            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+
+            // Stepper (Open-loop position)
             tmp_uint16 = signed2NBytesUnsigned(stepper_X.currentPosition(), 2);
             buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
             buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-      
-            tmp_uint16 = signed2NBytesUnsigned(stepper_Y.currentPosition(), 2);
+
+            // Stepper (Closed-loop position from Encoder)
+            tmp_uint16 = signed2NBytesUnsigned(EncoderTicks, 2);
             buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
             buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-      
-            tmp_uint16 = signed2NBytesUnsigned(stepper_Z.currentPosition(), 2);
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-      
-            tmp_long = (65536 / 2) * 0/ flow_FS;
-            tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-      
-            tmp_uint16 = 65536 * 0 / pressure_FS;
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-      
-            tmp_uint16 = 65536 * 0 / pressure_FS;
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-      
-            tmp_uint16 = 65536 * 0 / pressure_FS;
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+
           }
       
       #endif
