@@ -51,9 +51,9 @@ int valve1_cyclic_motion_step_size = 2;
 int valve2_cyclic_motion_step_size = 2;
 int valve3_cyclic_motion_step_size = 2;
 
-long cyclic_motion_limit_valve1 = 300;
-long cyclic_motion_limit_valve2 = 100;
-long cyclic_motion_limit_valve3 = 250;
+long cyclic_motion_limit_valve1 = 250;
+long cyclic_motion_limit_valve2 = 250;
+long cyclic_motion_limit_valve3 = 100;
 
 static inline int sgn(int val) {
  if (val < 0) return -1;
@@ -110,14 +110,25 @@ constexpr float MAX_ACCELERATION_Y_mm = 100;
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
 
-static const int Z_dir = 23;
-static const int Z_step = 25;
+//static const int Z_dir = 23;
+//static const int Z_step = 25;
+//static const int Z_N_microstepping = 2;
+//static const long steps_per_mm_Z = 82.02*Y_N_microstepping; 
+//constexpr float MAX_VELOCITY_Z_mm = 18.29; 
+//constexpr float MAX_ACCELERATION_Z_mm = 100;
+//static const long Z_NEG_LIMIT_MM = -12;
+//static const long Z_POS_LIMIT_MM = 12;
+
+static const int Z_dir = 27;
+static const int Z_step = 29;
 static const int Z_N_microstepping = 2;
-static const long steps_per_mm_Z = 82.02*Y_N_microstepping; 
-constexpr float MAX_VELOCITY_Z_mm = 18.29; 
-constexpr float MAX_ACCELERATION_Z_mm = 100;
+static const long steps_per_mm_Z = 30*Y_N_microstepping; 
+constexpr float MAX_VELOCITY_Z_mm = 25; 
+constexpr float MAX_ACCELERATION_Z_mm = 2000; // 12.5 ms to reach max speed
 static const long Z_NEG_LIMIT_MM = -12;
 static const long Z_POS_LIMIT_MM = 12;
+// 2-microstepping => 60 microsteps per mm; 30 mm/s => 1800 microsteps per second
+
 
 AccelStepper stepper_X = AccelStepper(AccelStepper::DRIVER, X_step, X_dir);
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
@@ -215,11 +226,25 @@ void setup()
   stepper_Y.setAcceleration(MAX_ACCELERATION_Y_mm*steps_per_mm_Y);
   stepper_Y.enableOutputs();
 
-  select_driver(3);
+//  select_driver(3);
+//  while(!STEPPER_SERIAL);
+//  Z_driver.begin();
+//  Z_driver.I_scale_analog(false);  
+//  Z_driver.rms_current(500,0.2); //I_run and holdMultiplier
+//  Z_driver.microsteps(Z_N_microstepping);
+//  Z_driver.pwm_autoscale(true);
+//  Z_driver.TPOWERDOWN(2);
+//  Z_driver.en_spreadCycle(false);
+//  Z_driver.toff(4);
+//  stepper_Z.setPinsInverted(false, false, true);
+//  stepper_Z.setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
+//  stepper_Z.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
+//  stepper_Z.enableOutputs();
+  select_driver(4);
   while(!STEPPER_SERIAL);
   Z_driver.begin();
   Z_driver.I_scale_analog(false);  
-  Z_driver.rms_current(500,0.2); //I_run and holdMultiplier
+  Z_driver.rms_current(300,0.2); //I_run and holdMultiplier
   Z_driver.microsteps(Z_N_microstepping);
   Z_driver.pwm_autoscale(true);
   Z_driver.TPOWERDOWN(2);
@@ -260,6 +285,8 @@ void setup()
   hsc_sensor_2.begin(); // run sensor initialization
   hsc_sensor_3.begin(); // run sensor initialization
 
+  delayMicroseconds(500000);
+
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
   
@@ -267,6 +294,7 @@ void setup()
 
 void loop() 
 {
+
   // read one meesage from the buffer
   while (SerialUSB.available()) { 
     buffer_rx[buffer_rx_ptr] = SerialUSB.read();
@@ -324,12 +352,13 @@ void loop()
       }
     }
   }
+
   if(flag_read_sensor)
   {
     ret_sfm3000 = sfm3000.read_sample();
     ret_hsc_sensor_1 = hsc_sensor_1.readSensor();
-   ret_hsc_sensor_2 = hsc_sensor_2.readSensor();
-   ret_hsc_sensor_3 = hsc_sensor_3.readSensor();
+    ret_hsc_sensor_2 = hsc_sensor_2.readSensor();
+    ret_hsc_sensor_3 = hsc_sensor_3.readSensor();
     // ret_hsc_sensor_4 = hsc_sensor_1.readSensor();
     
     if (ret_sfm3000 == 0) 
@@ -338,8 +367,8 @@ void loop()
     if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
     {
       mPressure_1 = hsc_sensor_1.pressure();
-      mPressure_2 = hsc_sensor_2.pressure();
-      mPressure_3 = hsc_sensor_3.pressure();
+     mPressure_2 = hsc_sensor_2.pressure();
+     mPressure_3 = hsc_sensor_3.pressure();
     }
     flag_read_sensor = false;
     
@@ -426,7 +455,7 @@ void loop()
       if(flag_valve1_flow_detected && mFlow < 0.2)
       {
         X_commanded_target_position = (stepper_X.currentPosition()+1);
-        stepper_X.runToNewPosition(X_commanded_target_position);
+        stepper_X.runToNewPosition(Z_commanded_target_position);
         stepper_X.setCurrentPosition(0);
         flag_close_valve1_in_progress = false;
         flag_valve1_flow_detected = false;
@@ -494,53 +523,32 @@ void loop()
       }
     }
   }
-  
-  // delayMicroseconds(5000);
 
-  // run steppers
-  stepper_X.run();
-  stepper_Y.run();
-  stepper_Z.run();
+  if(flag_valve3_doing_cyclic_motion)
+  {
+    for(int k=1;k<=500;k++)
+    {
+      stepper_Z.runToNewPosition(-cyclic_motion_limit_valve3);
+      delayMicroseconds(50000);
+      stepper_Z.runToNewPosition(0);
+      delayMicroseconds(50000);
+    }
+    flag_valve3_doing_cyclic_motion = false;
+  }
   
 }
 
 void timer_interruptHandler()
 {
-  flag_read_sensor = true;
-  flag_write_data = true;
-
-  // to have multiple readings for each linear actuator position
-  timer_div_counter++;
-  if(timer_div_counter>=timer_div)
+  if(flag_valve3_doing_cyclic_motion!=true)
   {
-    timer_div_counter = 0;
-    if(flag_valve1_doing_cyclic_motion)
-    {
-      if(stepper_X.currentPosition()>=0)
-        valve1_cyclic_motion_dir = -1;
-      if(stepper_X.currentPosition()<=-cyclic_motion_limit_valve1)
-        valve1_cyclic_motion_dir = 1;
-      X_commanded_target_position = (stepper_X.currentPosition()+valve1_cyclic_motion_dir*valve1_cyclic_motion_step_size);
-      stepper_X.moveTo(X_commanded_target_position);
-    }
-    if(flag_valve2_doing_cyclic_motion)
-    {
-      if(stepper_Y.currentPosition()>=0)
-        valve2_cyclic_motion_dir = -1;
-      if(stepper_Y.currentPosition()<=-cyclic_motion_limit_valve2)
-        valve2_cyclic_motion_dir = 1;
-      Y_commanded_target_position = (stepper_Y.currentPosition()+valve2_cyclic_motion_dir*valve2_cyclic_motion_step_size);
-      stepper_Y.moveTo(Y_commanded_target_position);
-    }
-    if(flag_valve3_doing_cyclic_motion)
-    {
-      if(stepper_Z.currentPosition()>=0)
-        valve3_cyclic_motion_dir = -1;
-      if(stepper_Z.currentPosition()<=-cyclic_motion_limit_valve3)
-        valve3_cyclic_motion_dir = 1;
-      Z_commanded_target_position = (stepper_Z.currentPosition()+valve3_cyclic_motion_dir*valve3_cyclic_motion_step_size);
-      stepper_Z.moveTo(Z_commanded_target_position);
-    }
+    flag_read_sensor = true;
+    flag_write_data = true;
+  }
+  else
+  {
+    flag_read_sensor = false;
+    flag_write_data = false;
   }
 }
 
