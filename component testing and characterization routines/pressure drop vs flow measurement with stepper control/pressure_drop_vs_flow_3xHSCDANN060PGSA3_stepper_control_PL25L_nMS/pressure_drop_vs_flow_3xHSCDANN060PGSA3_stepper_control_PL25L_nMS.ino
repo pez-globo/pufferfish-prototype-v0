@@ -15,7 +15,7 @@ static const bool USE_SERIAL_MONITOR = false;
 #include <DueTimer.h>
 
 static const float TIMER_PERIOD_us = 3000; // in us
-static const int timer_div = 5;
+static const int timer_div = 100;
 volatile int timer_div_counter = 0;
 
 long tmp_long;
@@ -51,9 +51,9 @@ int valve1_cyclic_motion_step_size = 2;
 int valve2_cyclic_motion_step_size = 2;
 int valve3_cyclic_motion_step_size = 2;
 
-long cyclic_motion_limit_valve1 = 300;
-long cyclic_motion_limit_valve2 = 100;
-long cyclic_motion_limit_valve3 = 250;
+long cyclic_motion_limit_valve1 = 250;
+long cyclic_motion_limit_valve2 = 250;
+long cyclic_motion_limit_valve3 = 100;
 
 static inline int sgn(int val) {
  if (val < 0) return -1;
@@ -110,12 +110,20 @@ constexpr float MAX_ACCELERATION_Y_mm = 100;
 static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
 
-static const int Z_dir = 23;
-static const int Z_step = 25;
+//static const int Z_dir = 23;
+//static const int Z_step = 25;
+//static const int Z_N_microstepping = 2;
+//static const long steps_per_mm_Z = 82.02*Y_N_microstepping; 
+//constexpr float MAX_VELOCITY_Z_mm = 18.29; 
+//constexpr float MAX_ACCELERATION_Z_mm = 100;
+//static const long Z_NEG_LIMIT_MM = -12;
+//static const long Z_POS_LIMIT_MM = 12;
+static const int Z_dir = 27;
+static const int Z_step = 29;
 static const int Z_N_microstepping = 2;
-static const long steps_per_mm_Z = 82.02*Y_N_microstepping; 
-constexpr float MAX_VELOCITY_Z_mm = 18.29; 
-constexpr float MAX_ACCELERATION_Z_mm = 100;
+static const long steps_per_mm_Z = 30*Y_N_microstepping; 
+constexpr float MAX_VELOCITY_Z_mm = 25; 
+constexpr float MAX_ACCELERATION_Z_mm = 2000;
 static const long Z_NEG_LIMIT_MM = -12;
 static const long Z_POS_LIMIT_MM = 12;
 
@@ -215,11 +223,25 @@ void setup()
   stepper_Y.setAcceleration(MAX_ACCELERATION_Y_mm*steps_per_mm_Y);
   stepper_Y.enableOutputs();
 
-  select_driver(3);
+//  select_driver(3);
+//  while(!STEPPER_SERIAL);
+//  Z_driver.begin();
+//  Z_driver.I_scale_analog(false);  
+//  Z_driver.rms_current(500,0.2); //I_run and holdMultiplier
+//  Z_driver.microsteps(Z_N_microstepping);
+//  Z_driver.pwm_autoscale(true);
+//  Z_driver.TPOWERDOWN(2);
+//  Z_driver.en_spreadCycle(false);
+//  Z_driver.toff(4);
+//  stepper_Z.setPinsInverted(false, false, true);
+//  stepper_Z.setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
+//  stepper_Z.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
+//  stepper_Z.enableOutputs();
+  select_driver(4);
   while(!STEPPER_SERIAL);
   Z_driver.begin();
   Z_driver.I_scale_analog(false);  
-  Z_driver.rms_current(500,0.2); //I_run and holdMultiplier
+  Z_driver.rms_current(300,0.2); //I_run and holdMultiplier
   Z_driver.microsteps(Z_N_microstepping);
   Z_driver.pwm_autoscale(true);
   Z_driver.TPOWERDOWN(2);
@@ -260,6 +282,8 @@ void setup()
   hsc_sensor_2.begin(); // run sensor initialization
   hsc_sensor_3.begin(); // run sensor initialization
 
+  delayMicroseconds(500000);
+
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
   
@@ -267,6 +291,7 @@ void setup()
 
 void loop() 
 {
+
   // read one meesage from the buffer
   while (SerialUSB.available()) { 
     buffer_rx[buffer_rx_ptr] = SerialUSB.read();
@@ -324,6 +349,7 @@ void loop()
       }
     }
   }
+
   if(flag_read_sensor)
   {
     ret_sfm3000 = sfm3000.read_sample();
@@ -338,8 +364,8 @@ void loop()
     if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
     {
       mPressure_1 = hsc_sensor_1.pressure();
-      mPressure_2 = hsc_sensor_2.pressure();
-      mPressure_3 = hsc_sensor_3.pressure();
+     mPressure_2 = hsc_sensor_2.pressure();
+     mPressure_3 = hsc_sensor_3.pressure();
     }
     flag_read_sensor = false;
     
@@ -426,7 +452,7 @@ void loop()
       if(flag_valve1_flow_detected && mFlow < 0.2)
       {
         X_commanded_target_position = (stepper_X.currentPosition()+1);
-        stepper_X.runToNewPosition(X_commanded_target_position);
+        stepper_X.runToNewPosition(Z_commanded_target_position);
         stepper_X.setCurrentPosition(0);
         flag_close_valve1_in_progress = false;
         flag_valve1_flow_detected = false;
@@ -495,7 +521,7 @@ void loop()
     }
   }
   
-  // delayMicroseconds(5000);
+  // delayMicroseconds(1000);
 
   // run steppers
   stepper_X.run();
