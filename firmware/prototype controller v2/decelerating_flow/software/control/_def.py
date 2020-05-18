@@ -85,7 +85,7 @@ class MicrocontrollerDef:
 class WAVEFORMS:
     UPDATE_INTERVAL_MS = 10 # In milliseconds
     DISPLAY_RANGE_S = 20 # In seconds
-    CYCLE_GAP = 10 # In sample num
+    CYCLE_GAP = 1 # In sample num
 
 PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}

@@ -186,7 +186,7 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.font.setPixelSize(25)
 
 		self.title = title
-		self.maxLen = int(1000*WAVEFORMS.DISPLAY_RANGE_S/WAVEFORMS.UPDATE_INTERVAL_MS)
+		self.maxLen = int(1000*WAVEFORMS.DISPLAY_RANGE_S/WAVEFORMS.UPDATE_INTERVAL_MS/2)
 		self.left_X_data = deque(maxlen = self.maxLen)
 		self.left_Y_data = deque(maxlen = self.maxLen)
 		self.right_Abs = []
@@ -271,7 +271,7 @@ class WaveformDisplay(QFrame):
 		self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
 		self.plotWidgets['Airway Pressure'].plot1.setYRange(min=0,max=50)
 		self.plotWidgets['Flow Rate'].plot1.setYRange(min=-100,max=100)
-		self.plotWidgets['Volume'].plot1.setYRange(min=0,max=1000)
+		self.plotWidgets['Volume'].plot1.setYRange(min=0,max=800)
 
 		grid = QGridLayout() 
 		for ii, key in enumerate(PLOTS):

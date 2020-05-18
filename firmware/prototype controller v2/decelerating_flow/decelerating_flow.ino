@@ -39,7 +39,8 @@ byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
 static const int N_BYTES_POS = 3;
 
-static const int pin_valve2 = 45;
+//static const int pin_valve2 = 45;
+static const int pin_valve2 = 11;
 
 static const float flow_FS = 200;
 static const float volume_FS = 1500;
@@ -57,8 +58,8 @@ volatile float mflow = 0;
 volatile float mvolume = 0;
 volatile float mpaw = 0;
 
-float RR = 12;
-float Ti = 1.5;
+float RR = 24;
+float Ti = 1.0;
 float Vt = 250;
 float PEEP = 0;
 float paw_trigger_th = 3;
@@ -424,9 +425,9 @@ long get_valve1_pos()
 void set_valve2_state(int state)
 {
   if (state > 0)
-    digitalWrite(pin_valve2, LOW);
+    analogWrite(pin_valve2, 125);
   else
-    digitalWrite(pin_valve2, HIGH);
+    analogWrite(pin_valve2, 255);
 }
 
 // utils

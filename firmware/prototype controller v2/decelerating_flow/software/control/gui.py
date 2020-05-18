@@ -40,7 +40,7 @@ class VentDevGUI(QMainWindow):
 		layout = QGridLayout() #layout = QStackedLayout()
 		# layout.addWidget(self.navigationWidget,0,0)
 		layout.addWidget(self.waveformDisplay,0,0)
-		layout.addWidget(self.controlPanel,1,0)
+		# layout.addWidget(self.controlPanel,1,0)
 
 		# transfer the layout to the central widget
 		self.centralWidget = QWidget()
