@@ -444,7 +444,7 @@ void loop()
   {
     if(mFlow >= 0.2)
     {
-      flag_valve1_flow_detected = true;
+      flag_valve2_flow_detected = true;
       Y_commanded_target_position = (stepper_Y.currentPosition()+1);
       stepper_Y.runToNewPosition(Y_commanded_target_position);
     }
@@ -455,15 +455,15 @@ void loop()
         Y_commanded_target_position = (stepper_Y.currentPosition()+1);
         stepper_Y.runToNewPosition(Y_commanded_target_position);
         stepper_Y.setCurrentPosition(0);
-        flag_valve1_flow_detected = false;
+        flag_valve2_flow_detected = false;
         flag_close_valve2_in_progress = false;
         flag_valve2_close_position_reset = true;
       }
       else
       {
-        flag_close_valve1_in_progress = false;
-        flag_valve1_flow_detected = false;
-        flag_valve1_close_position_reset = false;
+        flag_close_valve2_in_progress = false;
+        flag_valve2_flow_detected = false;
+        flag_valve2_close_position_reset = false;
       }
     }
   }
