@@ -1,12 +1,12 @@
 
-#define Encoder_Pin_A 14            // Pin to read encoder channel A 
-#define Encoder_Pin_B 15            // Pin to read encoder channel B 
+#define Encoder_Pin_A 28            // Pin to read encoder channel A 
+#define Encoder_Pin_B 29            // Pin to read encoder channel B 
 
 volatile bool _Encoder_A_Set;
 volatile bool _Encoder_B_Set;
 volatile bool _Encoder_A_Prev;
 volatile bool _Encoder_B_Prev;
-volatile bool Dir;
+volatile int Dir;
 volatile long int _EncoderTicks = 0;
 
 void setup() 
@@ -16,9 +16,9 @@ void setup()
 
    // ENCODERS
 
-  pinMode(Encoder_Pin_A, INPUT_PULLUP);
-  pinMode(Encoder_Pin_B, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(Encoder_Pin_A), HandleInterrupt, FALLING);
+  pinMode(Encoder_Pin_A, INPUT);
+  pinMode(Encoder_Pin_B, INPUT);
+  attachInterrupt(digitalPinToInterrupt(Encoder_Pin_A), HandleInterrupt, CHANGE);
 
 }
 
@@ -56,7 +56,7 @@ void HandleInterrupt()
 void loop() {
   // put your main code here, to run repeatedly:
 
-//  SerialUSB.println(_EncoderTicks);
-  SerialUSB.println(Dir);
+  SerialUSB.println(_EncoderTicks);
+//  SerialUSB.println(Dir);
   
 }

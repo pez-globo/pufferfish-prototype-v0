@@ -142,18 +142,19 @@ bool Z_commanded_movement_in_progress = false;
 #define SLAVE_SELECT_PIN_3 32
 #define SLAVE_SELECT_PIN_4 33
 
-  /*******************************************************************
-   ***************************** ENCODERS *****************************
-   *******************************************************************/
+/*******************************************************************
+***************************** ENCODERS *****************************
+*******************************************************************/
 
-#define Encoder_Pin_A 53            // Pin to read encoder channel A 
-#define Encoder_Pin_B 52            // Pin to read encoder channel B 
+#define Encoder_Pin_A 27            // Pin to read encoder channel A 
+#define Encoder_Pin_B 28            // Pin to read encoder channel B 
 
 volatile bool _Encoder_A_Set;
 volatile bool _Encoder_B_Set;
 volatile bool _Encoder_A_Prev;
 volatile bool _Encoder_B_Prev;
 volatile long int _EncoderTicks = 0;
+volatile int Dir=0;
 
 
 #ifdef ENABLE_SENSORS
@@ -184,7 +185,7 @@ volatile long int _EncoderTicks = 0;
 void setup() 
 {
   // wait for USB to connect
-  SerialUSB.begin(2000000);     
+  SerialUSB.begin(9600);     
   while(!SerialUSB);            // Wait until connection is established
 
   // reset rx buffer pointer
@@ -321,8 +322,7 @@ void HandleInterrupt()
     _Encoder_B_Set = digitalRead(Encoder_Pin_B);
     _Encoder_A_Set = digitalRead(Encoder_Pin_A);
 
-   //Dir=ParseEncoder();
-    bool Dir = Decoder(_Encoder_A_Prev, _Encoder_B_Prev, _Encoder_A_Set, _Encoder_B_Set);
+    Dir = Decoder(_Encoder_A_Prev, _Encoder_B_Prev, _Encoder_A_Set, _Encoder_B_Set);
     _EncoderTicks += Dir;
   
 
@@ -484,10 +484,10 @@ void loop()
         if(USE_SERIAL_MONITOR)
           {
               SerialUSB.print("Actuator open-loop position: ");
-              SerialUSB.print(stepper_X.currentPosition());
+              SerialUSB.print(stepper_Y.currentPosition());
               SerialUSB.print(",");
               SerialUSB.print("Actuator closed-loop position:");
-              SerialUSB.print(EncoderTicks);
+              SerialUSB.print(_EncoderTicks);
 //            SerialUSB.print(",");
 //            SerialUSB.print(mPressure_2);
 //            SerialUSB.print(",");
@@ -528,12 +528,12 @@ void loop()
 //            buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
             // Stepper (Open-loop position)
-            tmp_uint16 = signed2NBytesUnsigned(stepper_X.currentPosition(), 2);
+            tmp_uint16 = signed2NBytesUnsigned(stepper_Y.currentPosition(), 2);
             buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
             buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
             // Stepper (Closed-loop position from Encoder)
-            tmp_uint16 = signed2NBytesUnsigned(EncoderTicks, 2);
+            tmp_uint16 = signed2NBytesUnsigned(_EncoderTicks, 2);
             buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
             buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
