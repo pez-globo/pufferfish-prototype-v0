@@ -32,7 +32,9 @@ class Motion:
     MICROSTEPS_Y = 2
     MICROSTEPS_Z = 2
 
-    STEPS_PER_MM_XY = 78.74*MICROSTEPS_Y # change the unit from per mm to per step
+    # STEPS_PER_MM_XY = 78.74*MICROSTEPS_Y # change the unit from per mm to per step (NMB)
+    STEPS_PER_MM_XY = 19.68*MICROSTEPS_Y # change the unit from per mm to per step (Dings linear actuator (J))
+
     STEPS_PER_MM_Z = 82.02*MICROSTEPS_Z  # change the unit from per mm to per step
 
     def __init__(self):
@@ -63,7 +65,7 @@ class PosUpdate:
     INTERVAL_MS = 25
 
 class MicrocontrollerDef:
-    MSG_LENGTH = 504
+    MSG_LENGTH = 100
     FIELD_NUM = 7
     CMD_LENGTH = 4
     N_BYTES_POS = 3

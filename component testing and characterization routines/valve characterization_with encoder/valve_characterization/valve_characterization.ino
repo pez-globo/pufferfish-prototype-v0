@@ -41,7 +41,7 @@ volatile bool flag_valve2_flow_detected = false;
 volatile bool flag_valve3_flow_detected = false;
 
 volatile bool flag_valve1_close_position_reset = false;
-volatile bool flag_valve2_close_position_reset = false;
+volatile bool flag_valve2_close_position_reset = true;
 volatile bool flag_valve3_close_position_reset = false;
 
 volatile bool flag_valve1_doing_cyclic_motion = false;
@@ -56,9 +56,7 @@ int valve1_cyclic_motion_step_size = 1;
 int valve2_cyclic_motion_step_size = 1;
 int valve3_cyclic_motion_step_size = 1;
 
-long cyclic_motion_limit_valve1 = 500;
-long cyclic_motion_limit_valve2 = 500;
-long cyclic_motion_limit_valve3 = 500;
+
 
 static inline int sgn(int val) {
  if (val < 0) return -1;
@@ -72,7 +70,7 @@ static inline int sgn(int val) {
 // byte[3]: how many micro steps - lower 8 bits
 
 static const int CMD_LENGTH = 4;
-static const int MSG_LENGTH = 504;
+static const int MSG_LENGTH = 100;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
@@ -108,7 +106,9 @@ static const long X_POS_LIMIT_MM = 12;
 static const int Y_dir = 24;
 static const int Y_step = 22;
 static const int Y_N_microstepping = 2;
-static const long steps_per_mm_Y = 78.74*Y_N_microstepping; 
+//static const long steps_per_mm_Y = 78.74*Y_N_microstepping; 
+static const long steps_per_mm_Y = 19.68*Y_N_microstepping;    // Dings linear actuator (J)
+
 constexpr float MAX_VELOCITY_Y_mm = 7.62; 
 constexpr float MAX_ACCELERATION_Y_mm = 100;
 static const long Y_NEG_LIMIT_MM = -12;
@@ -123,6 +123,9 @@ constexpr float MAX_ACCELERATION_Z_mm = 100;
 static const long Z_NEG_LIMIT_MM = -12;
 static const long Z_POS_LIMIT_MM = 12;
 
+long cyclic_motion_limit_valve1 = 500;
+long cyclic_motion_limit_valve2 = int(steps_per_mm_Y*3);
+long cyclic_motion_limit_valve3 = 500;
 
 
 AccelStepper stepper_X = AccelStepper(AccelStepper::DRIVER, X_step, X_dir);
@@ -185,7 +188,7 @@ volatile int Dir=0;
 void setup() 
 {
   // wait for USB to connect
-  SerialUSB.begin(9600);     
+  SerialUSB.begin(2000000);     
   while(!SerialUSB);            // Wait until connection is established
 
   // reset rx buffer pointer
@@ -298,6 +301,8 @@ void setup()
 
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
+
+  _EncoderTicks = 0;
   
 }
 
@@ -323,7 +328,7 @@ void HandleInterrupt()
     _Encoder_A_Set = digitalRead(Encoder_Pin_A);
 
     Dir = Decoder(_Encoder_A_Prev, _Encoder_B_Prev, _Encoder_A_Set, _Encoder_B_Set);
-    _EncoderTicks += Dir;
+    _EncoderTicks += - Dir;
   
 
     _Encoder_A_Prev = _Encoder_A_Set;
@@ -387,6 +392,8 @@ void loop()
           flag_valve1_doing_cyclic_motion = true;
         if(buffer_rx[1]==1 && flag_valve2_close_position_reset==true)
           flag_valve2_doing_cyclic_motion = true;
+          stepper_Y.setCurrentPosition(0);
+          _EncoderTicks = 0;
         if(buffer_rx[1]==2 && flag_valve3_close_position_reset==true)
           flag_valve3_doing_cyclic_motion = true;
       }

@@ -192,8 +192,10 @@ class Microcontroller():
     def read_received_packet_nowait(self):
         # wait to receive data
         if self.serial.in_waiting==0:
+            print('Waiting for data')
             return None
         if self.serial.in_waiting % self.rx_buffer_length != 0:
+            print('Buffer not full')
             return None
         
         # get rid of old data
