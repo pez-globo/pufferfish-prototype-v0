@@ -59,21 +59,32 @@ class PosUpdate:
 
 class MicrocontrollerDef:
     MSG_LENGTH = 8
-    CMD_LENGTH = 4
+    CMD_LENGTH = 3
     N_BYTES_DATA = 2
-    FLOW_FS = 100.0
-    VOLUME_FS = 800.0
-    PAW_FS = 60.0
+    FLOW_FS = 200.0
+    VOLUME_FS = 1500.0
+    PAW_FS = 50.0
     TIMER_PERIOD_ms = 0.5
-    VT_FS = 800.0
+    VT_FS = 1500.0
     PEEP_FS = 30.0
     TI_FS = 5.0
     RR_FS = 60.0
+    
+    VALVE_POS_OPEN_STEPS_FS = 125;
+    PC_RISE_TIME_MS_FS = 500;
+    PID_COEFFICIENT_P_FS = 0.1;
+    PID_COEFFICIENT_I_FRAC_FS = 1;
+    
     CMD_Vt = 0
     CMD_Ti = 1
     CMD_RR = 2
     CMD_PEEP = 3
     CMD_Flow = 4
+    CMD_Pinsp = 5
+    CMD_RiseTime = 6
+    CMD_PID_P = 7
+    CMD_PID_I_frac = 8
+
     CMD_FlowDeceleratingSlope = 5
 
     Ti_DEFAULT = 1.2

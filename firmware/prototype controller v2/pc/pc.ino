@@ -24,7 +24,7 @@ TruStabilityPressureSensor pressure_sensor( SLAVE_SELECT_PIN, -61.183, 61.183 );
 SDP8XXSensor sdp;
 
 #include <DueTimer.h>
-static const float TIMER_PERIOD_us = 2000; // in us
+static const float TIMER_PERIOD_us = 1000; // in us
 
 static inline int sgn(int val) {
   if (val < 0) return -1;
@@ -32,22 +32,41 @@ static inline int sgn(int val) {
   return 1;
 }
 
-static const int CMD_LENGTH = 2;
+static const int CMD_LENGTH = 3;
 static const int MSG_LENGTH = 8;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
 static const int N_BYTES_POS = 3;
 
-static const int pin_valve2 = 45;
+// pin def
+static const int pin_valve2 = 11;
 
+// command sets
+static const uint8_t CMD_Vt = 0;
+static const uint8_t CMD_Ti = 1;
+static const uint8_t CMD_RR = 2;
+static const uint8_t CMD_PEEP = 3;
+static const uint8_t CMD_Flow = 4;
+static const uint8_t CMD_Pinsp = 5;
+static const uint8_t CMD_RiseTime = 6;
+static const uint8_t CMD_PID_P = 7;
+static const uint8_t CMD_PID_I_frac = 8;
+    
 static const float flow_FS = 200;
 static const float volume_FS = 1500;
 static const float paw_FS = 50;
 static const float Ti_FS = 5;
 static const float Vt_FS = 1500;
 static const float PEEP_FS = 30;
-static const float valve_pos_open_steps = -50;
+static const float RR_FS = 60;
+static const float valve_pos_open_steps_FS = -125;
+
+static const float pc_rise_time_ms_FS = 500;
+static const float PID_coefficient_P_FS = 0.1;
+static const float PID_coefficient_I_frac_FS = 1;
+
+float valve_pos_open_steps = -100;
 
 static const float coefficient_dP2flow = 0.6438;
 static const float coefficient_dp2flow_offset = 1.1029;
@@ -57,17 +76,23 @@ volatile float mflow = 0;
 volatile float mvolume = 0;
 volatile float mpaw = 0;
 
-float RR = 12;
-float Ti = 1.5;
+float RR = 24;
+float Ti = 1.2;
 float Vt = 250;
-float PEEP = 0;
+float PEEP = 5;
 float paw_trigger_th = 3;
 float pc_rise_time_ms = 100;
-float paw_setpoint = 16;
+float paw_setpoint = 20;
 
-float PID_coefficient_P = 0.001;
-float PID_coefficient_I = 0;
+float PID_coefficient_P = 0.01;
+float PID_coefficient_I = 0.001;
+float PID_coefficient_I_frac = 0.1;
 float PID_coefficient_D = 0;
+volatile float paw_setpoint_rise = 0;
+
+volatile float mPEEP = 0;
+volatile float PID_Insp_Integral = 0;
+volatile float PID_Insp_Prop = 0;
 
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
@@ -82,7 +107,10 @@ volatile bool is_breathing = true;
 volatile bool is_in_inspiratory_phase = false;
 volatile bool is_in_pressure_regulation = false;
 volatile bool is_in_expiratory_phase = false;
+volatile bool is_in_pressure_regulation_rise = false;
+volatile bool is_in_pressure_regulation_plateau = false;
 volatile bool PEEP_is_reached = false;
+
 
 // pressure control variables
 volatile float paw_error = 0;
@@ -124,7 +152,7 @@ void setup() {
   pinMode(13, OUTPUT);
   digitalWrite(13, HIGH);
   pinMode(pin_valve2, OUTPUT);
-  digitalWrite(pin_valve2, LOW);
+  analogWrite(pin_valve2, 0);
 
   // initialize the Honeywell pressure sensor
   SPI.begin(); // start SPI communication
@@ -218,16 +246,16 @@ void timer_interruptHandler()
     // time-triggered breath
     if (cycle_time_ms > cycle_period_ms && is_in_inspiratory_phase == false )
     {
-      valve_opening = 1;
       cycle_time_ms = 0;
       is_in_inspiratory_phase = true;
-      is_in_pressure_regulation = false;
+      is_in_pressure_regulation_rise = true;
       is_in_expiratory_phase = false;
       PEEP_is_reached = false;
       mvolume = 0;
+      mPEEP = mpaw;
       set_valve2_state(0);
-      set_valve1_pos(valve_opening);
       digitalWrite(13, HIGH);
+      PID_Insp_Integral = 0;
     }
 
     /*
@@ -261,27 +289,42 @@ void timer_interruptHandler()
     }
     */
 
-    if(is_in_inspiratory_phase == true && is_in_pressure_regulation == false)
-      paw_error = mpaw - paw_setpoint; // prime for differential calculation
-
-    // start pressure regulation when pressure reaches 90% of set pressure
-    if ( mpaw >= 0.7*paw_setpoint && is_in_inspiratory_phase == true && is_in_pressure_regulation == false)
+    if(is_in_pressure_regulation_rise == true && cycle_time_ms <= time_inspiratory_ms)
     {
-      is_in_pressure_regulation = true;
-      paw_error_integrated = 0;
-      // get current valve position
-      valve_opening = get_valve1_pos()/valve_pos_open_steps;
+      // determine state
+      if(cycle_time_ms < pc_rise_time_ms + 200 && mpaw < 0.95*paw_setpoint && is_in_pressure_regulation_plateau == false)
+        is_in_pressure_regulation_rise = true;
+      else
+      {
+        is_in_pressure_regulation_rise = false;
+        is_in_pressure_regulation_plateau = true;
+      }
+      
+      // calculate setpoint
+      paw_setpoint_rise = (paw_setpoint-mPEEP)*(cycle_time_ms/pc_rise_time_ms) + mPEEP;
+      // calculate error
+      paw_error = paw_setpoint_rise - mpaw;
+      PID_Insp_Integral = PID_Insp_Integral + 0.7*PID_coefficient_I*paw_error;
+      PID_Insp_Integral = PID_Insp_Integral > 1 ? 1 : PID_Insp_Integral;
+      PID_Insp_Integral = PID_Insp_Integral < 0 ? 0 : PID_Insp_Integral;
+      PID_Insp_Prop = 0.7*PID_coefficient_P*paw_error;
+      // generate command
+      valve_opening = PID_Insp_Prop + PID_Insp_Integral;
+      valve_opening = valve_opening > 1 ? 1 : valve_opening;
+      valve_opening = valve_opening < 0 ? 0 : valve_opening;
+      set_valve1_pos(valve_opening);
     }
 
-    // pressure regulation
-    if ( is_in_pressure_regulation == true )
+    if(is_in_pressure_regulation_plateau && cycle_time_ms <= time_inspiratory_ms)
     {
-      // compute error
-      paw_error_differential = (mpaw - paw_setpoint) - paw_error;
-      paw_error = mpaw - paw_setpoint;
-      paw_error_integrated = paw_error_integrated + paw_error;
-      // apply control law
-      valve_opening = valve_opening - paw_error*PID_coefficient_P - paw_error_integrated*PID_coefficient_I - paw_error_differential*PID_coefficient_D;
+      // calculate error
+      paw_error = paw_setpoint - mpaw;
+      PID_Insp_Integral = PID_Insp_Integral + PID_coefficient_I*paw_error;
+      PID_Insp_Integral = PID_Insp_Integral > 1 ? 1 : PID_Insp_Integral;
+      PID_Insp_Integral = PID_Insp_Integral < 0 ? 0 : PID_Insp_Integral;
+      PID_Insp_Prop = PID_coefficient_P*paw_error;
+      // generate command
+      valve_opening = PID_Insp_Prop + PID_Insp_Integral;
       valve_opening = valve_opening > 1 ? 1 : valve_opening;
       valve_opening = valve_opening < 0 ? 0 : valve_opening;
       set_valve1_pos(valve_opening);
@@ -292,15 +335,16 @@ void timer_interruptHandler()
     {
       digitalWrite(13, LOW);
       is_in_inspiratory_phase = false;
-      is_in_pressure_regulation = false;
+      is_in_pressure_regulation_rise = false;
+      is_in_pressure_regulation_plateau = false;
       is_in_expiratory_phase = true;
       valve_opening = 0;
       set_valve1_pos(valve_opening);
     }
 
-    // only allow expiratory mflow when mpaw is >= PEEP
     if (is_in_expiratory_phase == true)
-    {
+    { 
+      /*
       if (mpaw > PEEP && PEEP_is_reached == false)
         set_valve2_state(1);
       else
@@ -308,6 +352,8 @@ void timer_interruptHandler()
         set_valve2_state(0);
         PEEP_is_reached = true;
       }
+      */
+      set_valve2_state(1);
     }
   }
 
@@ -330,22 +376,36 @@ void loop()
     if (buffer_rx_ptr == CMD_LENGTH)
     {
       buffer_rx_ptr = 0;
-      if (buffer_rx[0] == 0)
+      if (buffer_rx[0] == CMD_RR)
       {
-        RR = buffer_rx[1];
+        RR = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*RR_FS;
         cycle_period_ms = (60 / RR) * 1000;
       }
-      else if (buffer_rx[0] == 1)
+      else if (buffer_rx[0] == CMD_Ti)
       {
-        Ti = (float(buffer_rx[1]) / 256) * Ti_FS;
+        Ti = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*Ti_FS;
         time_inspiratory_ms = Ti * 1000;
       }
-      else if (buffer_rx[0] == 2)
-        Vt = (float(buffer_rx[1]) / 256) * Vt_FS;
-      else if (buffer_rx[0] == 3)
-        PEEP = (float(buffer_rx[1]) / 256) * PEEP_FS;
-      else if (buffer_rx[0] == 6)
-        paw_setpoint = (float(buffer_rx[1]) / 256) * paw_FS;
+      else if (buffer_rx[0] == CMD_Vt)
+        Vt = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*Vt_FS;
+      else if (buffer_rx[0] == CMD_PEEP)
+        PEEP = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*PEEP_FS;
+      else if (buffer_rx[0] == CMD_Flow)
+        valve_pos_open_steps = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * valve_pos_open_steps_FS;
+      else if (buffer_rx[0] == CMD_Pinsp)
+        paw_setpoint =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
+      else if (buffer_rx[0] == CMD_RiseTime)
+        pc_rise_time_ms =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * pc_rise_time_ms_FS;
+      else if (buffer_rx[0] == CMD_PID_P)
+      {
+        PID_coefficient_P = PID_coefficient_P_FS*(float(buffer_rx[1])*256+float(buffer_rx[2]))/65536.0;
+        PID_coefficient_I = PID_coefficient_P*PID_coefficient_I_frac;
+      }
+      else if (buffer_rx[0] == CMD_PID_I_frac)
+      {
+        PID_coefficient_I_frac = PID_coefficient_I_frac_FS*(float(buffer_rx[1])*256+float(buffer_rx[2]))/65536.0;
+        PID_coefficient_I = PID_coefficient_P*PID_coefficient_I_frac;
+      }
     }
   }
 
@@ -411,9 +471,9 @@ float get_valve1_pos()
 void set_valve2_state(int state)
 {
   if (state > 0)
-    digitalWrite(pin_valve2, LOW);
+    analogWrite(pin_valve2, 125);
   else
-    digitalWrite(pin_valve2, HIGH);
+    analogWrite(pin_valve2, 255);
 }
 
 // utils

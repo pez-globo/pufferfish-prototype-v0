@@ -121,10 +121,47 @@ class ControlPanel(QFrame):
 		self.entry_PEEP.setSingleStep(0.5)
 		self.entry_PEEP.setValue(MicrocontrollerDef.PEEP_DEFAULT)
 
+		self.entry_Pi = QDoubleSpinBox()
+		self.entry_Pi.setFont(self.font)
+		self.entry_Pi.setMinimum(5)
+		self.entry_Pi.setMaximum(50)
+		self.entry_Pi.setSingleStep(1)
+		self.entry_Pi.setValue(15)
+
+		self.entry_RiseTime = QDoubleSpinBox()
+		self.entry_RiseTime.setFont(self.font)
+		self.entry_RiseTime.setMinimum(50)
+		self.entry_RiseTime.setMaximum(500)
+		self.entry_RiseTime.setSingleStep(1)
+		self.entry_RiseTime.setValue(100)
+
 		self.entry_Flow = QDoubleSpinBox()
 		self.entry_Flow.setFont(self.font)
 		self.entry_Flow.setMinimum(20)
 		self.entry_Flow.setMaximum(100)
+		self.entry_Flow.setSingleStep(5)
+		self.entry_Flow.setValue(100)
+
+		self.entry_PID_P = QDoubleSpinBox()
+		self.entry_PID_P.setDecimals(5)
+		self.entry_PID_P.setFont(self.font)
+		self.entry_PID_P.setMinimum(0.000001)
+		self.entry_PID_P.setMaximum(0.1)
+		self.entry_PID_P.setSingleStep(0.0001)
+		self.entry_PID_P.setValue(0.01)
+
+		self.entry_PID_I_frac = QDoubleSpinBox()
+		self.entry_PID_I_frac.setDecimals(5)
+		self.entry_PID_I_frac.setFont(self.font)
+		self.entry_PID_I_frac.setMinimum(0.000001)
+		self.entry_PID_I_frac.setMaximum(1)
+		self.entry_PID_I_frac.setSingleStep(0.001)
+		self.entry_PID_I_frac.setValue(0.1)
+
+		self.entry_Flow = QDoubleSpinBox()
+		self.entry_Flow.setFont(self.font)
+		self.entry_Flow.setMinimum(20)
+		self.entry_Flow.setMaximum(125)
 		self.entry_Flow.setSingleStep(5)
 		self.entry_Flow.setValue(100)
 
@@ -156,24 +193,53 @@ class ControlPanel(QFrame):
 		grid_line4.addWidget(self.entry_Flow, 0,1)
 
 		grid_line5 = QGridLayout()
-		grid_line5.addWidget(QLabel('Slope',font=self.font), 0,0)
+		grid_line5.addWidget(QLabel('FlowDec',font=self.font), 0,0)
 		grid_line5.addWidget(self.entry_FlowDeceleratingSlope, 0,1)
+
+
+		grid_line6 = QGridLayout()
+		grid_line6.addWidget(QLabel('P_Insp',font=self.font), 0,0)
+		grid_line6.addWidget(self.entry_Pi, 0,1)
+
+		grid_line7 = QGridLayout()
+		grid_line7.addWidget(QLabel('Rise Time (ms)',font=self.font), 0,0)
+		grid_line7.addWidget(self.entry_RiseTime, 0,1)
+
+		grid_line8 = QGridLayout()
+		grid_line8.addWidget(QLabel('P Gain',font=self.font), 0,0)
+		grid_line8.addWidget(self.entry_PID_P, 0,1)
+
+		grid_line9 = QGridLayout()
+		grid_line9.addWidget(QLabel('I Gain (frac)',font=self.font), 0,0)
+		grid_line9.addWidget(self.entry_PID_I_frac, 0,1)
+
 
 		self.grid = QGridLayout()
 		self.grid.addLayout(grid_line0,0,0)
 		self.grid.addLayout(grid_line1,0,1)
 		self.grid.addLayout(grid_line2,0,2)
 		self.grid.addLayout(grid_line3,0,3)
-		# self.grid.addLayout(grid_line4,0,4)
-		# self.grid.addLayout(grid_line5,0,5)
+		self.grid.addLayout(grid_line5,0,5)
+
+		self.grid.addLayout(grid_line6,1,0)
+		self.grid.addLayout(grid_line7,1,1)
+		self.grid.addLayout(grid_line8,1,2)
+		self.grid.addLayout(grid_line9,1,3)
+		self.grid.addLayout(grid_line4,1,4)
+
 		self.setLayout(self.grid)
 
 		self.entry_VT.valueChanged.connect(self.ventController.setVT)
 		self.entry_Ti.valueChanged.connect(self.ventController.setTi)
 		self.entry_RR.valueChanged.connect(self.ventController.setRR)
 		self.entry_PEEP.valueChanged.connect(self.ventController.setPEEP)
-		# self.entry_Flow.valueChanged.connect(self.ventController.setFlow)
+		self.entry_Flow.valueChanged.connect(self.ventController.setFlow)
 		# self.entry_FlowDeceleratingSlope.valueChanged.connect(self.ventController.setFlowDeceleratingSlope)
+		self.entry_Pi.valueChanged.connect(self.ventController.setPinsp)
+		self.entry_RiseTime.valueChanged.connect(self.ventController.setRiseTime)
+		self.entry_PID_P.valueChanged.connect(self.ventController.setPID_P)
+		self.entry_PID_I_frac.valueChanged.connect(self.ventController.setPID_I_frac)
+
 
 # from Deepak
 class PlotWidget(pg.GraphicsLayoutWidget):
@@ -270,7 +336,7 @@ class WaveformDisplay(QFrame):
 	def add_components(self):
 		self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
 		self.plotWidgets['Airway Pressure'].plot1.setYRange(min=0,max=50)
-		self.plotWidgets['Flow Rate'].plot1.setYRange(min=-80,max=80)
+		self.plotWidgets['Flow Rate'].plot1.setYRange(min=-100,max=100)
 		self.plotWidgets['Volume'].plot1.setYRange(min=0,max=600)
 
 		grid = QGridLayout() 

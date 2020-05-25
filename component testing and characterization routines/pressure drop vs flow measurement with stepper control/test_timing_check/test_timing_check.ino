@@ -278,8 +278,8 @@ void loop()
       if (ret_hsc_sensor_1+ret_hsc_sensor_2+ret_hsc_sensor_3 == 0)
       {
         mPressure_1 = hsc_sensor_1.pressure();
-       mPressure_2 = hsc_sensor_2.pressure();
-       mPressure_3 = hsc_sensor_3.pressure();
+        mPressure_2 = hsc_sensor_2.pressure();
+        mPressure_3 = hsc_sensor_3.pressure();
       }
     }
     flag_read_sensor = false;

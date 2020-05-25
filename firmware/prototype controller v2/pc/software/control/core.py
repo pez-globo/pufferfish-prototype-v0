@@ -80,10 +80,23 @@ class VentController(QObject):
         self.PEEP = value
 
     def setFlow(self,value):
-        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Flow,value/100)
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Flow,value/MicrocontrollerDef.VALVE_POS_OPEN_STEPS_FS)
 
-    def setFlowDeceleratingSlope(self,value):
-        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_FlowDeceleratingSlope,value/100)
+    # def setFlowDeceleratingSlope(self,value):
+    #     self.microcontroller.set_parameter(MicrocontrollerDef.CMD_FlowDeceleratingSlope,value/100)
+
+    def setPinsp(self,value):
+        print('setting P_insp')
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_Pinsp,value/MicrocontrollerDef.PAW_FS)
+
+    def setRiseTime(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_RiseTime,value/MicrocontrollerDef.PC_RISE_TIME_MS_FS)
+
+    def setPID_P(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_PID_P,value/MicrocontrollerDef.PID_COEFFICIENT_P_FS)
+
+    def setPID_I_frac(self,value):
+        self.microcontroller.set_parameter(MicrocontrollerDef.CMD_PID_I_frac,value/MicrocontrollerDef.PID_COEFFICIENT_I_FRAC_FS)
 
 
 # class DataLogger(QObject):
