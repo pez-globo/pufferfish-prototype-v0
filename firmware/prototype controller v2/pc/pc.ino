@@ -42,6 +42,13 @@ static const int N_BYTES_POS = 3;
 // pin def
 static const int pin_valve2 = 11;
 
+// mode def
+# define MODE_VC_AC   0
+# define MODE_PC_AC   1
+# define MODE_VC_SIMV 2
+# define MODE_PC_SIMV 3
+# define MODE_PSV     4
+
 // command sets
 static const uint8_t CMD_Vt = 0;
 static const uint8_t CMD_Ti = 1;
@@ -73,8 +80,10 @@ static const float coefficient_dp2flow_offset = 1.1029;
 
 volatile float dP = 0;
 volatile float mflow = 0;
+volatile float mflow_peak = 0;
 volatile float mvolume = 0;
 volatile float mpaw = 0;
+volatile float paw_setpoint = 0;
 
 float RR = 24;
 float Ti = 1.2;
@@ -82,7 +91,9 @@ float Vt = 250;
 float PEEP = 5;
 float paw_trigger_th = 3;
 float pc_rise_time_ms = 100;
-float paw_setpoint = 20;
+float pinsp_setpoint = 20;
+float psupport = 10;
+bool pressure_support_enabled = false;
 
 float PID_coefficient_P = 0.01;
 float PID_coefficient_I = 0.001;
@@ -109,8 +120,8 @@ volatile bool is_in_pressure_regulation = false;
 volatile bool is_in_expiratory_phase = false;
 volatile bool is_in_pressure_regulation_rise = false;
 volatile bool is_in_pressure_regulation_plateau = false;
+volatile bool is_in_pressure_support = false;
 volatile bool PEEP_is_reached = false;
-
 
 // pressure control variables
 volatile float paw_error = 0;
@@ -252,26 +263,34 @@ void timer_interruptHandler()
       is_in_expiratory_phase = false;
       PEEP_is_reached = false;
       mvolume = 0;
+      mflow_peak = 0;
       mPEEP = mpaw;
       set_valve2_state(0);
       digitalWrite(13, HIGH);
       PID_Insp_Integral = 0;
     }
 
-    /*
     // patient triggered breath
     if ( mpaw < paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false )
     {
       cycle_time_ms = 0;
       is_in_inspiratory_phase = true;
+      is_in_pressure_regulation_rise = true;
       is_in_expiratory_phase = false;
       PEEP_is_reached = false;
       mvolume = 0;
+      mflow_peak = 0;
+      mPEEP = mpaw;
       set_valve2_state(0);
-      set_valve1_state(1);
       digitalWrite(13, HIGH);
+      PID_Insp_Integral = 0;
+      
+      // determine whether this is a mandatory breath or a supported breath
+      // for testing, set all patient triggered breathes as supported breathes
+      if(pressure_support_enabled == true)
+        is_in_pressure_support = true;
     }
-    */
+
 
     /*
     // generate decelerating waveform
@@ -291,6 +310,10 @@ void timer_interruptHandler()
 
     if(is_in_pressure_regulation_rise == true && cycle_time_ms <= time_inspiratory_ms)
     {
+      // update mflow_peak
+      mflow_peak =  max(mflow,mflow_peak);
+      // determine state and calculate setpoint
+      paw_setpoint = is_in_pressure_support ? (mPEEP + psupport) : pinsp_setpoint;
       // determine state
       if(cycle_time_ms < pc_rise_time_ms + 200 && mpaw < 0.95*paw_setpoint && is_in_pressure_regulation_plateau == false)
         is_in_pressure_regulation_rise = true;
@@ -299,10 +322,9 @@ void timer_interruptHandler()
         is_in_pressure_regulation_rise = false;
         is_in_pressure_regulation_plateau = true;
       }
-      
-      // calculate setpoint
+      // determine rise setpoint
       paw_setpoint_rise = (paw_setpoint-mPEEP)*(cycle_time_ms/pc_rise_time_ms) + mPEEP;
-      // calculate error
+        // calculate error
       paw_error = paw_setpoint_rise - mpaw;
       PID_Insp_Integral = PID_Insp_Integral + 0.7*PID_coefficient_I*paw_error;
       PID_Insp_Integral = PID_Insp_Integral > 1 ? 1 : PID_Insp_Integral;
@@ -315,10 +337,10 @@ void timer_interruptHandler()
       set_valve1_pos(valve_opening);
     }
 
-    if(is_in_pressure_regulation_plateau && cycle_time_ms <= time_inspiratory_ms)
+    if(is_in_pressure_regulation_plateau)
     {
       // calculate error
-      paw_error = paw_setpoint - mpaw;
+      paw_error = pinsp_setpoint - mpaw;
       PID_Insp_Integral = PID_Insp_Integral + PID_coefficient_I*paw_error;
       PID_Insp_Integral = PID_Insp_Integral > 1 ? 1 : PID_Insp_Integral;
       PID_Insp_Integral = PID_Insp_Integral < 0 ? 0 : PID_Insp_Integral;
@@ -330,16 +352,28 @@ void timer_interruptHandler()
       set_valve1_pos(valve_opening);
     }
 
+    if(is_in_pressure_support && mflow <= 0.25*mflow_peak)
+    {
+      // change to exhalation
+      is_in_inspiratory_phase = false;
+      is_in_pressure_regulation_plateau = false;
+      is_in_pressure_support = false;
+      is_in_expiratory_phase = true;
+      valve_opening = 0;
+      set_valve1_pos(valve_opening);
+      digitalWrite(13, LOW);
+    }
+
     // breathing control - change to exhalation when Ti is reached
     if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
     {
-      digitalWrite(13, LOW);
       is_in_inspiratory_phase = false;
       is_in_pressure_regulation_rise = false;
       is_in_pressure_regulation_plateau = false;
       is_in_expiratory_phase = true;
       valve_opening = 0;
       set_valve1_pos(valve_opening);
+      digitalWrite(13, LOW);
     }
 
     if (is_in_expiratory_phase == true)
@@ -393,7 +427,7 @@ void loop()
       else if (buffer_rx[0] == CMD_Flow)
         valve_pos_open_steps = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * valve_pos_open_steps_FS;
       else if (buffer_rx[0] == CMD_Pinsp)
-        paw_setpoint =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
+        pinsp_setpoint =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
       else if (buffer_rx[0] == CMD_RiseTime)
         pc_rise_time_ms =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * pc_rise_time_ms_FS;
       else if (buffer_rx[0] == CMD_PID_P)
