@@ -13,4 +13,4 @@ To use the software
 Folder structure
 - pressure drop vs flow measurement with stepper control can be used to move the linear actuator (including closing the valve by stopping the flow), and log stepper position, pressure and flow. Currently included are three Honeywell HSC pressure sensors and one Sensirion SFM3000/SFM3200 flow sensor. Contact Hongquan for questions.
 - actuator_speed_test actuates the valve at > 360 cycles per minute, data logging is currently done in a separate program (evaluation software for SFM3300-AW) but will be added to the firmware/python program. Contact Hongquan for questions
-- valve characterization_with encoder have uses a linear magnetic encoder to monitor the position of the pinch shoe. Contact Deepak for questions.
+- valve characterization_with encoder uses a linear magnetic encoder to monitor the position of the pinch shoe. Contact Deepak for questions.
