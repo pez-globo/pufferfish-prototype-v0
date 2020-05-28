@@ -53,7 +53,7 @@ int valve3_cyclic_motion_step_size = 2;
 
 long cyclic_motion_limit_valve1 = 250;
 long cyclic_motion_limit_valve2 = 250;
-long cyclic_motion_limit_valve3 = 100;
+long cyclic_motion_limit_valve3 = 120;
 
 static inline int sgn(int val) {
  if (val < 0) return -1;
