@@ -55,6 +55,12 @@ public:
    * @return 0 on sucess, error code otherwise
    */
   int read_sample();
+    
+  /**
+  * start continuous reading
+  * @return 0 on sucess, error code otherwise
+  */
+  int start_continuous();
 
   /**
    * Returns the last flow measurement

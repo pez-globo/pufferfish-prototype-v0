@@ -18,6 +18,7 @@ init			KEYWORD2
 get_scale_offset	KEYWORD2
 read_sample		KEYWORD2
 get_flow		KEYWORD2
+start_continuous	KEYWORD2
 
 #######################################
 # Instances (KEYWORD2)

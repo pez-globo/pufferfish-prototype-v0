@@ -94,18 +94,26 @@ int SFMSensor::get_scale_offset()
   return 0;
 }
 
+int SFMSensor::start_continuous()
+{
+    const uint8_t CMD_LEN = 2;
+    uint8_t cmd[CMD_LEN] = { 0x10, 0x00 };
+    uint8_t ret;
+    
+    ret = I2CHelper::i2c_write(mI2CAddress, cmd, CMD_LEN);
+    if (ret != 0) {
+      return 1;
+    }
+    
+    return 0;
+}
+
 int SFMSensor::read_sample()
 {
-  const uint8_t CMD_LEN = 2;
-  uint8_t cmd[CMD_LEN] = { 0x10, 0x00 };
   const uint8_t DATA_LEN = 3;
   uint8_t data[DATA_LEN] = { 0 };
   uint8_t ret;
 
-  ret = I2CHelper::i2c_write(mI2CAddress, cmd, CMD_LEN);
-  if (ret != 0) {
-    return 1;
-  }
   ret = I2CHelper::i2c_read(mI2CAddress, data, DATA_LEN);
   if (ret != 0) {
     return 2;
