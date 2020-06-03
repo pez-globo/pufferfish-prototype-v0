@@ -13,6 +13,7 @@ import control.widgets as widgets
 import control.core as core
 import control.microcontroller as microcontroller
 from control._def import *
+from control.utils import *
 
 class VentDevGUI(QMainWindow):
 
@@ -21,7 +22,8 @@ class VentDevGUI(QMainWindow):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-
+        
+		super().setStyleSheet(open(css_file()).read())
 		# load objects
 		if SIMULATION:
 			self.microcontroller = microcontroller.Microcontroller_Simulation()

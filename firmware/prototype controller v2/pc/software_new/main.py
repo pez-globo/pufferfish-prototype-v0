@@ -10,6 +10,10 @@ from qtpy.QtGui import *
 
 # app specific libraries
 import control.gui as gui
+import pyqtgraph                           as     pg
+
+pg.setConfigOption('background', pg.mkColor(186, 227, 230))
+pg.setConfigOption('foreground', 'k')
 
 if __name__ == "__main__":
 
