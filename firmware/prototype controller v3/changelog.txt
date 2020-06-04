@@ -1,0 +1,3 @@
+06/03/2020: for the new hand soldered controller board
+1. Use I2C max
+2. Use PWM_lib

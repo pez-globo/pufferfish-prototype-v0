@@ -155,3 +155,23 @@ class plot_4vent():
             self.iter = self.iter +1
             dict_item['rolldata_prev'][:self.size] = dict_item['rolldata'][:self.size]
             dict_item['rolldata'][:self.size]      = [0.0]*self.size
+
+    def update_plots(self, value1, value2):
+        ''' Note: the functions need to be globals and included in this file via backend.py'''
+        size = constants.__SIZE__
+        for dict_item in self.series:
+            brush = dict_item['brush']
+            xd = value1
+            yd = value2
+            dict_item['rolldata_prev'][self.counter]  = 0
+            dict_item['rolldata'][self.counter]       = yd
+            dict_item['rollcounts'][self.counter]     = xd
+            dict_item['plot'].setData(y=dict_item['rolldata'], x=dict_item['rollcounts'])
+            dict_item['plot_prev'].setData(y=dict_item['rolldata_prev'], x=dict_item['rollcounts'],
+                                           fillLevel=0, pen=self.__PEN__['black'], brush=self.__BRUSH__['lblue'])
+        self.counter = (self.counter+1) % self.size
+        self.tmo     = self.tmo +1
+        if self.counter == 0:
+            self.iter = self.iter +1
+            dict_item['rolldata_prev'][:self.size] = dict_item['rolldata'][:self.size]
+            dict_item['rolldata'][:self.size]      = [0.0]*self.size

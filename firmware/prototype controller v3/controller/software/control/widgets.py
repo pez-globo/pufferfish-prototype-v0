@@ -8,15 +8,12 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
-from _def import *
+from control._def import *
 
 import numpy as np
 import pyqtgraph as pg
 from collections import deque
 import time
-
-from plot4vent import plot_4vent
-import constants as constants
 
 class stepperMotorWidget(QFrame):
 	def __init__(self, stepperMotorController, main=None, *args, **kwargs):
@@ -244,7 +241,6 @@ class ControlPanel(QFrame):
 		self.entry_PID_I_frac.valueChanged.connect(self.ventController.setPID_I_frac)
 
 
-'''
 # from Deepak
 class PlotWidget(pg.GraphicsLayoutWidget):
 
@@ -328,50 +324,22 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.right_Ord = []
 		self.left_curve.setData(self.left_Abs,self.left_Ord)
 		self.right_curve.setData(self.right_Abs,self.right_Ord)
-'''
+
 
 class WaveformDisplay(QFrame):
 
 	def __init__(self, main=None, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.row_idx = 0
-		self.plots  = []
 		self.add_components()
 		self.setFrameStyle(QFrame.Panel | QFrame.Raised)
 
 	def add_components(self):
+		self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
+		self.plotWidgets['Airway Pressure'].plot1.setYRange(min=0,max=50)
+		self.plotWidgets['Flow Rate'].plot1.setYRange(min=-100,max=100)
+		self.plotWidgets['Volume'].plot1.setYRange(min=0,max=600)
 
-		plot_layout = QGridLayout()
-		self.plot_grp_box = QGroupBox()
-		r = 0
-		for dict_item in constants.__PLOTS__:
-			r = r+1
-			plot = plot_4vent(dict_item['name'], dict_item['xrange'], dict_item['yrange'], size=constants.__SIZE__)
-			plot.add_series(dict_item['name'], dict_item['callback'])
-			#plot_layout.setVerticalSpacing(20)
-			#plot_layout.setOriginCorner(50)
-			plot_layout.addWidget(plot.get(),r+self.row_idx,0)
-			self.plots.append(plot)
-		self.plot_grp_box.setLayout(plot_layout)
-
-		window_layout = QGridLayout()
-		window_layout.addWidget(self.plot_grp_box,1,0,3,5)
-		self.setLayout(window_layout)
-
-		# self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
-		# self.plotWidgets['Airway Pressure'].plot1.setYRange(min=0,max=50)
-		# self.plotWidgets['Flow Rate'].plot1.setYRange(min=-100,max=100)
-		# self.plotWidgets['Volume'].plot1.setYRange(min=0,max=600)
-
-		# grid = QGridLayout() 
-		# for ii, key in enumerate(PLOTS):
-		# 	grid.addWidget(self.plotWidgets[key], ii, 0,1,2)
-		# self.setLayout(grid)
-		
-	def plot_values(self):
-		for p in self.plots:
-			p.run_series(constants.__SIZE__) # TODO Make sure the plots are of same size for now
-
-	def plot_receiced_values(self,value1,value2):
-		for p in self.plots:
-			p.update_plots(value1,value2) # TODO Make sure the plots are of same size for now
+		grid = QGridLayout() 
+		for ii, key in enumerate(PLOTS):
+			grid.addWidget(self.plotWidgets[key], ii, 0,1,2)
+		self.setLayout(grid)

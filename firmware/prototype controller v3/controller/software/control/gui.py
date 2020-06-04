@@ -9,11 +9,10 @@ from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
 # app specific libraries
-import widgets as widgets
-import core as core
-import microcontroller as microcontroller
-from _def import *
-from utils import *
+import control.widgets as widgets
+import control.core as core
+import control.microcontroller as microcontroller
+from control._def import *
 
 class VentDevGUI(QMainWindow):
 
@@ -22,8 +21,7 @@ class VentDevGUI(QMainWindow):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-        
-		super().setStyleSheet(open(css_file()).read())
+
 		# load objects
 		if SIMULATION:
 			self.microcontroller = microcontroller.Microcontroller_Simulation()
@@ -52,11 +50,9 @@ class VentDevGUI(QMainWindow):
 		# make connections
 		self.stepperMotorController.xPos.connect(self.navigationWidget.label_Xpos.setNum)
 		self.stepperMotorController.yPos.connect(self.navigationWidget.label_Ypos.setNum)
-		# self.waveforms.signal_updatePlot.connect(self.waveformDisplay.plot_values)
-		self.waveforms.signal_updatePlot_withValues.connect(self.waveformDisplay.plot_receiced_values)
-		# self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway Pressure'].update_plot)
-		# self.waveforms.signal_Flow.connect(self.waveformDisplay.plotWidgets['Flow Rate'].update_plot)
-		# self.waveforms.signal_Volume.connect(self.waveformDisplay.plotWidgets['Volume'].update_plot)
+		self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway Pressure'].update_plot)
+		self.waveforms.signal_Flow.connect(self.waveformDisplay.plotWidgets['Flow Rate'].update_plot)
+		self.waveforms.signal_Volume.connect(self.waveformDisplay.plotWidgets['Volume'].update_plot)
 
 
 	def closeEvent(self, event):

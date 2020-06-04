@@ -9,12 +9,7 @@ from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
 # app specific libraries
-import gui as gui
-import pyqtgraph                           as     pg
-
-# pg.setConfigOption('background', pg.mkColor(186, 227, 230))
-pg.setConfigOption('background', pg.mkColor(207, 227, 227))
-pg.setConfigOption('foreground', 'k')
+import control.gui as gui
 
 if __name__ == "__main__":
 

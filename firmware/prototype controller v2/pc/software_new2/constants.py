@@ -38,7 +38,7 @@ __MODES__ = ['PC-BIPAP', 'PC-AC', 'PC-APRV', 'VC-MMV', 'ATC', 'SPN-PPS']
 ### PC-BIPAP
 __XRANGE__ = (0, 10*np.pi)
 __YRANGE__ = (-5, 6)
-__SIZE__   = 200
+__SIZE__   = 2000
 __CADENCE__ = 100 # Every __CADENCE__ milliseconds
 __PLOTS__ = [
     { 'name': 'Flow mBar', 'callback' : backend.plot_sine, 'xrange':__XRANGE__, 'yrange':__YRANGE__ },

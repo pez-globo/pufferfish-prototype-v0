@@ -8,15 +8,14 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
-import utils as utils
-from _def import *
+import control.utils as utils
+from control._def import *
 
 from queue import Queue
 import time
 import numpy as np
 import pyqtgraph as pg
 from datetime import datetime
-from pathlib import Path
 
 class ValveController(QObject):
 
@@ -117,12 +116,9 @@ class Waveforms(QObject):
     signal_Volume = Signal(float,float)
     signal_Flow = Signal(float,float)
 
-    signal_updatePlot = Signal()
-    signal_updatePlot_withValues = Signal(float,float)
-
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
-        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
+        self.file = open("/Users/hongquanli/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
         self.file.write('Time (s),Paw (cmH2O),Flow (l/min),Volume (ml),Vt (ml),Ti (s),RR (/min),PEEP (cmH2O)\n')
         self.microcontroller = microcontroller
         self.ventController = ventController
@@ -147,14 +143,12 @@ class Waveforms(QObject):
 
         # Use the processor clock to determine elapsed time since last function call
         self.time_now = time.time()
-        self.time = self.time_now%20
       
         if SIMULATION:
             self.Paw = (self.Paw + 0.2)%5
             self.Volume = (self.Volume + 0.2)%5
             self.Flow = (self.Flow + 0.2)%5
             self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
-
         else:
             readout = self.microcontroller.read_received_packet_nowait()
             if readout is not None:
@@ -167,14 +161,13 @@ class Waveforms(QObject):
         # reduce display refresh rate
         self.counter_display = self.counter_display + 1
         if self.counter_display>=1:
+            self.time_diff = self.time_now - self.time_prev
+            self.time_prev = self.time_now
+            self.time += self.time_diff
             self.counter_display = 0
             self.signal_Paw.emit(self.time,self.Paw)
             self.signal_Flow.emit(self.time,self.Flow)
             self.signal_Volume.emit(self.time,self.Volume)
-            # self.signal_updatePlot.emit() # right now this triggers the update of the plot
-            self.signal_updatePlot_withValues.emit(self.time,self.Paw)
-
-            print(self.time)
 
         # file flushing
         self.counter_file_flush = self.counter_file_flush + 1

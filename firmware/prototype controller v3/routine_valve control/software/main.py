@@ -1,6 +1,8 @@
 # set QT_API environment variable
 import os 
 os.environ["QT_API"] = "pyqt5"
+#os.environ["QT_API"] = "pyside2"
+
 import qtpy
 
 # qt libraries
@@ -9,16 +11,13 @@ from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
 # app specific libraries
-import gui as gui
-import pyqtgraph                           as     pg
-
-# pg.setConfigOption('background', pg.mkColor(186, 227, 230))
-pg.setConfigOption('background', pg.mkColor(207, 227, 227))
-pg.setConfigOption('foreground', 'k')
+import control.gui_motion_only as gui
+#import control.gui_2cameras_async as gui
+#import control.gui_tiscamera as gui
 
 if __name__ == "__main__":
 
     app = QApplication([])
-    win = gui.VentDevGUI()
+    win = gui.OctopiGUI()
     win.show()
     app.exec_() #sys.exit(app.exec_())
