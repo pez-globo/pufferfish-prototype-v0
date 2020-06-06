@@ -94,9 +94,9 @@ class MicrocontrollerDef:
 
 
 class WAVEFORMS:
-    UPDATE_INTERVAL_MS = 12.5 # In milliseconds
+    UPDATE_INTERVAL_MS = 25 # In milliseconds
     DISPLAY_RANGE_S = 10 # In seconds
-    DISPLAY_DOWNSAMPLING_FACTOR = 10
+    DISPLAY_DOWNSAMPLING_FACTOR = 20
 
 PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
