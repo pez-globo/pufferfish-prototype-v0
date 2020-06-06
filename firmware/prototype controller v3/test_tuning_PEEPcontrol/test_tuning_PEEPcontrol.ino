@@ -79,6 +79,10 @@ void setup()
   //extra ground
   pinMode(18,OUTPUT);
   digitalWrite(18,LOW);
+
+  // starting PWM signals
+  pwm_wrapper_pin35_ptr->start(PWM_PERIOD_PIN_35,PWM_DUTY_PIN_35);
+  change_duty(*pwm_wrapper_pin35_ptr,4500,PWM_PERIOD_PIN_35);
   
   SerialUSB.begin(2000000);     
   while(!SerialUSB);            // Wait until connection is established
@@ -215,14 +219,31 @@ void loop()
   SerialUSB.print( " " );
   SerialUSB.println( abp_5psi_2.unit() );
   */
+
+  SerialUSB.print( flow_1 );
+  SerialUSB.print( "slm \t" );
+
+  SerialUSB.print( flow_2 );
+  SerialUSB.print( "slm \t" );
   
   SerialUSB.print( abp_30psi_1.pressure() );
   SerialUSB.print( " " );
   SerialUSB.print( abp_30psi_1.unit() );
   SerialUSB.print( "\t" );
+  SerialUSB.print( abp_30psi_2.pressure() );
+  SerialUSB.print( " " );
+  SerialUSB.print( abp_30psi_2.unit() );
+  SerialUSB.print( "\t" );
+  SerialUSB.print( abp_5psi_1.pressure()*70.307 );
+  SerialUSB.print( " cmH2O" );
+  SerialUSB.print( "\t" );
   SerialUSB.print( abp_5psi_2.pressure() );
   SerialUSB.print( " " );
-  SerialUSB.println( abp_5psi_2.unit() );
+  SerialUSB.print( abp_5psi_2.unit() );
+  SerialUSB.print( "\t" );
+  SerialUSB.print( abp_5psi_3.pressure() );
+  SerialUSB.print( " " );
+  SerialUSB.println( abp_5psi_3.unit() );
 
 }
 

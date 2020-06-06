@@ -4,11 +4,14 @@
 //    Blue:     4 (RJ45)  VCC (5V)
 //    Green:    6 (RJ45)  SCK
 
+
 // 06/03/2020 12:01 PM
 // to do: (1) update motor position (from 4 to 1 and 2), remove one motor driver
 // to do: (2) data communication, remove one stepper, add one flow
 // to do: (3) add mFlow_2 etc for the second valve 
 
+//
+06/04/2020 22:33 closing valve 1 working
 static const bool USE_SERIAL_MONITOR = false;
 
 #include <Wire.h>
@@ -149,8 +152,10 @@ TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 TMC2209Stepper Z_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 
 // driver 1 actuator 1
-static const int X_dir = 28;
-static const int X_step = 26;
+//static const int X_dir = 28;
+//static const int X_step = 26;
+static const int X_dir = 27;
+static const int X_step = 29;
 static const int X_N_microstepping = 2;
 static const long steps_per_mm_X = 78.74*X_N_microstepping; 
 constexpr float MAX_VELOCITY_X_mm = 7.62; 
@@ -172,8 +177,10 @@ static const long Y_NEG_LIMIT_MM = -12;
 static const long Y_POS_LIMIT_MM = 12;
 
 // active stepper
-static const int Z_dir = 27;
-static const int Z_step = 29;
+//static const int Z_dir = 27;
+//static const int Z_step = 29;
+static const int Z_dir = 28;
+static const int Z_step = 26;
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Y_N_microstepping; 
 constexpr float MAX_VELOCITY_Z_mm = 30; 
@@ -270,7 +277,8 @@ void setup()
 //  stepper_Z.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
 //  stepper_Z.enableOutputs();
   
-  select_driver(4);
+  //select_driver(4);
+  select_driver(1);
   while(!STEPPER_SERIAL);
   Z_driver.begin();
   Z_driver.I_scale_analog(false);  
