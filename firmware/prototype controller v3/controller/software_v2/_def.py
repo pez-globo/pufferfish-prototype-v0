@@ -58,7 +58,7 @@ class PosUpdate:
     INTERVAL_MS = 25
 
 class MicrocontrollerDef:
-    MSG_LENGTH = 8
+    MSG_LENGTH = 24
     CMD_LENGTH = 3
     N_BYTES_DATA = 2
     FLOW_FS = 200.0
@@ -102,7 +102,7 @@ PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
 PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
 
-SIMULATION = True
+SIMULATION = False
 
 class MCU:
     TIMER_PERIOD_ms = 1.25
