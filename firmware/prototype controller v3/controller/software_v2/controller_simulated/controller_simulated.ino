@@ -25,7 +25,7 @@ void timer_interruptHandler()
 {
   // send data to host computer
   counter_send_data = counter_send_data + 1;
-  if (counter_send_data*TIMER_PERIOD_us >= 25*1000 )
+  if (counter_send_data*TIMER_PERIOD_us >= 50*1000 )
   {
     counter_send_data = 0;
     flag_send_data = true;
