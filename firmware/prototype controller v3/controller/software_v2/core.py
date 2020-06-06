@@ -149,9 +149,11 @@ class Waveforms(QObject):
         # Use the processor clock to determine elapsed time since last function call
         # self.time_now = time.time_ns()
         # self.time = int(self.time_now/1000000)%self.size # in ms now
-        self.time = (self.time + 1)%self.size
+        
       
+        SIMULATION = False
         if SIMULATION:
+            self.time = (self.time + 1)%self.size
             prev = (self.time-1) if self.time else 0
             self.Paw[self.time] = (self.Paw[prev] + 0.1)%5
             self.Volume[self.time] = (self.Volume[prev] + 0.4)%5
@@ -161,6 +163,7 @@ class Waveforms(QObject):
         else:
             readout = self.microcontroller.read_received_packet_nowait()
             if readout is not None:
+                self.time = (self.time + 1)%self.size
                 self.Paw[self.time] = (256.0*readout[0] + readout[1])/200
                 # self.Paw[self.time] = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
                 # self.Flow[self.time] = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
