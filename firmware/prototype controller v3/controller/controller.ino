@@ -15,8 +15,8 @@ static const bool USE_SERIAL_MONITOR = false;
 /***************************************************************************************************/
 /********************************************* Parameters *********************************************/
 /***************************************************************************************************/
-static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 8000;
-uint32_t exhalation_control_PEEP_duty = 0;
+static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 4500;
+uint32_t exhalation_control_PEEP_duty = 1000;
 static const float TIMER_PERIOD_us = 1000; // in us
 
 /***************************************************************************************************/
