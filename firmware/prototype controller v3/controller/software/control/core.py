@@ -148,15 +148,23 @@ class Waveforms(QObject):
 
     def update_waveforms(self):
         # self.time = self.time + (1/1000)*WAVEFORMS.UPDATE_INTERVAL_MS
-
-        # Use the processor clock to determine elapsed time since last function call
-        self.time_now = time.time()
       
         if SIMULATION:
-            self.Paw = (self.Paw + 0.2)%5
-            self.Volume = (self.Volume + 0.2)%5
-            self.Flow = (self.Flow + 0.2)%5
-            self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
+            # test plotting multiple data points at a time
+            for i in range(MCU.TIMEPOINT_PER_UPDATE):
+                # Use the processor clock to determine elapsed time since last function call
+                self.time_now = time.time()
+                self.time_diff = self.time_now - self.time_prev
+                self.time_prev = self.time_now
+                self.time += self.time_diff
+                self.Paw = (self.Paw + 0.2/MCU.TIMEPOINT_PER_UPDATE)%5
+                self.Volume = (self.Volume + 0.2/MCU.TIMEPOINT_PER_UPDATE)%5
+                self.Flow = (self.Flow + 0.2/MCU.TIMEPOINT_PER_UPDATE)%5
+                # self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
+                self.signal_Paw.emit(self.time,self.Paw)
+                self.signal_Flow.emit(self.time,self.Flow)
+                self.signal_Volume.emit(self.time,self.Volume)
+
         else:
             readout = self.microcontroller.read_received_packet_nowait()
             if readout is not None:
@@ -166,16 +174,16 @@ class Waveforms(QObject):
                 # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
                 self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+','+str(self.ventController.Vt)+','+str(self.ventController.Ti)+','+str(self.ventController.RR)+','+str(self.ventController.PEEP) +'\n')
         
-        # reduce display refresh rate
-        self.counter_display = self.counter_display + 1
-        if self.counter_display>=1:
-            self.time_diff = self.time_now - self.time_prev
-            self.time_prev = self.time_now
-            self.time += self.time_diff
-            self.counter_display = 0
-            self.signal_Paw.emit(self.time,self.Paw)
-            self.signal_Flow.emit(self.time,self.Flow)
-            self.signal_Volume.emit(self.time,self.Volume)
+            # reduce display refresh rate
+            self.counter_display = self.counter_display + 1
+            if self.counter_display>=1:
+                self.time_diff = self.time_now - self.time_prev
+                self.time_prev = self.time_now
+                self.time += self.time_diff
+                self.counter_display = 0
+                self.signal_Paw.emit(self.time,self.Paw)
+                self.signal_Flow.emit(self.time,self.Flow)
+                self.signal_Volume.emit(self.time,self.Volume)
 
         # file flushing
         self.counter_file_flush = self.counter_file_flush + 1

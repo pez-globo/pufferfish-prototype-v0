@@ -96,7 +96,7 @@ class MicrocontrollerDef:
 class WAVEFORMS:
     UPDATE_INTERVAL_MS = 25 # make sure this equals MCU.DATA_INTERVAL_ms when MCU is connected and MCU.DATA_INTERVAL_ms/2 when in simulation
     DISPLAY_RANGE_S = 10 # In seconds
-    CYCLE_GAP = 3 # In sample num
+    CYCLE_GAP = 20 # In sample num
     PAW_MIN = 0
     PAW_MAX = 10
     FLOW_MIN = -100
@@ -113,3 +113,8 @@ SIMULATION = True
 class MCU:
     TIMER_PERIOD_ms = 1.25
     DATA_INTERVAL_ms = 50
+    TIMEPOINT_PER_UPDATE = 4
+
+if SIMULATION:
+    print('change')
+    WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/2/MCU.TIMEPOINT_PER_UPDATE
