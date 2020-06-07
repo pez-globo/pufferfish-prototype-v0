@@ -240,17 +240,17 @@ class NavigationController(QObject):
         self.z_pos = 0
         self.zPos.emit(self.z_pos)
 
-    def cycle_x(self):
-        self.microcontroller.cycle_x()
+    def setbias_x(self):
+        self.microcontroller.setbias_x()
         self.x_pos = 0
         self.xPos.emit(self.x_pos)
 
-    def cycle_y(self):
-        self.microcontroller.cycle_y()
+    def setbias_y(self):
+        self.microcontroller.setbias_y()
         self.y_pos = 0
         self.yPos.emit(self.y_pos)
 
-    def cycle_z(self):
-        self.microcontroller.cycle_z()
+    def setbias_z(self):
+        self.microcontroller.setbias_z()
         self.z_pos = 0
         self.zPos.emit(self.z_pos)

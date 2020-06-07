@@ -135,6 +135,13 @@ class Microcontroller():
         self.serial.write(cmd)
         print('trying to close z')
 
+    def setbias_z(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = MicrocontrollerDef.CMD_SET_BIAS_FLOW
+        self.serial.write(cmd)
+        print('set the current opening as \"zero\" opening')
+
+
 class Microcontroller_Simulation():
     def __init__(self,parent=None):
         self.tx_buffer_length = MicrocontrollerDef.CMD_LENGTH

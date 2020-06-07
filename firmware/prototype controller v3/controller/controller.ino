@@ -126,7 +126,8 @@ static const uint8_t CMD_PID_I_frac = 8;
 static const uint8_t CMD_MODE = 9;
 static const uint8_t CMD_CLOSE_VALVE = 10;
 static const uint8_t CMD_STEPPER_CONTROL_AIR = 11;
-static const uint8_t CMD_STEPPER_CONTROL_OXYGEN = 11;
+static const uint8_t CMD_STEPPER_CONTROL_OXYGEN = 12;
+static const uint8_t CMD_SET_BIAS_FLOW = 13;
 
 static const float flow_FS = 200;
 static const float volume_FS = 1500;
@@ -585,6 +586,8 @@ void loop()
         long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
         stepper_Z.runToNewPosition(stepper_Z.currentPosition()+relative_position);
       }
+      else if (buffer_rx[0] == CMD_SET_BIAS_FLOW)
+        stepper_Z.setCurrentPosition(0);
     }
   }
 

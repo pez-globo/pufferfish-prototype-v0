@@ -37,8 +37,8 @@ class NavigationWidget(QFrame):
         self.btn_moveX_backward.setDefault(False)
         self.btn_close_valveX = QPushButton('close the valve')
         self.btn_close_valveX.setDefault(False)
-        self.btn_cycle_valveX = QPushButton('cycle the valve')
-        self.btn_cycle_valveX.setDefault(False)
+        self.btn_setbias_valveX = QPushButton('set as bias')
+        self.btn_setbias_valveX.setDefault(False)
         
         self.label_Ypos = QLabel()
         self.label_Ypos.setNum(0)
@@ -54,8 +54,8 @@ class NavigationWidget(QFrame):
         self.btn_moveY_backward.setDefault(False)
         self.btn_close_valveY = QPushButton('close the valve')
         self.btn_close_valveY.setDefault(False)
-        self.btn_cycle_valveY = QPushButton('cycle the valve')
-        self.btn_cycle_valveY.setDefault(False)
+        self.btn_setbias_valveY = QPushButton('set as bias')
+        self.btn_setbias_valveY.setDefault(False)
 
         self.label_Zpos = QLabel()
         self.label_Zpos.setNum(0)
@@ -71,8 +71,8 @@ class NavigationWidget(QFrame):
         self.btn_moveZ_backward.setDefault(False)
         self.btn_close_valveZ = QPushButton('close the valve')
         self.btn_close_valveZ.setDefault(False)
-        self.btn_cycle_valveZ = QPushButton('cycle the valve')
-        self.btn_cycle_valveZ.setDefault(False)
+        self.btn_setbias_valveZ = QPushButton('set as bias')
+        self.btn_setbias_valveZ.setDefault(False)
         
         grid_line0 = QGridLayout()
         grid_line0.addWidget(QLabel('X (mm)'), 0,0)
@@ -81,7 +81,7 @@ class NavigationWidget(QFrame):
         grid_line0.addWidget(self.btn_moveX_forward, 0,3)
         grid_line0.addWidget(self.btn_moveX_backward, 0,4)
         grid_line0.addWidget(self.btn_close_valveX, 0,5)
-        grid_line0.addWidget(self.btn_cycle_valveX, 0,6)
+        grid_line0.addWidget(self.btn_setbias_valveX, 0,6)
 
         grid_line1 = QGridLayout()
         grid_line1.addWidget(QLabel('Y (mm)'), 0,0)
@@ -90,7 +90,7 @@ class NavigationWidget(QFrame):
         grid_line1.addWidget(self.btn_moveY_forward, 0,3)
         grid_line1.addWidget(self.btn_moveY_backward, 0,4)
         grid_line1.addWidget(self.btn_close_valveY, 0,5)
-        grid_line1.addWidget(self.btn_cycle_valveY, 0,6)
+        grid_line1.addWidget(self.btn_setbias_valveY, 0,6)
 
         grid_line2 = QGridLayout()
         grid_line2.addWidget(QLabel('Z (um)'), 0,0)
@@ -99,7 +99,7 @@ class NavigationWidget(QFrame):
         grid_line2.addWidget(self.btn_moveZ_forward, 0,3)
         grid_line2.addWidget(self.btn_moveZ_backward, 0,4)
         grid_line2.addWidget(self.btn_close_valveZ, 0,5)
-        grid_line2.addWidget(self.btn_cycle_valveZ, 0,6)
+        grid_line2.addWidget(self.btn_setbias_valveZ, 0,6)
 
         self.grid = QGridLayout()
         # self.grid.addLayout(grid_line0,0,0)
@@ -116,9 +116,9 @@ class NavigationWidget(QFrame):
         self.btn_close_valveX.clicked.connect(self.navigationController.close_x)
         self.btn_close_valveY.clicked.connect(self.navigationController.close_y)
         self.btn_close_valveZ.clicked.connect(self.navigationController.close_z)
-        self.btn_cycle_valveX.clicked.connect(self.navigationController.cycle_x)
-        self.btn_cycle_valveY.clicked.connect(self.navigationController.cycle_y)
-        self.btn_cycle_valveZ.clicked.connect(self.navigationController.cycle_z)
+        self.btn_setbias_valveX.clicked.connect(self.navigationController.setbias_x)
+        self.btn_setbias_valveY.clicked.connect(self.navigationController.setbias_y)
+        self.btn_setbias_valveZ.clicked.connect(self.navigationController.setbias_z)
         
     def move_x_forward(self):
         self.navigationController.move_x(self.entry_dX.value())
@@ -338,7 +338,7 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.plot1.setXRange(min=0,max=WAVEFORMS.DISPLAY_RANGE_S)
 		self.plot1.showGrid(x=True, y=True)
 		self.ptr = 0
-		self.cycleGap = WAVEFORMS.CYCLE_GAP
+		self.CYCLE_GAP = WAVEFORMS.CYCLE_GAP
 		#pg.setConfigOption('background', 'w')
 
 	def update_plot(self, time_data, data):
@@ -357,7 +357,7 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.left_Y_data.append(data)
 
 		# Remove overlapping samples by popping left from the right waveform.
-		while (len(self.right_X_data) > 0 and len(self.left_X_data) + len(self.right_X_data) >= self.maxLen - self.cycleGap):
+		while (len(self.right_X_data) > 0 and len(self.left_X_data) + len(self.right_X_data) >= self.maxLen - self.setbiasGap):
 			self.right_X_data.popleft()
 			self.right_Y_data.popleft()
 		

@@ -85,6 +85,7 @@ class MicrocontrollerDef:
     CMD_CLOSE_VALVE = 10;
     CMD_STEPPER_CONTROL_AIR = 11
     CMD_STEPPER_CONTROL_OXYGEN = 12
+    CMD_SET_BIAS_FLOW = 13
 
     CMD_FlowDeceleratingSlope = 5
 
