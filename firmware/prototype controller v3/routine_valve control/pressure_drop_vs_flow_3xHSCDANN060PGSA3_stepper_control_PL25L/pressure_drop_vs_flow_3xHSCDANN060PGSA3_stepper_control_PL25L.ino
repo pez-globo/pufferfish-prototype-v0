@@ -10,8 +10,7 @@
 // to do: (2) data communication, remove one stepper, add one flow
 // to do: (3) add mFlow_2 etc for the second valve 
 
-//
-06/04/2020 22:33 closing valve 1 working
+//06/04/2020 22:33 closing valve 1 working
 static const bool USE_SERIAL_MONITOR = false;
 
 #include <Wire.h>

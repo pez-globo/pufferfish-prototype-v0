@@ -17,7 +17,7 @@ using namespace arduino_due::pwm_lib;
 
 #define PWM_FREQUENCY 10000
 #define PWM_PERIOD_PIN_35 10000 // 10000 x (1e-8 secs) = 1e-4 sec
-#define PWM_DUTY_PIN_35 5000
+#define PWM_DUTY_PIN_35 2000
 
 // defining pwm object using pin 35, pin PC3 mapped to pin 35 on the DUE
 // this object uses PWM channel 0
@@ -237,14 +237,11 @@ void loop()
   SerialUSB.print( abp_5psi_1.pressure()*70.307 );
   SerialUSB.print( " cmH2O" );
   SerialUSB.print( "\t" );
-  SerialUSB.print( abp_5psi_2.pressure() );
-  SerialUSB.print( " " );
-  SerialUSB.print( abp_5psi_2.unit() );
+  SerialUSB.print( abp_5psi_2.pressure()*70.307 );
+  SerialUSB.print( " cmH2O" );
   SerialUSB.print( "\t" );
-  SerialUSB.print( abp_5psi_3.pressure() );
-  SerialUSB.print( " " );
-  SerialUSB.println( abp_5psi_3.unit() );
-
+  SerialUSB.print( abp_5psi_3.pressure()*70.307 );
+  SerialUSB.println( " cmH2O" );
 }
 
 #define MUX_ADDR 0x70 //7-bit unshifted default I2C Address
