@@ -54,9 +54,6 @@ class Acquisition:
     def __init__(self):
         pass
 
-class PosUpdate:
-    INTERVAL_MS = 25
-
 class MicrocontrollerDef:
     MSG_LENGTH = 960
     CMD_LENGTH = 4
@@ -96,17 +93,23 @@ class MicrocontrollerDef:
     PEEP_DEFAULT = 5
     Vt_DEFAULT = 300
 
-
 class WAVEFORMS:
-    UPDATE_INTERVAL_MS = 10 # In milliseconds
-    DISPLAY_RANGE_S = 20 # In seconds
-    CYCLE_GAP = 10 # In sample num
+    UPDATE_INTERVAL_MS = 25 # make sure this equals MCU.DATA_INTERVAL_ms when MCU is connected and MCU.DATA_INTERVAL_ms/2 when in simulation
+    DISPLAY_RANGE_S = 10 # In seconds
+    CYCLE_GAP = 3 # In sample num
+    PAW_MIN = 0
+    PAW_MAX = 10
+    FLOW_MIN = -100
+    FLOW_MAX = 100
+    V_MIN = 0
+    V_MAX = 600
 
 PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
 PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
 
-SIMULATION = False
+SIMULATION = True
 
 class MCU:
     TIMER_PERIOD_ms = 1.25
+    DATA_INTERVAL_ms = 50
