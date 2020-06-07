@@ -15,9 +15,9 @@ static const bool USE_SERIAL_MONITOR = false;
 /***************************************************************************************************/
 /********************************************* Parameters *********************************************/
 /***************************************************************************************************/
-static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 4500;
-uint32_t exhalation_control_PEEP_duty = 1000;
-static const float TIMER_PERIOD_us = 1000; // in us
+static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 8000;
+uint32_t exhalation_control_PEEP_duty = 3000;
+static const float TIMER_PERIOD_us = 1250; // in us
 
 /***************************************************************************************************/
 /********************************************* pwm_lib *********************************************/
@@ -95,8 +95,8 @@ static inline int sgn(int val) {
   return 1;
 }
 
-static const int CMD_LENGTH = 3;
-static const int MSG_LENGTH = 8;
+static const int CMD_LENGTH = 4;
+static const int MSG_LENGTH = 960;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
@@ -106,11 +106,12 @@ static const int N_BYTES_POS = 3;
 static const int pin_valve2 = 11;
 
 // mode def
-# define MODE_VC_AC   0
-# define MODE_PC_AC   1
-# define MODE_VC_SIMV 2
-# define MODE_PC_SIMV 3
-# define MODE_PSV     4
+# define MODE_OFF     0
+# define MODE_VC_AC   1
+# define MODE_PC_AC   2
+# define MODE_VC_SIMV 3
+# define MODE_PC_SIMV 4
+# define MODE_PSV     5
 
 // command sets
 static const uint8_t CMD_Vt = 0;
@@ -122,10 +123,14 @@ static const uint8_t CMD_Pinsp = 5;
 static const uint8_t CMD_RiseTime = 6;
 static const uint8_t CMD_PID_P = 7;
 static const uint8_t CMD_PID_I_frac = 8;
-    
+static const uint8_t CMD_MODE = 9;
+static const uint8_t CMD_CLOSE_VALVE = 10;
+static const uint8_t CMD_STEPPER_CONTROL_AIR = 11;
+static const uint8_t CMD_STEPPER_CONTROL_OXYGEN = 11;
+
 static const float flow_FS = 200;
 static const float volume_FS = 1500;
-static const float paw_FS = 50;
+static const float paw_FS = 100;
 static const float Ti_FS = 5;
 static const float Vt_FS = 1500;
 static const float PEEP_FS = 30;
@@ -143,12 +148,22 @@ static const float coefficient_dp2flow_offset = 1.1029;
 
 volatile float dP = 0;
 volatile float mflow = 0;
+volatile float mflow_air = 0;
+volatile float mflow_oxygen = 0;
 volatile float mflow_peak = 0;
 volatile float mvolume = 0;
 volatile float mpaw = 0;
 volatile float paw_setpoint = 0;
 
-float RR = 24;
+bool flag_close_valve_air_in_progress = false;
+bool flag_valve_air_flow_detected = false;
+bool flag_valve_air_close_position_reset = false;
+
+bool flag_close_valve_oxygen_in_progress = false;
+bool flag_valve_oxygen_flow_detected = false;
+bool flag_valve_oxygen_close_position_reset = false;
+
+float RR = 18;
 float Ti = 1.2;
 float Vt = 250;
 float PEEP = 5;
@@ -171,7 +186,7 @@ volatile float PID_Insp_Prop = 0;
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
 float time_inspiratory_ms = Ti * 1000;
-float frequency_send_data = 50;
+float frequency_send_data = 20;
 float counter_send_data = 0;
 
 volatile bool flag_send_data = false;
@@ -208,8 +223,8 @@ static const int UART_CS_S1 = 47;
 static const uint8_t X_driver_ADDRESS = 0b00;
 static const float R_SENSE = 0.11f;
 TMC2209Stepper Z_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
-static const int Z_dir = 27;
-static const int Z_step = 29;
+static const int Z_dir = 28;
+static const int Z_step = 26;
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Z_N_microstepping; 
 constexpr float MAX_VELOCITY_Z_mm = 25; 
@@ -229,6 +244,10 @@ void setup() {
   pinMode(13, OUTPUT);
   digitalWrite(13, HIGH);
 
+  // tmp gnd pin for the SDP810 sensor
+  pinMode(18, OUTPUT);
+  digitalWrite(18, LOW);
+
   Wire.setClock(400000);
   Wire.begin();
 
@@ -239,13 +258,17 @@ void setup() {
     int ret_sfm3000_1 = sfm3000_1.init();
     if (ret_sfm3000_1 == 0) 
     {
-      SerialUSB.print("init() for sensor 1: success\n");
+      if(USE_SERIAL_MONITOR)
+        SerialUSB.print("init() for sensor 1: success\n");
       break;
     } 
     else 
     {
-      SerialUSB.print("init() for sensor 1: failed, ret = ");
-      SerialUSB.println(ret_sfm3000_1);
+      if(USE_SERIAL_MONITOR)
+      {
+        SerialUSB.print("init() for sensor 1: failed, ret = ");
+        SerialUSB.println(ret_sfm3000_1);
+      }
       delay(1000);
     }
   }
@@ -259,14 +282,18 @@ void setup() {
     int ret_sfm3000_2 = sfm3000_2.init();
     if (ret_sfm3000_2 == 0) 
     {
-      SerialUSB.print("init() for sensor 2: success\n");
+      if(USE_SERIAL_MONITOR)
+        SerialUSB.print("init() for sensor 2: success\n");
       break;
     } 
     else 
     {
+      if(USE_SERIAL_MONITOR)
+      {
         SerialUSB.print("init() for sensor 2: failed, ret = ");
         SerialUSB.println(ret_sfm3000_2);
-        delay(1000);
+      }
+      delay(1000);
     }
   }
   // get scale and offset factor for the SFM sensor
@@ -280,19 +307,22 @@ void setup() {
     int ret = sdp.init();
     if (ret == 0)
     {
-      SerialUSB.print("init() for SDP810: success\n");
+      if(USE_SERIAL_MONITOR)
+        SerialUSB.print("init() for SDP810: success\n");
       break;
     }
     else
     {
-      SerialUSB.print("init() for SDP810: failed, ret = ");
-      SerialUSB.println(ret);
+      if(USE_SERIAL_MONITOR)
+      {
+        SerialUSB.print("init() for SDP810: failed, ret = ");
+        SerialUSB.println(ret);
+      }
       delay(1000);
     }
   }
   sdp.startContinuous(true);
   sdp.startContinuousWait(true);
- 
 
   // stepper driver init.
   pinMode(Z_dir, OUTPUT);
@@ -301,7 +331,9 @@ void setup() {
   pinMode(UART_CS_S1, OUTPUT);
   // initialize stepper driver
   STEPPER_SERIAL.begin(115200);
-  select_driver(4);
+  delayMicroseconds(1000);
+  
+  select_driver(1);
   while(!STEPPER_SERIAL);
   Z_driver.begin();
   Z_driver.I_scale_analog(false);  
@@ -318,6 +350,8 @@ void setup() {
 
   // calculate the cycle period
   cycle_period_ms = (60 / RR) * 1000;
+
+  delayMicroseconds(500000);
 
   // start the timer
   Timer3.attachInterrupt(timer_interruptHandler);
@@ -355,6 +389,7 @@ void timer_interruptHandler()
       PID_Insp_Integral = 0;
     }
 
+    /*
     // patient triggered breath
     if ( mpaw < paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false )
     {
@@ -375,6 +410,7 @@ void timer_interruptHandler()
       if(pressure_support_enabled == true)
         is_in_pressure_support = true;
     }
+    */
 
 
     /*
@@ -437,7 +473,7 @@ void timer_interruptHandler()
       set_valve1_pos(valve_opening);
     }
 
-    if(is_in_pressure_support && mflow <= 0.25*mflow_peak)
+    if(is_in_pressure_support && mflow <= 0.25*mflow_peak && is_in_expiratory_phase == false)
     {
       // change to exhalation
       is_in_inspiratory_phase = false;
@@ -446,6 +482,7 @@ void timer_interruptHandler()
       is_in_expiratory_phase = true;
       valve_opening = 0;
       set_valve1_pos(valve_opening);
+      set_valve2_state(1);
       digitalWrite(13, LOW);
     }
 
@@ -458,6 +495,7 @@ void timer_interruptHandler()
       is_in_expiratory_phase = true;
       valve_opening = 0;
       set_valve1_pos(valve_opening);
+      set_valve2_state(1);
       digitalWrite(13, LOW);
     }
 
@@ -472,7 +510,7 @@ void timer_interruptHandler()
         PEEP_is_reached = true;
       }
       */
-      set_valve2_state(1);
+      
     }
   }
 
@@ -510,7 +548,7 @@ void loop()
       else if (buffer_rx[0] == CMD_PEEP)
       {
         PEEP = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*PEEP_FS;
-        exhalation_control_PEEP_duty = (PEEP/PEEP_FS)*(0.6*PWM_PERIOD_PIN_35);
+        exhalation_control_PEEP_duty = (PEEP/PEEP_FS)*(PWM_PERIOD_PIN_35);
       }
       else if (buffer_rx[0] == CMD_Flow)
         valve_pos_open_steps = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * valve_pos_open_steps_FS;
@@ -527,6 +565,25 @@ void loop()
       {
         PID_coefficient_I_frac = PID_coefficient_I_frac_FS*(float(buffer_rx[1])*256+float(buffer_rx[2]))/65536.0;
         PID_coefficient_I = PID_coefficient_P*PID_coefficient_I_frac;
+      }
+      else if (buffer_rx[0] == CMD_MODE)
+      {
+        if (buffer_rx[1] == MODE_OFF)
+          is_breathing = false;
+        else
+          is_breathing = true;
+        // @TODO: mode selection          
+      }
+      else if (buffer_rx[0] == CMD_CLOSE_VALVE)
+      {
+        if (buffer_rx[1] == 0)
+          flag_close_valve_air_in_progress = true; // close the air valve
+        // @TODO: close oxygen valve
+      }
+      else if (buffer_rx[0] == CMD_STEPPER_CONTROL_AIR)
+      {
+        long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
+        stepper_Z.runToNewPosition(stepper_Z.currentPosition()+relative_position);
       }
     }
   }
@@ -547,9 +604,13 @@ void loop()
     enableMuxPort(6);
     abp_5psi_3.update();
     */
-    enableMuxPort(4);
-    abp_5psi_1.update();
-    mpaw = abp_5psi_1.pressure()*70.307;
+    
+    enableMuxPort(0);
+    int ret_sfm3000_1 = sfm3000_1.read_sample();
+    
+    enableMuxPort(6);
+    abp_5psi_3.update();
+    mpaw = abp_5psi_3.pressure()*70.307;
     if (sdp.readContinuous() == 0)
       dP = sdp.getDifferentialPressure();
     if(abs(dP)<0.3)
@@ -558,8 +619,38 @@ void loop()
       mflow = dP * coefficient_dP2flow + coefficient_dp2flow_offset;
     else
       mflow = dP * coefficient_dP2flow - coefficient_dp2flow_offset;
-    mvolume = mvolume + mflow * 1000 * (TIMER_PERIOD_us / 1000000 / 60);
+    if (ret_sfm3000_1 == 0)
+      mflow_air = sfm3000_1.get_flow();
+    mflow_oxygen = 0;
+    mflow = mflow_air + mflow_oxygen;
+    mvolume = mvolume + mflow * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
     flag_read_sensor = false;
+  }
+
+  if (flag_close_valve_air_in_progress && ret_sfm3000_1 == 0)
+  {
+    if (mflow_air >= 0.2)
+    {
+      flag_valve_air_flow_detected = true;
+      stepper_Z.runToNewPosition(stepper_Z.currentPosition() + 1);
+    }
+    else
+    {
+      if (flag_valve_air_flow_detected)
+      {
+        stepper_Z.runToNewPosition(stepper_Z.currentPosition() + 1);
+        stepper_Z.setCurrentPosition(0);
+        flag_close_valve_air_in_progress = false;
+        flag_valve_air_flow_detected = false;
+        flag_valve_air_close_position_reset = true;
+      }
+      else
+      {
+        flag_close_valve_air_in_progress = false;
+        flag_valve_air_flow_detected = false;
+        flag_valve_air_close_position_reset = false;
+      }
+    }
   }
 
   if (flag_send_data)
@@ -581,14 +672,20 @@ void loop()
     buffer_tx[6] = byte(timebase >> 8);
     buffer_tx[7] = byte(timebase % 256);
 
-    SerialUSB.write(buffer_tx, MSG_LENGTH);
+    if(USE_SERIAL_MONITOR)
+    {
+        SerialUSB.print(mpaw);
+        SerialUSB.print("\t ");
+        SerialUSB.print(mflow);
+        SerialUSB.print("\t ");
+        SerialUSB.println(mvolume);
+    }
+    else
+    {
+      SerialUSB.write(buffer_tx, MSG_LENGTH);
+    }
     flag_send_data = false;
 
-    //    SerialUSB.print(mpaw);
-    //    SerialUSB.print("\t ");
-    //    SerialUSB.print(mflow);
-    //    SerialUSB.print("\t ");
-    //    SerialUSB.println(mvolume);
   }
   
   stepper_Z.run();
@@ -607,12 +704,13 @@ float get_valve1_pos()
 
 void set_valve2_state(int state)
 {
-  // control PEEP
-  if (state > 0)
-    change_duty(*pwm_wrapper_pin35_ptr,exhalation_control_PEEP_duty,PWM_PERIOD_PIN_35);
+  
   // close the valve
-  else 
+  if (state == 0) 
     change_duty(*pwm_wrapper_pin35_ptr,EXHALATION_CONTROL_DUTY_CLOSE,PWM_PERIOD_PIN_35);
+  else
+  // control PEEP
+     change_duty(*pwm_wrapper_pin35_ptr,exhalation_control_PEEP_duty,PWM_PERIOD_PIN_35);
 }
 
 // utils
@@ -649,14 +747,11 @@ void select_driver(int id)
 /***************************************************************************************************/
 /********************************************* pwm_lib *********************************************/
 /***************************************************************************************************/
-void change_duty( 
-  pwm_base& pwm_obj, 
-  uint32_t pwm_duty, 
-  uint32_t pwm_period 
-) 
+void change_duty(pwm_base& pwm_obj, uint32_t pwm_duty, uint32_t pwm_period) 
 { 
-  uint32_t duty=pwm_obj.get_duty()+pwm_duty; 
-  if(duty>pwm_period) duty=pwm_duty; 
+  uint32_t duty = pwm_duty;
+  if(duty>pwm_period) 
+    duty=pwm_duty; 
   pwm_obj.set_duty(duty); 
 }
 

@@ -100,6 +100,17 @@ class VentController(QObject):
         self.microcontroller.set_parameter(MicrocontrollerDef.CMD_PID_I_frac,value/MicrocontrollerDef.PID_COEFFICIENT_I_FRAC_FS)
 
 
+    def setONOFF(self,state):
+        if state == False:
+            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,0) # to add mode selection
+            print('stop breathing')
+        else:
+            #TODO: add mode selection
+            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,1) 
+
+
+        
+
 # class DataLogger(QObject):
 #     def __init__(self,microcontroller):
 #         QObject.__init__(self)
@@ -150,8 +161,6 @@ class Waveforms(QObject):
         # self.time_now = time.time_ns()
         # self.time = int(self.time_now/1000000)%self.size # in ms now
         
-      
-        SIMULATION = False
         if SIMULATION:
             self.time = (self.time + 1)%self.size
             prev = (self.time-1) if self.time else 0
@@ -165,10 +174,11 @@ class Waveforms(QObject):
             if readout is not None:
                 print('read')
                 self.time = (self.time + 1)%self.size
-                self.Paw[self.time] = (256.0*readout[0] + readout[1])/200
-                # self.Paw[self.time] = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
-                # self.Flow[self.time] = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
-                # self.Volume[self.time] = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
+                # self.Paw[self.time] = (256.0*readout[0] + readout[1])/200
+                print(self.Paw[self.time])
+                self.Paw[self.time] = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
+                self.Flow[self.time] = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
+                self.Volume[self.time] = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
                 # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
                 self.file.write(str(self.time_now)+','+str(self.Paw[self.time]) +','+str(self.Flow[self.time]) +','+str(self.Volume[self.time]) +','+str(self.ventController.Vt)+','+str(self.ventController.Ti)+','+str(self.ventController.RR)+','+str(self.ventController.PEEP) +'\n')
         
@@ -201,3 +211,65 @@ class Waveforms(QObject):
 
     def close(self):
         self.file.close()
+
+
+class NavigationController(QObject):
+
+    xPos = Signal(float)
+    yPos = Signal(float)
+    zPos = Signal(float)
+
+    def __init__(self,microcontroller):
+        QObject.__init__(self)
+        self.microcontroller = microcontroller
+        self.x_pos = 0
+        self.y_pos = 0
+        self.z_pos = 0
+        
+    def move_x(self,delta):
+        self.microcontroller.move_x(delta)
+        self.x_pos = self.x_pos + delta
+        print('X: ' + str(self.x_pos))
+        self.xPos.emit(self.x_pos)
+
+    def move_y(self,delta):
+        self.microcontroller.move_y(delta)
+        self.y_pos = self.y_pos + delta
+        print('Y: ' + str(self.y_pos))
+        self.yPos.emit(self.y_pos)
+
+    def move_z(self,delta):
+        self.microcontroller.move_z(delta)
+        self.z_pos = self.z_pos + delta
+        print('Z: ' + str(self.z_pos))
+        self.zPos.emit(self.z_pos)
+
+    def close_x(self):
+        self.microcontroller.close_x()
+        self.x_pos = 0
+        self.xPos.emit(self.x_pos)
+
+    def close_y(self):
+        self.microcontroller.close_y()
+        self.y_pos = 0
+        self.yPos.emit(self.y_pos)
+
+    def close_z(self):
+        self.microcontroller.close_z()
+        self.z_pos = 0
+        self.zPos.emit(self.z_pos)
+
+    def cycle_x(self):
+        self.microcontroller.cycle_x()
+        self.x_pos = 0
+        self.xPos.emit(self.x_pos)
+
+    def cycle_y(self):
+        self.microcontroller.cycle_y()
+        self.y_pos = 0
+        self.yPos.emit(self.y_pos)
+
+    def cycle_z(self):
+        self.microcontroller.cycle_z()
+        self.z_pos = 0
+        self.zPos.emit(self.z_pos)

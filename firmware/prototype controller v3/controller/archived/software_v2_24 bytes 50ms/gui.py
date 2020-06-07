@@ -30,7 +30,7 @@ class VentDevGUI(QMainWindow):
 			self.microcontroller = microcontroller.Microcontroller_Simulation()
 		else:
 			self.microcontroller = microcontroller.Microcontroller()
-		self.navigationController = core.NavigationController(self.microcontroller)
+		self.stepperMotorController = core.ValveController(self.microcontroller)
 		self.ventController = core.VentController(self.microcontroller)
 		self.waveforms = core.Waveforms(self.microcontroller,self.ventController, size=constants.__SIZE__)
 
@@ -38,16 +38,16 @@ class VentDevGUI(QMainWindow):
 				{ 'name': 'Flow L/min', 'callback' : self.plot_Flow, 'xrange':constants.__XRANGE__, 'yrange':constants.__YRANGE_Flow__ },
 				{ 'name': 'Volume mL', 'callback' : self.plot_Volume, 'xrange':constants.__XRANGE__, 'yrange':constants.__YRANGE_V__ },]
 		# load widgets
-		self.navigationWidget = widgets.NavigationWidget(self.navigationController)
+		self.navigationWidget = widgets.stepperMotorWidget(self.stepperMotorController)
 		self.waveformDisplay = widgets.WaveformDisplay()
 		self.waveformDisplay.add_components(gui_plots=self.gui_plots)
 		self.controlPanel = widgets.ControlPanel(self.ventController)
 
 		# layout widgets
 		layout = QGridLayout() #layout = QStackedLayout()
+		# layout.addWidget(self.navigationWidget,0,0)
 		layout.addWidget(self.waveformDisplay,0,0)
 		layout.addWidget(self.controlPanel,1,0)
-		layout.addWidget(self.navigationWidget,2,0)
 
 		# transfer the layout to the central widget
 		self.centralWidget = QWidget()
@@ -55,6 +55,8 @@ class VentDevGUI(QMainWindow):
 		self.setCentralWidget(self.centralWidget)
 
 		# make connections
+		self.stepperMotorController.xPos.connect(self.navigationWidget.label_Xpos.setNum)
+		self.stepperMotorController.yPos.connect(self.navigationWidget.label_Ypos.setNum)
 		self.waveforms.signal_updatePlot.connect(self.waveformDisplay.plot_values)
 		# self.waveforms.signal_updatePlot_withValues.connect(self.waveformDisplay.plot_receiced_values)
 		# self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway Pressure'].update_plot)

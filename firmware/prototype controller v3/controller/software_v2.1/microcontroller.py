@@ -96,6 +96,11 @@ class Microcontroller():
             return None
         if self.serial.in_waiting % self.rx_buffer_length != 0:
             print(self.serial.in_waiting)
+            # self.serial.reset_input_buffer()
+            num_bytes_in_rx_buffer = self.serial.in_waiting
+            for i in range(num_bytes_in_rx_buffer):
+                self.serial.read()
+            print('reset input buffer')
             return None
         
         # get rid of old data
@@ -110,6 +115,25 @@ class Microcontroller():
         for i in range(self.rx_buffer_length):
             data.append(ord(self.serial.read()))
         return data
+
+    def move_z(self,delta):
+        direction = int((np.sign(delta)+1)/2)
+        n_microsteps = abs(delta*Motion.STEPS_PER_MM_Z)
+        if n_microsteps > 65535:
+            n_microsteps = 65535
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = MicrocontrollerDef.CMD_STEPPER_CONTROL_AIR
+        cmd[1] = direction
+        cmd[2] = int(n_microsteps) >> 8
+        cmd[3] = int(n_microsteps) & 0xff
+        self.serial.write(cmd)
+
+    def close_z(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = MicrocontrollerDef.CMD_CLOSE_VALVE
+        cmd[1] = 0
+        self.serial.write(cmd)
+        print('trying to close z')
 
 class Microcontroller_Simulation():
     def __init__(self,parent=None):
@@ -129,6 +153,9 @@ class Microcontroller_Simulation():
         pass
 
     def move_y(self,delta):
+        pass
+
+    def move_z(self,delta):
         pass
 
     def read_received_packet(self):

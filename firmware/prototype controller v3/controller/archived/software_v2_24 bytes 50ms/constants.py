@@ -38,12 +38,12 @@ __MODES__ = ['PC-BIPAP', 'PC-AC', 'PC-APRV', 'VC-MMV', 'ATC', 'SPN-PPS']
 
 ### PC-BIPAP
 __XRANGE__ = (0, 10)
-__YRANGE_Paw__ = (0, 50)
-__YRANGE_Flow__ = (-200, 200)
-__YRANGE_V__ = (0, 600)
-# __YRANGE_Paw__ = (0, 5)
-# __YRANGE_Flow__ = (0, 5)
-# __YRANGE_V__ = (0, 5)
+# __YRANGE_Paw__ = (0, 50)
+# __YRANGE_Flow__ = (-200, 200)
+# __YRANGE_V__ = (0, 600)
+__YRANGE_Paw__ = (0, 5)
+__YRANGE_Flow__ = (0, 5)
+__YRANGE_V__ = (0, 5)
 __SIZE__   = int(WAVEFORMS.DISPLAY_RANGE_S/(WAVEFORMS.DISPLAY_DOWNSAMPLING_FACTOR*MCU.TIMER_PERIOD_ms/1000))
 __CADENCE__ = 100 # Every __CADENCE__ milliseconds
 __PLOTS__ = [

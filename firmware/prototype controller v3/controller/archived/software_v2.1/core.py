@@ -8,14 +8,15 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
-import control.utils as utils
-from control._def import *
+import utils as utils
+from _def import *
 
 from queue import Queue
 import time
 import numpy as np
 import pyqtgraph as pg
 from datetime import datetime
+from pathlib import Path
 
 class ValveController(QObject):
 
@@ -97,14 +98,6 @@ class VentController(QObject):
 
     def setPID_I_frac(self,value):
         self.microcontroller.set_parameter(MicrocontrollerDef.CMD_PID_I_frac,value/MicrocontrollerDef.PID_COEFFICIENT_I_FRAC_FS)
-    
-    def setONOFF(self,state):
-        if state == False:
-            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,0) # to add mode selection
-            print('stop breathing')
-        else:
-            #TODO: add mode selection
-            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,1) 
 
 
 # class DataLogger(QObject):
@@ -124,18 +117,22 @@ class Waveforms(QObject):
     signal_Volume = Signal(float,float)
     signal_Flow = Signal(float,float)
 
-    def __init__(self,microcontroller,ventController):
+    signal_updatePlot = Signal()
+    signal_updatePlot_withValues = Signal(float,float)
+
+    def __init__(self,microcontroller,ventController, size = 1):
         QObject.__init__(self)
-        self.file = open("/Users/hongquanli/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
+        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
         self.file.write('Time (s),Paw (cmH2O),Flow (l/min),Volume (ml),Vt (ml),Ti (s),RR (/min),PEEP (cmH2O)\n')
         self.microcontroller = microcontroller
         self.ventController = ventController
-        self.Paw = 0
-        self.Volume = 0
-        self.Flow = 0
+        self.Paw = [0.0]*size
+        self.Volume = [0.0]*size
+        self.Flow = [0.0]*size
+        self.size = size
         self.time = 0
         self.timer_update_waveform = QTimer()
-        self.timer_update_waveform.setInterval(WAVEFORMS.UPDATE_INTERVAL_MS)
+        self.timer_update_waveform.setInterval(WAVEFORMS.UPDATE_INTERVAL_MS/2)
         self.timer_update_waveform.timeout.connect(self.update_waveforms)
         self.timer_update_waveform.start()
 
@@ -150,32 +147,42 @@ class Waveforms(QObject):
         # self.time = self.time + (1/1000)*WAVEFORMS.UPDATE_INTERVAL_MS
 
         # Use the processor clock to determine elapsed time since last function call
-        self.time_now = time.time()
+        # self.time_now = time.time_ns()
+        # self.time = int(self.time_now/1000000)%self.size # in ms now
+        
       
+        SIMULATION = False
         if SIMULATION:
-            self.Paw = (self.Paw + 0.2)%5
-            self.Volume = (self.Volume + 0.2)%5
-            self.Flow = (self.Flow + 0.2)%5
-            self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
+            self.time = (self.time + 1)%self.size
+            prev = (self.time-1) if self.time else 0
+            self.Paw[self.time] = (self.Paw[prev] + 0.1)%5
+            self.Volume[self.time] = (self.Volume[prev] + 0.4)%5
+            self.Flow[self.time] = (self.Flow[prev] + 0.2)%5
+            self.file.write(str(self.time_now)+','+str(self.Paw[self.time])+','+str(self.Flow[self.time])+','+str(self.Volume[self.time])+'\n')
+
         else:
             readout = self.microcontroller.read_received_packet_nowait()
             if readout is not None:
-                self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
-                self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
-                self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
+                print('read')
+                self.time = (self.time + 1)%self.size
+                # self.Paw[self.time] = (256.0*readout[0] + readout[1])/200
+                self.Paw[self.time] = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
+                self.Flow[self.time] = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
+                self.Volume[self.time] = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
                 # self.time = float(utils.unsigned_to_unsigned(readout[6:8],MicrocontrollerDef.N_BYTES_DATA))*MicrocontrollerDef.TIMER_PERIOD_ms/1000
-                self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+','+str(self.ventController.Vt)+','+str(self.ventController.Ti)+','+str(self.ventController.RR)+','+str(self.ventController.PEEP) +'\n')
+                self.file.write(str(self.time_now)+','+str(self.Paw[self.time]) +','+str(self.Flow[self.time]) +','+str(self.Volume[self.time]) +','+str(self.ventController.Vt)+','+str(self.ventController.Ti)+','+str(self.ventController.RR)+','+str(self.ventController.PEEP) +'\n')
         
         # reduce display refresh rate
         self.counter_display = self.counter_display + 1
         if self.counter_display>=1:
-            self.time_diff = self.time_now - self.time_prev
-            self.time_prev = self.time_now
-            self.time += self.time_diff
             self.counter_display = 0
-            self.signal_Paw.emit(self.time,self.Paw)
-            self.signal_Flow.emit(self.time,self.Flow)
-            self.signal_Volume.emit(self.time,self.Volume)
+            #self.signal_Paw.emit(self.time,self.Paw[self.time])
+            #self.signal_Flow.emit(self.time,self.Flow[self.time])
+            #self.signal_Volume.emit(self.time,self.Volume[self.time])
+            self.signal_updatePlot.emit() # right now this triggers the update of the plot
+            #self.signal_updatePlot_withValues.emit(self.time,self.Paw[self.time])
+
+            #print(self.time)
 
         # file flushing
         self.counter_file_flush = self.counter_file_flush + 1
@@ -183,66 +190,14 @@ class Waveforms(QObject):
             self.counter_file_flush = 0
             self.file.flush()
 
+    def get_Paw(self):
+        return self.time, self.Paw
+
+    def get_Volume(self):
+        return self.time, self.Volume
+
+    def get_Flow(self):
+        return self.time, self.Flow
+
     def close(self):
         self.file.close()
-
-class NavigationController(QObject):
-
-    xPos = Signal(float)
-    yPos = Signal(float)
-    zPos = Signal(float)
-
-    def __init__(self,microcontroller):
-        QObject.__init__(self)
-        self.microcontroller = microcontroller
-        self.x_pos = 0
-        self.y_pos = 0
-        self.z_pos = 0
-        
-    def move_x(self,delta):
-        self.microcontroller.move_x(delta)
-        self.x_pos = self.x_pos + delta
-        print('X: ' + str(self.x_pos))
-        self.xPos.emit(self.x_pos)
-
-    def move_y(self,delta):
-        self.microcontroller.move_y(delta)
-        self.y_pos = self.y_pos + delta
-        print('Y: ' + str(self.y_pos))
-        self.yPos.emit(self.y_pos)
-
-    def move_z(self,delta):
-        self.microcontroller.move_z(delta)
-        self.z_pos = self.z_pos + delta
-        print('Z: ' + str(self.z_pos))
-        self.zPos.emit(self.z_pos)
-
-    def close_x(self):
-        self.microcontroller.close_x()
-        self.x_pos = 0
-        self.xPos.emit(self.x_pos)
-
-    def close_y(self):
-        self.microcontroller.close_y()
-        self.y_pos = 0
-        self.yPos.emit(self.y_pos)
-
-    def close_z(self):
-        self.microcontroller.close_z()
-        self.z_pos = 0
-        self.zPos.emit(self.z_pos)
-
-    def cycle_x(self):
-        self.microcontroller.cycle_x()
-        self.x_pos = 0
-        self.xPos.emit(self.x_pos)
-
-    def cycle_y(self):
-        self.microcontroller.cycle_y()
-        self.y_pos = 0
-        self.yPos.emit(self.y_pos)
-
-    def cycle_z(self):
-        self.microcontroller.cycle_z()
-        self.z_pos = 0
-        self.zPos.emit(self.z_pos)

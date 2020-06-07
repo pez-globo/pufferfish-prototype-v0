@@ -28,8 +28,8 @@ class AF:
         pass
 
 class Motion:
-    STEPS_PER_MM_XY = 1 # microsteps
-    STEPS_PER_MM_Z = 1  # microsteps
+    STEPS_PER_MM_XY = 1600 # microsteps
+    STEPS_PER_MM_Z = 5333  # microsteps
     def __init__(self):
         pass
 '''
@@ -59,12 +59,12 @@ class PosUpdate:
 
 class MicrocontrollerDef:
     MSG_LENGTH = 960
-    CMD_LENGTH = 4
+    CMD_LENGTH = 3
     N_BYTES_DATA = 2
     FLOW_FS = 200.0
     VOLUME_FS = 1500.0
-    PAW_FS = 100.0
-    TIMER_PERIOD_ms = 1.25
+    PAW_FS = 50.0
+    TIMER_PERIOD_ms = 0.5
     VT_FS = 1500.0
     PEEP_FS = 30.0
     TI_FS = 5.0
@@ -84,10 +84,6 @@ class MicrocontrollerDef:
     CMD_RiseTime = 6
     CMD_PID_P = 7
     CMD_PID_I_frac = 8
-    CMD_MODE = 9;
-    CMD_CLOSE_VALVE = 10;
-    CMD_STEPPER_CONTROL_AIR = 11
-    CMD_STEPPER_CONTROL_OXYGEN = 12
 
     CMD_FlowDeceleratingSlope = 5
 
@@ -98,9 +94,9 @@ class MicrocontrollerDef:
 
 
 class WAVEFORMS:
-    UPDATE_INTERVAL_MS = 10 # In milliseconds
-    DISPLAY_RANGE_S = 20 # In seconds
-    CYCLE_GAP = 10 # In sample num
+    UPDATE_INTERVAL_MS = 50 # In milliseconds
+    DISPLAY_RANGE_S = 10 # In seconds
+    DISPLAY_DOWNSAMPLING_FACTOR = 40
 
 PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}

@@ -27,12 +27,12 @@ class VentDevGUI(QMainWindow):
 			self.microcontroller = microcontroller.Microcontroller_Simulation()
 		else:
 			self.microcontroller = microcontroller.Microcontroller()
-		self.stepperMotorController = core.ValveController(self.microcontroller)
+		self.navigationController = core.NavigationController(self.microcontroller)
 		self.ventController = core.VentController(self.microcontroller)
 		self.waveforms = core.Waveforms(self.microcontroller,self.ventController)
 		
 		# load widgets
-		self.navigationWidget = widgets.stepperMotorWidget(self.stepperMotorController)
+		self.navigationWidget = widgets.NavigationWidget(self.navigationController)
 		self.waveformDisplay = widgets.WaveformDisplay()
 		self.controlPanel = widgets.ControlPanel(self.ventController)
 
@@ -41,6 +41,7 @@ class VentDevGUI(QMainWindow):
 		# layout.addWidget(self.navigationWidget,0,0)
 		layout.addWidget(self.waveformDisplay,0,0)
 		layout.addWidget(self.controlPanel,1,0)
+		layout.addWidget(self.navigationWidget,2,0)
 
 		# transfer the layout to the central widget
 		self.centralWidget = QWidget()
@@ -48,8 +49,6 @@ class VentDevGUI(QMainWindow):
 		self.setCentralWidget(self.centralWidget)
 
 		# make connections
-		self.stepperMotorController.xPos.connect(self.navigationWidget.label_Xpos.setNum)
-		self.stepperMotorController.yPos.connect(self.navigationWidget.label_Ypos.setNum)
 		self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway Pressure'].update_plot)
 		self.waveforms.signal_Flow.connect(self.waveformDisplay.plotWidgets['Flow Rate'].update_plot)
 		self.waveforms.signal_Volume.connect(self.waveformDisplay.plotWidgets['Volume'].update_plot)

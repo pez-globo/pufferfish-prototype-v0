@@ -15,72 +15,124 @@ import pyqtgraph as pg
 from collections import deque
 import time
 
-class stepperMotorWidget(QFrame):
-	def __init__(self, stepperMotorController, main=None, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.stepperMotorController = stepperMotorController
-		self.add_components()
-		self.setFrameStyle(QFrame.Panel | QFrame.Raised)
+class NavigationWidget(QFrame):
+    def __init__(self, navigationController, main=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.navigationController = navigationController
+        self.add_components()
+        self.setFrameStyle(QFrame.Panel | QFrame.Raised)
 
-	def add_components(self):
-		self.label_Xpos = QLabel()
-		self.label_Xpos.setNum(0)
-		self.label_Xpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-		self.entry_dX = QDoubleSpinBox()
-		self.entry_dX.setMinimum(0) 
-		self.entry_dX.setMaximum(5) 
-		self.entry_dX.setSingleStep(0.2)
-		self.entry_dX.setValue(0)
-		self.btn_moveX_forward = QPushButton('Forward')
-		self.btn_moveX_forward.setDefault(False)
-		self.btn_moveX_backward = QPushButton('Backward')
-		self.btn_moveX_backward.setDefault(False)
-		
-		self.label_Ypos = QLabel()
-		self.label_Ypos.setNum(0)
-		self.label_Ypos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-		self.entry_dY = QDoubleSpinBox()
-		self.entry_dY.setMinimum(0)
-		self.entry_dY.setMaximum(5)
-		self.entry_dY.setSingleStep(0.2)
-		self.entry_dY.setValue(0)
-		self.btn_moveY_forward = QPushButton('Forward')
-		self.btn_moveY_forward.setDefault(False)
-		self.btn_moveY_backward = QPushButton('Backward')
-		self.btn_moveY_backward.setDefault(False)
-		
-		grid_line0 = QGridLayout()
-		grid_line0.addWidget(QLabel('X (mm)'), 0,0)
-		grid_line0.addWidget(self.label_Xpos, 0,1)
-		grid_line0.addWidget(self.entry_dX, 0,2)
-		grid_line0.addWidget(self.btn_moveX_forward, 0,3)
-		grid_line0.addWidget(self.btn_moveX_backward, 0,4)
+    def add_components(self):
+        self.label_Xpos = QLabel()
+        self.label_Xpos.setNum(0)
+        self.label_Xpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.entry_dX = QDoubleSpinBox()
+        self.entry_dX.setMinimum(0) 
+        self.entry_dX.setMaximum(2000) 
+        self.entry_dX.setSingleStep(1)
+        self.entry_dX.setValue(0)
+        self.btn_moveX_forward = QPushButton('Forward')
+        self.btn_moveX_forward.setDefault(False)
+        self.btn_moveX_backward = QPushButton('Backward')
+        self.btn_moveX_backward.setDefault(False)
+        self.btn_close_valveX = QPushButton('close the valve')
+        self.btn_close_valveX.setDefault(False)
+        self.btn_cycle_valveX = QPushButton('cycle the valve')
+        self.btn_cycle_valveX.setDefault(False)
+        
+        self.label_Ypos = QLabel()
+        self.label_Ypos.setNum(0)
+        self.label_Ypos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.entry_dY = QDoubleSpinBox()
+        self.entry_dY.setMinimum(0)
+        self.entry_dY.setMaximum(2000)
+        self.entry_dY.setSingleStep(1)
+        self.entry_dY.setValue(0)
+        self.btn_moveY_forward = QPushButton('Forward')
+        self.btn_moveY_forward.setDefault(False)
+        self.btn_moveY_backward = QPushButton('Backward')
+        self.btn_moveY_backward.setDefault(False)
+        self.btn_close_valveY = QPushButton('close the valve')
+        self.btn_close_valveY.setDefault(False)
+        self.btn_cycle_valveY = QPushButton('cycle the valve')
+        self.btn_cycle_valveY.setDefault(False)
 
-		grid_line1 = QGridLayout()
-		grid_line1.addWidget(QLabel('Y (mm)'), 0,0)
-		grid_line1.addWidget(self.label_Ypos, 0,1)
-		grid_line1.addWidget(self.entry_dY, 0,2)
-		grid_line1.addWidget(self.btn_moveY_forward, 0,3)
-		grid_line1.addWidget(self.btn_moveY_backward, 0,4)
+        self.label_Zpos = QLabel()
+        self.label_Zpos.setNum(0)
+        self.label_Zpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.entry_dZ = QDoubleSpinBox()
+        self.entry_dZ.setMinimum(0) 
+        self.entry_dZ.setMaximum(2000) 
+        self.entry_dZ.setSingleStep(1)
+        self.entry_dZ.setValue(0)
+        self.btn_moveZ_forward = QPushButton('Forward')
+        self.btn_moveZ_forward.setDefault(False)
+        self.btn_moveZ_backward = QPushButton('Backward')
+        self.btn_moveZ_backward.setDefault(False)
+        self.btn_close_valveZ = QPushButton('close the valve')
+        self.btn_close_valveZ.setDefault(False)
+        self.btn_cycle_valveZ = QPushButton('cycle the valve')
+        self.btn_cycle_valveZ.setDefault(False)
+        
+        grid_line0 = QGridLayout()
+        grid_line0.addWidget(QLabel('X (mm)'), 0,0)
+        grid_line0.addWidget(self.label_Xpos, 0,1)
+        grid_line0.addWidget(self.entry_dX, 0,2)
+        grid_line0.addWidget(self.btn_moveX_forward, 0,3)
+        grid_line0.addWidget(self.btn_moveX_backward, 0,4)
+        grid_line0.addWidget(self.btn_close_valveX, 0,5)
+        grid_line0.addWidget(self.btn_cycle_valveX, 0,6)
 
-		self.grid = QGridLayout()
-		self.grid.addLayout(grid_line0,0,0)
-		self.grid.addLayout(grid_line1,1,0)
-		self.setLayout(self.grid)
+        grid_line1 = QGridLayout()
+        grid_line1.addWidget(QLabel('Y (mm)'), 0,0)
+        grid_line1.addWidget(self.label_Ypos, 0,1)
+        grid_line1.addWidget(self.entry_dY, 0,2)
+        grid_line1.addWidget(self.btn_moveY_forward, 0,3)
+        grid_line1.addWidget(self.btn_moveY_backward, 0,4)
+        grid_line1.addWidget(self.btn_close_valveY, 0,5)
+        grid_line1.addWidget(self.btn_cycle_valveY, 0,6)
 
-		self.btn_moveX_forward.clicked.connect(self.move_x_forward)
-		self.btn_moveX_backward.clicked.connect(self.move_x_backward)
-		self.btn_moveY_forward.clicked.connect(self.move_y_forward)
-		self.btn_moveY_backward.clicked.connect(self.move_y_backward)
-		
-	def move_x_forward(self):
-		self.stepperMotorController.move_x(self.entry_dX.value())
-	def move_x_backward(self):
-		self.stepperMotorController.move_x(-self.entry_dX.value())
-	def move_y_forward(self):
-		self.stepperMotorController.move_y(self.entry_dY.value())
-	def move_y_backward(self):
-		self.stepperMotorController.move_y(-self.entry_dY.value())
+        grid_line2 = QGridLayout()
+        grid_line2.addWidget(QLabel('Z (um)'), 0,0)
+        grid_line2.addWidget(self.label_Zpos, 0,1)
+        grid_line2.addWidget(self.entry_dZ, 0,2)
+        grid_line2.addWidget(self.btn_moveZ_forward, 0,3)
+        grid_line2.addWidget(self.btn_moveZ_backward, 0,4)
+        grid_line2.addWidget(self.btn_close_valveZ, 0,5)
+        grid_line2.addWidget(self.btn_cycle_valveZ, 0,6)
+
+        self.grid = QGridLayout()
+        # self.grid.addLayout(grid_line0,0,0)
+        # self.grid.addLayout(grid_line1,1,0)
+        self.grid.addLayout(grid_line2,2,0)
+        self.setLayout(self.grid)
+
+        self.btn_moveX_forward.clicked.connect(self.move_x_forward)
+        self.btn_moveX_backward.clicked.connect(self.move_x_backward)
+        self.btn_moveY_forward.clicked.connect(self.move_y_forward)
+        self.btn_moveY_backward.clicked.connect(self.move_y_backward)
+        self.btn_moveZ_forward.clicked.connect(self.move_z_forward)
+        self.btn_moveZ_backward.clicked.connect(self.move_z_backward)
+        self.btn_close_valveX.clicked.connect(self.navigationController.close_x)
+        self.btn_close_valveY.clicked.connect(self.navigationController.close_y)
+        self.btn_close_valveZ.clicked.connect(self.navigationController.close_z)
+        self.btn_cycle_valveX.clicked.connect(self.navigationController.cycle_x)
+        self.btn_cycle_valveY.clicked.connect(self.navigationController.cycle_y)
+        self.btn_cycle_valveZ.clicked.connect(self.navigationController.cycle_z)
+        
+    def move_x_forward(self):
+        self.navigationController.move_x(self.entry_dX.value())
+    def move_x_backward(self):
+        self.navigationController.move_x(-self.entry_dX.value())
+    def move_y_forward(self):
+        self.navigationController.move_y(self.entry_dY.value())
+    def move_y_backward(self):
+        self.navigationController.move_y(-self.entry_dY.value())
+    def move_z_forward(self):
+        self.navigationController.move_z(self.entry_dZ.value())
+    def move_z_backward(self):
+        self.navigationController.move_z(-self.entry_dZ.value())
+
 
 class ControlPanel(QFrame):
 	def __init__(self, ventController, main=None, *args, **kwargs):
@@ -172,6 +224,11 @@ class ControlPanel(QFrame):
 		self.entry_FlowDeceleratingSlope.setSingleStep(5)
 		self.entry_FlowDeceleratingSlope.setValue(0)
 
+		self.btn_onoff = QPushButton('On/Off')
+		self.btn_onoff.setDefault(False)
+		self.btn_onoff.setCheckable(True)
+		self.btn_onoff.setChecked(True)
+
 		grid_line0 = QGridLayout()
 		grid_line0.addWidget(QLabel('VT (ml)',font=self.font), 0,0)
 		grid_line0.addWidget(self.entry_VT, 0,1)
@@ -213,19 +270,24 @@ class ControlPanel(QFrame):
 		grid_line9.addWidget(QLabel('I Gain (frac)',font=self.font), 0,0)
 		grid_line9.addWidget(self.entry_PID_I_frac, 0,1)
 
+		grid_line10 = QGridLayout()
+		grid_line10.addWidget(self.btn_onoff, 0,1)
 
 		self.grid = QGridLayout()
 		self.grid.addLayout(grid_line0,0,0)
 		self.grid.addLayout(grid_line1,0,1)
 		self.grid.addLayout(grid_line2,0,2)
 		self.grid.addLayout(grid_line3,0,3)
-		self.grid.addLayout(grid_line5,0,5)
+		self.grid.addLayout(grid_line5,0,4)
 
 		self.grid.addLayout(grid_line6,1,0)
 		self.grid.addLayout(grid_line7,1,1)
 		self.grid.addLayout(grid_line8,1,2)
 		self.grid.addLayout(grid_line9,1,3)
 		self.grid.addLayout(grid_line4,1,4)
+
+		self.grid.addLayout(grid_line10,2,0)
+
 
 		self.setLayout(self.grid)
 
@@ -240,7 +302,8 @@ class ControlPanel(QFrame):
 		self.entry_PID_P.valueChanged.connect(self.ventController.setPID_P)
 		self.entry_PID_I_frac.valueChanged.connect(self.ventController.setPID_I_frac)
 
-
+		self.btn_onoff.clicked.connect(self.ventController.setONOFF)
+		
 # from Deepak
 class PlotWidget(pg.GraphicsLayoutWidget):
 
