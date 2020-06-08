@@ -224,6 +224,11 @@ class ControlPanel(QFrame):
 		self.entry_FlowDeceleratingSlope.setSingleStep(5)
 		self.entry_FlowDeceleratingSlope.setValue(0)
 
+		self.mode = MODE_PC_AC
+		self.dropdown_modeManu = QComboBox()
+		self.dropdown_modeManu.addItems([MODE_VC_AC_STRING,MODE_PC_AC_STRING,MODE_PSV_STRING])
+		self.dropdown_modeManu.setCurrentText(MODE_PC_AC_STRING)
+
 		self.btn_onoff = QPushButton('On/Off')
 		self.btn_onoff.setDefault(False)
 		self.btn_onoff.setCheckable(True)
@@ -271,7 +276,8 @@ class ControlPanel(QFrame):
 		grid_line9.addWidget(self.entry_PID_I_frac, 0,1)
 
 		grid_line10 = QGridLayout()
-		grid_line10.addWidget(self.btn_onoff, 0,1)
+		grid_line10.addWidget(self.dropdown_modeManu,0,0)
+		grid_line10.addWidget(self.btn_onoff,0,1)
 
 		self.grid = QGridLayout()
 		self.grid.addLayout(grid_line0,0,0)
@@ -303,6 +309,7 @@ class ControlPanel(QFrame):
 		self.entry_PID_I_frac.valueChanged.connect(self.ventController.setPID_I_frac)
 
 		self.btn_onoff.clicked.connect(self.ventController.setONOFF)
+		self.dropdown_modeManu.currentTextChanged.connect(self.ventController.updateMode)
 		
 # from Deepak
 class PlotWidget(pg.GraphicsLayoutWidget):
