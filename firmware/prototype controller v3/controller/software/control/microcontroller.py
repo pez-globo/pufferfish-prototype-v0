@@ -68,6 +68,12 @@ class Microcontroller():
         cmd[2] = int(65535*value) & 0xff
         self.serial.write(cmd)
 
+    def set_mode(self,CMD_ID,value):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = CMD_ID
+        cmd[1] = int(value)
+        self.serial.write(cmd)
+
     def read_received_packet(self):
         # wait to receive data
         while self.serial.in_waiting==0:
@@ -180,3 +186,6 @@ class Microcontroller_Simulation():
         #print(cmd[0])
         #print(cmd[1])
         #print(cmd[2])
+
+    def set_mode(self,CMD_ID,value):
+        pass

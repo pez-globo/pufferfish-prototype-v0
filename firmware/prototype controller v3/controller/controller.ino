@@ -15,8 +15,8 @@ static const bool USE_SERIAL_MONITOR = false;
 /***************************************************************************************************/
 /********************************************* Parameters *********************************************/
 /***************************************************************************************************/
-static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 8000;
-uint32_t exhalation_control_PEEP_duty = 3000;
+static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 9000;
+uint32_t exhalation_control_PEEP_duty = 5000;
 static const float TIMER_PERIOD_us = 1250; // in us
 
 /***************************************************************************************************/
@@ -96,7 +96,7 @@ static inline int sgn(int val) {
 }
 
 static const int CMD_LENGTH = 4;
-static const int MSG_LENGTH = 960;
+static const int MSG_LENGTH = 24;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
@@ -164,6 +164,8 @@ bool flag_close_valve_oxygen_in_progress = false;
 bool flag_valve_oxygen_flow_detected = false;
 bool flag_valve_oxygen_close_position_reset = false;
 
+int mode = MODE_PC_AC;
+
 float RR = 18;
 float Ti = 1.2;
 float Vt = 250;
@@ -172,7 +174,7 @@ float paw_trigger_th = 3;
 float pc_rise_time_ms = 100;
 float pinsp_setpoint = 20;
 float psupport = 10;
-bool pressure_support_enabled = true;
+bool pressure_support_enabled = false;
 
 float PID_coefficient_P = 0.01;
 float PID_coefficient_I = 0.001;
@@ -187,7 +189,7 @@ volatile float PID_Insp_Prop = 0;
 float cycle_period_ms = 0; // duration of each breathing cycle
 float cycle_time_ms = 0;  // current time in the breathing cycle
 float time_inspiratory_ms = Ti * 1000;
-float frequency_send_data = 20;
+float frequency_send_data = 50;
 float counter_send_data = 0;
 
 volatile bool flag_send_data = false;
@@ -228,8 +230,10 @@ static const int Z_dir = 28;
 static const int Z_step = 26;
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Z_N_microstepping; 
+//constexpr float MAX_VELOCITY_Z_mm = 25; 
+//constexpr float MAX_ACCELERATION_Z_mm = 2000; // 12.5 ms to reach max speed
 constexpr float MAX_VELOCITY_Z_mm = 25; 
-constexpr float MAX_ACCELERATION_Z_mm = 2000; // 12.5 ms to reach max speed
+constexpr float MAX_ACCELERATION_Z_mm = 1600; // 12.5 ms to reach max speed
 AccelStepper stepper_Z = AccelStepper(AccelStepper::DRIVER, Z_step, Z_dir);
 
 void setup() {
@@ -338,7 +342,7 @@ void setup() {
   while(!STEPPER_SERIAL);
   Z_driver.begin();
   Z_driver.I_scale_analog(false);  
-  Z_driver.rms_current(300,0.2); //I_run and holdMultiplier
+  Z_driver.rms_current(350,0.2); //I_run and holdMultiplier
   Z_driver.microsteps(Z_N_microstepping);
   Z_driver.pwm_autoscale(true);
   Z_driver.TPOWERDOWN(2);
@@ -374,47 +378,140 @@ void timer_interruptHandler()
 
   if (is_breathing)
   {
-    // time-triggered breath
-    if (cycle_time_ms > cycle_period_ms && is_in_inspiratory_phase == false )
+    if (mode == MODE_PC_AC || mode == MODE_PSV)
     {
-      cycle_time_ms = 0;
-      is_in_inspiratory_phase = true;
-      is_in_pressure_regulation_rise = true;
-      is_in_expiratory_phase = false;
-      PEEP_is_reached = false;
-      mvolume = 0;
-      mflow_peak = 0;
-      mPEEP = mpaw;
-      set_valve2_state(0);
-      digitalWrite(13, HIGH);
-      PID_Insp_Integral = 0;
-
-      is_in_pressure_support = true; // for testing pressure support only
-    }
-
-    /*
-    // patient triggered breath
-    if ( mpaw < paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false )
-    {
-      cycle_time_ms = 0;
-      is_in_inspiratory_phase = true;
-      is_in_pressure_regulation_rise = true;
-      is_in_expiratory_phase = false;
-      PEEP_is_reached = false;
-      mvolume = 0;
-      mflow_peak = 0;
-      mPEEP = mpaw;
-      set_valve2_state(0);
-      digitalWrite(13, HIGH);
-      PID_Insp_Integral = 0;
+      if (mode == MODE_PC_AC)
+      {
+        // time-triggered breath
+        if (cycle_time_ms > cycle_period_ms && is_in_inspiratory_phase == false )
+        {
+          cycle_time_ms = 0;
+          is_in_inspiratory_phase = true;
+          is_in_pressure_regulation_rise = true;
+          is_in_expiratory_phase = false;
+          PEEP_is_reached = false;
+          mvolume = 0;
+          mflow_peak = 0;
+          mPEEP = mpaw;
+          set_valve2_state(0);
+          digitalWrite(13, HIGH);
+          PID_Insp_Integral = 0;
+          //is_in_pressure_support = false; // for testing pressure support only
+        }
+      }
+      // for the first test only support PC-CMV and PSV
+      if(mode == MODE_PSV)
+      {
+        // patient triggered breath
+        if ( mpaw < paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false )
+        {
+          cycle_time_ms = 0;
+          is_in_inspiratory_phase = true;
+          is_in_pressure_regulation_rise = true;
+          is_in_expiratory_phase = false;
+          PEEP_is_reached = false;
+          mvolume = 0;
+          mflow_peak = 0;
+          mPEEP = mpaw;
+          set_valve2_state(0);
+          digitalWrite(13, HIGH);
+          PID_Insp_Integral = 0;
+          is_in_pressure_support = true;
+          
+          // determine whether this is a mandatory breath or a supported breath
+          // for testing, set all patient triggered breathes as supported breathes
+          //if(pressure_support_enabled == true)
+          //  is_in_pressure_support = true;
+        }
+      }
       
-      // determine whether this is a mandatory breath or a supported breath
-      // for testing, set all patient triggered breathes as supported breathes
-      if(pressure_support_enabled == true)
-        is_in_pressure_support = true;
-    }
-    */
+      
+      if(is_in_pressure_regulation_rise == true && cycle_time_ms <= time_inspiratory_ms)
+      {
+        // update mflow_peak
+        mflow_peak =  max(mflow,mflow_peak);
+        // determine state and calculate setpoint
+        // paw_setpoint = is_in_pressure_support ? (mPEEP + psupport) : pinsp_setpoint;
+        paw_setpoint = pinsp_setpoint;
+        // determine state
+        if(cycle_time_ms < pc_rise_time_ms + 200 && mpaw < 0.95*paw_setpoint && is_in_pressure_regulation_plateau == false)
+          is_in_pressure_regulation_rise = true;
+        else
+        {
+          is_in_pressure_regulation_rise = false;
+          is_in_pressure_regulation_plateau = true;
+        }
+        // determine rise setpoint
+        paw_setpoint_rise = (paw_setpoint-mPEEP)*(cycle_time_ms/pc_rise_time_ms) + mPEEP;
+          // calculate error
+        paw_error = paw_setpoint_rise - mpaw;
+        PID_Insp_Integral = PID_Insp_Integral + 0.7*PID_coefficient_I*paw_error;
+        PID_Insp_Integral = PID_Insp_Integral > 1 ? 1 : PID_Insp_Integral;
+        PID_Insp_Integral = PID_Insp_Integral < 0 ? 0 : PID_Insp_Integral;
+        PID_Insp_Prop = 0.7*PID_coefficient_P*paw_error;
+        // generate command
+        valve_opening = PID_Insp_Prop + PID_Insp_Integral;
+        valve_opening = valve_opening > 1 ? 1 : valve_opening;
+        valve_opening = valve_opening < 0 ? 0 : valve_opening;
+        set_valve1_pos(valve_opening);
+      }
+  
+      if(is_in_pressure_regulation_plateau)
+      {
+        // calculate error
+        paw_error = pinsp_setpoint - mpaw;
+        PID_Insp_Integral = PID_Insp_Integral + PID_coefficient_I*paw_error;
+        PID_Insp_Integral = PID_Insp_Integral > 1 ? 1 : PID_Insp_Integral;
+        PID_Insp_Integral = PID_Insp_Integral < 0 ? 0 : PID_Insp_Integral;
+        PID_Insp_Prop = PID_coefficient_P*paw_error;
+        // generate command
+        valve_opening = PID_Insp_Prop + PID_Insp_Integral;
+        valve_opening = valve_opening > 1 ? 1 : valve_opening;
+        valve_opening = valve_opening < 0 ? 0 : valve_opening;
+        set_valve1_pos(valve_opening);
+      }
 
+      // advanced termination
+      if(is_in_pressure_support && mflow <= 0.25*mflow_peak && is_in_pressure_regulation_plateau && is_in_expiratory_phase == false)
+      {
+        // change to exhalation
+        is_in_inspiratory_phase = false;
+        is_in_pressure_regulation_plateau = false;
+        is_in_pressure_support = false;
+        is_in_expiratory_phase = true;
+        valve_opening = 0;
+        set_valve1_pos(valve_opening);
+        set_valve2_state(1);
+        digitalWrite(13, LOW);
+      }
+    }
+    
+    // volume control
+    else
+    {
+      // time-triggered breath
+      if (cycle_time_ms > cycle_period_ms && is_in_inspiratory_phase == false )
+      {
+        cycle_time_ms = 0;
+        is_in_inspiratory_phase = true;
+        is_in_expiratory_phase = false;
+        PEEP_is_reached = false;
+        mvolume = 0;
+        mflow_peak = 0;
+        mPEEP = mpaw;
+        set_valve2_state(0);
+        valve_opening = 0.36;
+        set_valve1_pos(valve_opening);
+        digitalWrite(13, HIGH);
+      }
+      if (mvolume >= Vt && is_in_inspiratory_phase == true)
+      {
+        valve_opening = 0;
+        set_valve1_pos(valve_opening);
+        set_valve2_state(1);
+        is_in_inspiratory_phase = false;
+      }
+    }    
 
     /*
     // generate decelerating waveform
@@ -431,64 +528,6 @@ void timer_interruptHandler()
       is_in_inspiratory_phase = false;
     }
     */
-
-    if(is_in_pressure_regulation_rise == true && cycle_time_ms <= time_inspiratory_ms)
-    {
-      // update mflow_peak
-      mflow_peak =  max(mflow,mflow_peak);
-      // determine state and calculate setpoint
-      // paw_setpoint = is_in_pressure_support ? (mPEEP + psupport) : pinsp_setpoint;
-      paw_setpoint = pinsp_setpoint;
-      // determine state
-      if(cycle_time_ms < pc_rise_time_ms + 200 && mpaw < 0.95*paw_setpoint && is_in_pressure_regulation_plateau == false)
-        is_in_pressure_regulation_rise = true;
-      else
-      {
-        is_in_pressure_regulation_rise = false;
-        is_in_pressure_regulation_plateau = true;
-      }
-      // determine rise setpoint
-      paw_setpoint_rise = (paw_setpoint-mPEEP)*(cycle_time_ms/pc_rise_time_ms) + mPEEP;
-        // calculate error
-      paw_error = paw_setpoint_rise - mpaw;
-      PID_Insp_Integral = PID_Insp_Integral + 0.7*PID_coefficient_I*paw_error;
-      PID_Insp_Integral = PID_Insp_Integral > 1 ? 1 : PID_Insp_Integral;
-      PID_Insp_Integral = PID_Insp_Integral < 0 ? 0 : PID_Insp_Integral;
-      PID_Insp_Prop = 0.7*PID_coefficient_P*paw_error;
-      // generate command
-      valve_opening = PID_Insp_Prop + PID_Insp_Integral;
-      valve_opening = valve_opening > 1 ? 1 : valve_opening;
-      valve_opening = valve_opening < 0 ? 0 : valve_opening;
-      set_valve1_pos(valve_opening);
-    }
-
-    if(is_in_pressure_regulation_plateau)
-    {
-      // calculate error
-      paw_error = pinsp_setpoint - mpaw;
-      PID_Insp_Integral = PID_Insp_Integral + PID_coefficient_I*paw_error;
-      PID_Insp_Integral = PID_Insp_Integral > 1 ? 1 : PID_Insp_Integral;
-      PID_Insp_Integral = PID_Insp_Integral < 0 ? 0 : PID_Insp_Integral;
-      PID_Insp_Prop = PID_coefficient_P*paw_error;
-      // generate command
-      valve_opening = PID_Insp_Prop + PID_Insp_Integral;
-      valve_opening = valve_opening > 1 ? 1 : valve_opening;
-      valve_opening = valve_opening < 0 ? 0 : valve_opening;
-      set_valve1_pos(valve_opening);
-    }
-
-    if(is_in_pressure_support && mflow <= 0.25*mflow_peak && is_in_expiratory_phase == false)
-    {
-      // change to exhalation
-      is_in_inspiratory_phase = false;
-      is_in_pressure_regulation_plateau = false;
-      is_in_pressure_support = false;
-      is_in_expiratory_phase = true;
-      valve_opening = 0;
-      set_valve1_pos(valve_opening);
-      set_valve2_state(1);
-      digitalWrite(13, LOW);
-    }
 
     // breathing control - change to exhalation when Ti is reached
     if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
@@ -574,9 +613,22 @@ void loop()
       {
         if (buffer_rx[1] == MODE_OFF)
           is_breathing = false;
-        else
+        else if (buffer_rx[1] == MODE_PC_AC)
+        {
+          mode = MODE_PC_AC;
           is_breathing = true;
-        // @TODO: mode selection          
+        }
+        else if (buffer_rx[1] == MODE_VC_AC)
+        {
+          mode = MODE_VC_AC;
+          is_breathing = true;
+        }
+        else if (buffer_rx[1] == MODE_PSV)
+        {
+          mode = MODE_PSV;
+          is_breathing = true;
+        }
+        // @TODO: separate on/off control          
       }
       else if (buffer_rx[0] == CMD_CLOSE_VALVE)
       {
@@ -628,7 +680,8 @@ void loop()
     if (ret_sfm3000_1 == 0)
       mflow_air = sfm3000_1.get_flow();
     mflow_oxygen = 0;
-    mflow = mflow_air + mflow_oxygen;
+    // mflow = mflow_air + mflow_oxygen;
+    
     mvolume = mvolume + mflow * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
     flag_read_sensor = false;
   }

@@ -101,23 +101,23 @@ class VentController(QObject):
     
     def setONOFF(self,state):
         if state == False:
-            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,0) # to add mode selection
+            self.microcontroller.set_mode(MicrocontrollerDef.CMD_MODE,0) # to add mode selection
             print('stop breathing')
         else:
             #TODO: add mode selection
-            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,self.mode) 
+            self.microcontroller.set_mode(MicrocontrollerDef.CMD_MODE,self.mode) 
 
     def updateMode(self,mode):
         print('update mode')
         if mode == MODE_PC_AC_STRING:
             self.mode = MODE_PC_AC
-            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,self.mode/65535.0) 
+            # self.microcontroller.set_mode(MicrocontrollerDef.CMD_MODE,self.mode) 
         if mode == MODE_VC_AC_STRING:
             self.mode = MODE_VC_AC
-            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,self.mode/65535.0) 
+            # self.microcontroller.set_mode(MicrocontrollerDef.CMD_MODE,self.mode) 
         if mode == MODE_PSV_STRING:
             self.mode = MODE_PSV
-            self.microcontroller.set_parameter(MicrocontrollerDef.CMD_MODE,self.mode/65535.0) 
+            # self.microcontroller.set_mode(MicrocontrollerDef.CMD_MODE,self.mode) 
 
 # class DataLogger(QObject):
 #     def __init__(self,microcontroller):
