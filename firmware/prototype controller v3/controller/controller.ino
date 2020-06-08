@@ -172,7 +172,7 @@ float paw_trigger_th = 3;
 float pc_rise_time_ms = 100;
 float pinsp_setpoint = 20;
 float psupport = 10;
-bool pressure_support_enabled = false;
+bool pressure_support_enabled = true;
 
 float PID_coefficient_P = 0.01;
 float PID_coefficient_I = 0.001;
@@ -388,6 +388,8 @@ void timer_interruptHandler()
       set_valve2_state(0);
       digitalWrite(13, HIGH);
       PID_Insp_Integral = 0;
+
+      is_in_pressure_support = true; // for testing pressure support only
     }
 
     /*
@@ -435,7 +437,8 @@ void timer_interruptHandler()
       // update mflow_peak
       mflow_peak =  max(mflow,mflow_peak);
       // determine state and calculate setpoint
-      paw_setpoint = is_in_pressure_support ? (mPEEP + psupport) : pinsp_setpoint;
+      // paw_setpoint = is_in_pressure_support ? (mPEEP + psupport) : pinsp_setpoint;
+      paw_setpoint = pinsp_setpoint;
       // determine state
       if(cycle_time_ms < pc_rise_time_ms + 200 && mpaw < 0.95*paw_setpoint && is_in_pressure_regulation_plateau == false)
         is_in_pressure_regulation_rise = true;
