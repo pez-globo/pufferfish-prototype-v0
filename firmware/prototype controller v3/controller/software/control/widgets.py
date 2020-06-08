@@ -357,7 +357,7 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.left_Y_data.append(data)
 
 		# Remove overlapping samples by popping left from the right waveform.
-		while (len(self.right_X_data) > 0 and len(self.left_X_data) + len(self.right_X_data) >= self.maxLen - self.setbiasGap):
+		while (len(self.right_X_data) > 0 and len(self.left_X_data) + len(self.right_X_data) >= self.maxLen - self.CYCLE_GAP):
 			self.right_X_data.popleft()
 			self.right_Y_data.popleft()
 		

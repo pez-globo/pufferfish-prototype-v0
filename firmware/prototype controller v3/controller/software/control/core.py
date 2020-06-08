@@ -16,6 +16,7 @@ import time
 import numpy as np
 import pyqtgraph as pg
 from datetime import datetime
+from pathlib import Path
 
 class ValveController(QObject):
 
@@ -126,7 +127,7 @@ class Waveforms(QObject):
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
-        self.file = open("/Users/hongquanli/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
+        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
         self.file.write('Time (s),Paw (cmH2O),Flow (l/min),Volume (ml),Vt (ml),Ti (s),RR (/min),PEEP (cmH2O)\n')
         self.microcontroller = microcontroller
         self.ventController = ventController
@@ -168,6 +169,10 @@ class Waveforms(QObject):
         else:
             readout = self.microcontroller.read_received_packet_nowait()
             if readout is not None:
+                self.time_now = time.time()
+                self.time_diff = self.time_now - self.time_prev
+                self.time_prev = self.time_now
+                self.time += self.time_diff
                 self.Paw = (utils.unsigned_to_signed(readout[0:2],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.PAW_FS 
                 self.Flow = (utils.unsigned_to_signed(readout[2:4],MicrocontrollerDef.N_BYTES_DATA)/(65536/2))*MicrocontrollerDef.FLOW_FS
                 self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MicrocontrollerDef.N_BYTES_DATA)/65536)*MicrocontrollerDef.VOLUME_FS
@@ -177,9 +182,6 @@ class Waveforms(QObject):
             # reduce display refresh rate
             self.counter_display = self.counter_display + 1
             if self.counter_display>=1:
-                self.time_diff = self.time_now - self.time_prev
-                self.time_prev = self.time_now
-                self.time += self.time_diff
                 self.counter_display = 0
                 self.signal_Paw.emit(self.time,self.Paw)
                 self.signal_Flow.emit(self.time,self.Flow)

@@ -109,12 +109,12 @@ PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
 PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
 
-SIMULATION = True
+SIMULATION = False
 
 class MCU:
     TIMER_PERIOD_ms = 1.25
     DATA_INTERVAL_ms = 50
-    TIMEPOINT_PER_UPDATE = 4
+    TIMEPOINT_PER_UPDATE = 1
 
 if SIMULATION:
     print('change')
