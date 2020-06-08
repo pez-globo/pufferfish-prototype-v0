@@ -103,7 +103,7 @@ class WAVEFORMS:
     FLOW_MIN = -150
     FLOW_MAX = 150
     V_MIN = 0
-    V_MAX = 600
+    V_MAX = 1000
 
 PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
