@@ -12,8 +12,8 @@ class Microcontroller():
     def __init__(self,parent=None):
         self.serial = None
         self.platform_name = platform.system()
-        self.tx_buffer_length = MicrocontrollerDef.CMD_LENGTH
-        self.rx_buffer_length = MicrocontrollerDef.MSG_LENGTH
+        self.tx_buffer_length = MCU.CMD_LENGTH
+        self.rx_buffer_length = MCU.MSG_LENGTH
 
         # AUTO-DETECT the Arduino! By Deepak
         arduino_ports = [

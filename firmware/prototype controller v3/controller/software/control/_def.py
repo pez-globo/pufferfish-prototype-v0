@@ -54,10 +54,11 @@ class Acquisition:
     def __init__(self):
         pass
 
-class MicrocontrollerDef:
-    MSG_LENGTH = 24
+class MCU:
+    MSG_LENGTH = 780
     CMD_LENGTH = 4
     N_BYTES_DATA = 2
+
     FLOW_FS = 200.0
     VOLUME_FS = 1500.0
     PAW_FS = 100.0
@@ -66,6 +67,20 @@ class MicrocontrollerDef:
     PEEP_FS = 30.0
     TI_FS = 5.0
     RR_FS = 60.0
+
+    # full scale
+    flow_FS = 200;
+    volume_FS = 1500;
+    paw_FS = 100;
+    psupply_FS = 30;
+    Ti_FS = 5;
+    Vt_FS = 1500;
+    PEEP_FS = 30;
+    RR_FS = 60;
+    valve_pos_open_steps_FS = -125;
+    pc_rise_time_ms_FS = 500;
+    PID_coefficient_P_FS = 0.1;
+    PID_coefficient_I_frac_FS = 1;
     
     VALVE_POS_OPEN_STEPS_FS = 125;
     PC_RISE_TIME_MS_FS = 500;
@@ -94,6 +109,11 @@ class MicrocontrollerDef:
     PEEP_DEFAULT = 5
     Vt_DEFAULT = 300
 
+    TIMER_PERIOD_ms = 1.25
+    DATA_INTERVAL_ms = 32.5
+    TIMEPOINT_PER_UPDATE = 26
+    RECORD_LENGTH_BYTE = 30
+
 class WAVEFORMS:
     # UPDATE_INTERVAL_MS = 25 # make sure this equals MCU.DATA_INTERVAL_ms when MCU is connected and MCU.DATA_INTERVAL_ms/2 when in simulation
     DISPLAY_RANGE_S = 10 # In seconds
@@ -109,12 +129,7 @@ PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
 PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
 
-SIMULATION = False
-
-class MCU:
-    TIMER_PERIOD_ms = 1.25
-    DATA_INTERVAL_ms = 40
-    TIMEPOINT_PER_UPDATE = 2
+SIMULATION = False    
 
 MODE_VC_AC = 1
 MODE_PC_AC = 2
@@ -126,5 +141,5 @@ MODE_PSV_STRING = 'PSV'
 if SIMULATION:
     WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/2/MCU.TIMEPOINT_PER_UPDATE
 else:
-    WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/MCU.TIMEPOINT_PER_UPDATE
+    WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/2
 

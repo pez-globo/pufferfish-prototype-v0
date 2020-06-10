@@ -17,7 +17,8 @@ static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 9000;
 uint32_t exhalation_control_PEEP_duty = 5000;
 static const float TIMER_PERIOD_us = 1250; // in us
 static const bool USE_SERIAL_MONITOR = false;
-static const float frequency_send_data = 50; // in Hz
+static const int MSG_LENGTH = 780;
+# define LOGGING_UNDERSAMPLING  1
 
 /***************************************************************************************************/
 /********************************************* pwm_lib *********************************************/
@@ -50,7 +51,6 @@ static const float coefficient_dp2flow_offset = 1.1029;
 /***************************************************************************************************/
 /***************************************************************************************************/
 static const int CMD_LENGTH = 4;
-static const int MSG_LENGTH = 24;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
@@ -152,7 +152,7 @@ bool flag_close_valve_oxygen_in_progress = false;
 bool flag_valve_oxygen_flow_detected = false;
 bool flag_valve_oxygen_close_position_reset = false;
 
-volatile bool flag_send_data = false;
+volatile bool flag_log_data = false;
 volatile bool flag_read_sensor = false;
 
 // breathing control related flags
@@ -166,7 +166,7 @@ volatile bool is_in_pressure_support = false;
 volatile bool PEEP_is_reached = false;
 
 // data logging
-float counter_send_data = 0;
+volatile int counter_log_data = 0;
 
 // other variables
 uint16_t tmp_uint16;
@@ -565,11 +565,11 @@ void timer_interruptHandler()
   }
 
   // send data to host computer
-  counter_send_data = counter_send_data + 1;
-  if ((TIMER_PERIOD_us / 1000000)*counter_send_data >= 1 / frequency_send_data)
+  counter_log_data = counter_log_data + 1;
+  if (counter_log_data >= LOGGING_UNDERSAMPLING)
   {
-    counter_send_data = 0;
-    flag_send_data = true;
+    counter_log_data = 0;
+    flag_log_data = true;
   }
 
 }
@@ -725,8 +725,10 @@ void loop()
     }
   }
 
-  if (flag_send_data)
+  if (flag_log_data)
   {
+    flag_log_data = false;
+    
     // field 1: time
     buffer_tx[buffer_tx_ptr++] = byte(timestamp >> 24);
     buffer_tx[buffer_tx_ptr++] = byte(timestamp >> 16);
@@ -780,20 +782,20 @@ void loop()
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
-    // field 10 exhalation control valve pressure
-    tmp_long = (65536 / 2) * mpexhalation / paw_FS;
-    tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
-    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
-    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
-
-    // field 11 patient pressure
+    // field 10 patient pressure
     tmp_long = (65536 / 2) * mppatient / paw_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
-    // field 12 airway pressure
+    // field 11 airway pressure
     tmp_long = (65536 / 2) * mpaw / paw_FS;
+    tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
+    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+
+    // field 12 volume
+    tmp_long = (65536 / 2) * mvolume / volume_FS;;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
@@ -822,7 +824,7 @@ void loop()
       }
       else
         SerialUSB.write(buffer_tx, MSG_LENGTH);
-      flag_send_data = false;
+      
     }
   }
 
