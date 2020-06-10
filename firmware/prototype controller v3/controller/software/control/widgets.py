@@ -224,6 +224,13 @@ class ControlPanel(QFrame):
 		self.entry_FlowDeceleratingSlope.setSingleStep(5)
 		self.entry_FlowDeceleratingSlope.setValue(0)
 
+		self.entry_TriggerTh = QDoubleSpinBox()
+		self.entry_TriggerTh.setFont(self.font)
+		self.entry_TriggerTh.setMinimum(-5)
+		self.entry_TriggerTh.setMaximum(0)
+		self.entry_TriggerTh.setSingleStep(0.1)
+		self.entry_TriggerTh.setValue(-1.5)
+
 		self.mode = MODE_PC_AC
 		self.dropdown_modeManu = QComboBox()
 		self.dropdown_modeManu.addItems([MODE_VC_AC_STRING,MODE_PC_AC_STRING,MODE_PSV_STRING])
@@ -233,6 +240,9 @@ class ControlPanel(QFrame):
 		self.btn_onoff.setDefault(False)
 		self.btn_onoff.setCheckable(True)
 		self.btn_onoff.setChecked(True)
+
+		self.label_print = QLabel()
+		self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 
 		grid_line0 = QGridLayout()
 		grid_line0.addWidget(QLabel('VT (ml)',font=self.font), 0,0)
@@ -254,10 +264,9 @@ class ControlPanel(QFrame):
 		grid_line4.addWidget(QLabel('Flow',font=self.font), 0,0)
 		grid_line4.addWidget(self.entry_Flow, 0,1)
 
-		grid_line5 = QGridLayout()
-		grid_line5.addWidget(QLabel('FlowDec',font=self.font), 0,0)
-		grid_line5.addWidget(self.entry_FlowDeceleratingSlope, 0,1)
-
+		# grid_line5 = QGridLayout()
+		# grid_line5.addWidget(QLabel('FlowDec',font=self.font), 0,0)
+		# grid_line5.addWidget(self.entry_FlowDeceleratingSlope, 0,1)
 
 		grid_line6 = QGridLayout()
 		grid_line6.addWidget(QLabel('P_Insp',font=self.font), 0,0)
@@ -266,6 +275,10 @@ class ControlPanel(QFrame):
 		grid_line7 = QGridLayout()
 		grid_line7.addWidget(QLabel('Rise Time (ms)',font=self.font), 0,0)
 		grid_line7.addWidget(self.entry_RiseTime, 0,1)
+
+		grid_line12 = QGridLayout()
+		grid_line12.addWidget(QLabel('Trigger th (cmH2O)',font=self.font), 0,0)
+		grid_line12.addWidget(self.entry_TriggerTh, 0,1)
 
 		grid_line8 = QGridLayout()
 		grid_line8.addWidget(QLabel('P Gain',font=self.font), 0,0)
@@ -278,6 +291,9 @@ class ControlPanel(QFrame):
 		grid_line10 = QGridLayout()
 		grid_line10.addWidget(self.dropdown_modeManu,0,0)
 		grid_line10.addWidget(self.btn_onoff,0,1)
+
+		grid_line11 = QGridLayout()
+		grid_line11.addWidget(self.label_print,0,0,10,1)
 
 		self.grid = QGridLayout()
 		self.grid.addLayout(grid_line0,0,0)
@@ -293,6 +309,7 @@ class ControlPanel(QFrame):
 		self.grid.addLayout(grid_line4,1,4)
 
 		self.grid.addLayout(grid_line10,2,0)
+		self.grid.addLayout(grid_line11,3,0)
 
 
 		self.setLayout(self.grid)
@@ -307,6 +324,7 @@ class ControlPanel(QFrame):
 		self.entry_RiseTime.valueChanged.connect(self.ventController.setRiseTime)
 		self.entry_PID_P.valueChanged.connect(self.ventController.setPID_P)
 		self.entry_PID_I_frac.valueChanged.connect(self.ventController.setPID_I_frac)
+		self.entry_TriggerTh.valueChanged.connect(self.ventController.setTriggerTh)
 
 		self.btn_onoff.clicked.connect(self.ventController.setONOFF)
 		self.dropdown_modeManu.currentTextChanged.connect(self.ventController.updateMode)

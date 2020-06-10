@@ -80,6 +80,7 @@ static const uint8_t CMD_CLOSE_VALVE = 10;
 static const uint8_t CMD_STEPPER_CONTROL_AIR = 11;
 static const uint8_t CMD_STEPPER_CONTROL_OXYGEN = 12;
 static const uint8_t CMD_SET_BIAS_FLOW = 13;
+static const uint8_t CMD_Trigger_th = 14;
 
 // full scale values
 static const float flow_FS = 200;
@@ -98,12 +99,12 @@ static const float PID_coefficient_I_frac_FS = 1;
 // set parameters and their default values
 int mode = MODE_PC_AC;
 float RR = 18;
-float Ti = 1.2;
+float Ti = 1;
 float time_inspiratory_ms = Ti * 1000;
 float Vt = 250;
 float PEEP = 5;
-float paw_trigger_th = 3;
-float pc_rise_time_ms = 100;
+float paw_trigger_th = -1.5;
+float pc_rise_time_ms = 200;
 float pinsp_setpoint = 20;
 float psupport = 10;
 bool pressure_support_enabled = false;
@@ -653,6 +654,8 @@ void loop()
       }
       else if (buffer_rx[0] == CMD_SET_BIAS_FLOW)
         stepper_Z.setCurrentPosition(0);
+      else if (buffer_rx[0] == CMD_Trigger_th)
+        paw_trigger_th =  - ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
     }
   }
 

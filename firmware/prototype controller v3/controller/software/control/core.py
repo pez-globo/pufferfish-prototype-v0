@@ -63,6 +63,11 @@ class VentController(QObject):
         self.RR = MCU.RR_DEFAULT
         self.PEEP = MCU.PEEP_DEFAULT
         self.mode = MODE_PC_AC
+        self.Pinsp = MCU.pinsp_DEFAULT
+        self.riseTime = MCU.pc_rise_time_ms_DEFAULT
+        self.P = MCU.P_default
+        self.I_frac = MCU.I_frac_default
+        self.trigger_th = MCU.paw_trigger_th_DEFAULT
 
     def setVT(self,value):
         self.microcontroller.set_parameter(MCU.CMD_Vt,value/MCU.VT_FS)
@@ -89,23 +94,31 @@ class VentController(QObject):
     def setPinsp(self,value):
         print('setting P_insp')
         self.microcontroller.set_parameter(MCU.CMD_Pinsp,value/MCU.PAW_FS)
+        self.Pinsp = value
 
     def setRiseTime(self,value):
         self.microcontroller.set_parameter(MCU.CMD_RiseTime,value/MCU.PC_RISE_TIME_MS_FS)
+        self.riseTime = value
 
     def setPID_P(self,value):
         self.microcontroller.set_parameter(MCU.CMD_PID_P,value/MCU.PID_COEFFICIENT_P_FS)
+        self.P = value
 
     def setPID_I_frac(self,value):
         self.microcontroller.set_parameter(MCU.CMD_PID_I_frac,value/MCU.PID_COEFFICIENT_I_FRAC_FS)
-    
+        self.I_frac = value
+
+    def setTriggerTh(self,value):
+        self.microcontroller.set_parameter(MCU.CMD_Trigger_th,-value/MCU.PAW_FS)
+        self.I_frac = value
+
     def setONOFF(self,state):
         if state == False:
             self.microcontroller.set_mode(MCU.CMD_MODE,0) # to add mode selection
             print('stop breathing')
         else:
-            #TODO: add mode selection
             self.microcontroller.set_mode(MCU.CMD_MODE,self.mode) 
+        self.mode = state
 
     def updateMode(self,mode):
         print('update mode')
@@ -135,11 +148,12 @@ class Waveforms(QObject):
     signal_Paw = Signal(float,float)
     signal_Volume = Signal(float,float)
     signal_Flow = Signal(float,float)
+    signal_print = Signal(str)
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
         self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
-        self.file.write('Time (s),Paw (cmH2O),Flow (l/min),Volume (ml),Vt (ml),Ti (s),RR (/min),PEEP (cmH2O)\n')
+        # self.file.write('Time (s),Paw (cmH2O),Flow (l/min),Volume (ml),Vt (ml),Ti (s),RR (/min),PEEP (cmH2O)\n')
         self.microcontroller = microcontroller
         self.ventController = ventController
         self.Paw = 0
@@ -225,9 +239,12 @@ class Waveforms(QObject):
                     # self.Flow = (utils.unsigned_to_signed(readout[2:4],MCU.N_BYTES_DATA)/(65536/2))*MCU.FLOW_FS
                     # self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MCU.N_BYTES_DATA)/65536)*MCU.VOLUME_FS
 
+                    record_from_MCU = str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume)
+                    record_settings = str(self.time_now) + '\t' + str(self.ventController.Vt) + '\t' + str(self.ventController.Ti) + '\t' + str(self.ventController.RR) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.Pinsp) + '\t' + str(self.ventController.riseTime) + '\t' + str(self.ventController.P) + '\t' + str(self.ventController.I_frac) + '\t' + str(self.ventController.trigger_th) + '\t' + str(self.ventController.mode)    
+                    self.signal_print.emit(record_from_MCU)
                     # saved variables
-                    self.file.write(str(self.time_now)+','+"{:.2f}".format(self.Paw)+','+"{:.2f}".format(self.Flow)+','+"{:.2f}".format(self.Volume)+','+str(self.ventController.Vt)+','+str(self.ventController.Ti)+','+str(self.ventController.RR)+','+str(self.ventController.PEEP) +'\n')
-                    print(str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O))
+                    self.file.write(record_from_MCU + '\t' + record_settings + '\n')
+                    print(record_from_MCU)
 
             # reduce display refresh rate
             self.counter_display = self.counter_display + 1

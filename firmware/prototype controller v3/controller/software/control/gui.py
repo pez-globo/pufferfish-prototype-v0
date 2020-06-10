@@ -52,6 +52,7 @@ class VentDevGUI(QMainWindow):
 		self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway Pressure'].update_plot)
 		self.waveforms.signal_Flow.connect(self.waveformDisplay.plotWidgets['Flow Rate'].update_plot)
 		self.waveforms.signal_Volume.connect(self.waveformDisplay.plotWidgets['Volume'].update_plot)
+		self.waveforms.signal_print.connect(self.controlPanel.label_print.setText)
 
 
 	def closeEvent(self, event):

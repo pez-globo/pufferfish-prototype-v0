@@ -101,13 +101,19 @@ class MCU:
     CMD_STEPPER_CONTROL_AIR = 11
     CMD_STEPPER_CONTROL_OXYGEN = 12
     CMD_SET_BIAS_FLOW = 13
+    CMD_Trigger_th = 14
 
     CMD_FlowDeceleratingSlope = 5
 
-    Ti_DEFAULT = 1.2
+    Ti_DEFAULT = 1
     RR_DEFAULT = 18
     PEEP_DEFAULT = 5
-    Vt_DEFAULT = 300
+    Vt_DEFAULT = 250
+    pinsp_DEFAULT = 20;
+    paw_trigger_th_DEFAULT = -1.5;
+    pc_rise_time_ms_DEFAULT = 200;
+    P_default = 0.01
+    I_frac_default = 0.1
 
     TIMER_PERIOD_ms = 1.25
     DATA_INTERVAL_ms = 32.5
