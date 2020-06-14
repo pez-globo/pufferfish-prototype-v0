@@ -54,11 +54,10 @@ class Acquisition:
     def __init__(self):
         pass
 
-class MCU:
+class MicrocontrollerDef:
     MSG_LENGTH = 780
     CMD_LENGTH = 4
     N_BYTES_DATA = 2
-
     FLOW_FS = 200.0
     VOLUME_FS = 1500.0
     PAW_FS = 100.0
@@ -67,20 +66,6 @@ class MCU:
     PEEP_FS = 30.0
     TI_FS = 5.0
     RR_FS = 60.0
-
-    # full scale
-    flow_FS = 200;
-    volume_FS = 1500;
-    paw_FS = 100;
-    psupply_FS = 30;
-    Ti_FS = 5;
-    Vt_FS = 1500;
-    PEEP_FS = 30;
-    RR_FS = 60;
-    valve_pos_open_steps_FS = -125;
-    pc_rise_time_ms_FS = 500;
-    PID_coefficient_P_FS = 0.1;
-    PID_coefficient_I_frac_FS = 1;
     
     VALVE_POS_OPEN_STEPS_FS = 125;
     PC_RISE_TIME_MS_FS = 500;
@@ -96,33 +81,18 @@ class MCU:
     CMD_RiseTime = 6
     CMD_PID_P = 7
     CMD_PID_I_frac = 8
-    CMD_MODE = 9
-    CMD_CLOSE_VALVE = 10
+    CMD_MODE = 9;
+    CMD_CLOSE_VALVE = 10;
     CMD_STEPPER_CONTROL_AIR = 11
     CMD_STEPPER_CONTROL_OXYGEN = 12
     CMD_SET_BIAS_FLOW = 13
-    CMD_Trigger_th = 14
-    CMD_ONOFF = 15
-    CMD_Exhalation_Control_RiseTime = 16
 
     CMD_FlowDeceleratingSlope = 5
 
-    Ti_DEFAULT = 1
+    Ti_DEFAULT = 1.2
     RR_DEFAULT = 18
     PEEP_DEFAULT = 5
-    Vt_DEFAULT = 250
-    pinsp_DEFAULT = 20;
-    paw_trigger_th_DEFAULT = -1.5;
-    pc_rise_time_ms_DEFAULT = 200;
-    P_default = 0.01
-    I_frac_default = 0.1
-    valve_pos_open_steps_DEFAULT_abs = 100
-    rise_time_ms_exhalation_control_DEFAULT = 0
-
-    TIMER_PERIOD_ms = 1.40
-    DATA_INTERVAL_ms = TIMER_PERIOD_ms*26
-    TIMEPOINT_PER_UPDATE = 26
-    RECORD_LENGTH_BYTE = 30
+    Vt_DEFAULT = 300
 
 class WAVEFORMS:
     # UPDATE_INTERVAL_MS = 25 # make sure this equals MCU.DATA_INTERVAL_ms when MCU is connected and MCU.DATA_INTERVAL_ms/2 when in simulation
@@ -139,7 +109,12 @@ PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
 PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
 
-SIMULATION = False    
+SIMULATION = False
+
+class MCU:
+    TIMER_PERIOD_ms = 1.25
+    DATA_INTERVAL_ms = 40
+    TIMEPOINT_PER_UPDATE = 2
 
 MODE_VC_AC = 1
 MODE_PC_AC = 2
@@ -151,5 +126,7 @@ MODE_PSV_STRING = 'PSV'
 if SIMULATION:
     WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/2/MCU.TIMEPOINT_PER_UPDATE
 else:
-    WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/2
+    WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/MCU.TIMEPOINT_PER_UPDATE
+
+WAVEFORMS.UPDATE_INTERVAL_MS = 20
 

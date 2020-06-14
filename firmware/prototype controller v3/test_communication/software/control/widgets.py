@@ -150,49 +150,49 @@ class ControlPanel(QFrame):
 		self.entry_VT.setMinimum(100)
 		self.entry_VT.setMaximum(500)
 		self.entry_VT.setSingleStep(10)
-		self.entry_VT.setValue(MCU.Vt_DEFAULT)
+		self.entry_VT.setValue(MicrocontrollerDef.Vt_DEFAULT)
 
 		self.entry_Ti = QDoubleSpinBox()
 		self.entry_Ti.setFont(self.font)
 		self.entry_Ti.setMinimum(0.3)
 		self.entry_Ti.setMaximum(5)
 		self.entry_Ti.setSingleStep(0.1)
-		self.entry_Ti.setValue(MCU.Ti_DEFAULT)
+		self.entry_Ti.setValue(MicrocontrollerDef.Ti_DEFAULT)
 
 		self.entry_RR = QDoubleSpinBox()
 		self.entry_RR.setFont(self.font)
 		self.entry_RR.setMinimum(5)
 		self.entry_RR.setMaximum(60)
 		self.entry_RR.setSingleStep(1)
-		self.entry_RR.setValue(MCU.RR_DEFAULT)
+		self.entry_RR.setValue(MicrocontrollerDef.RR_DEFAULT)
 
 		self.entry_PEEP = QDoubleSpinBox()
 		self.entry_PEEP.setFont(self.font)
 		self.entry_PEEP.setMinimum(0)
-		self.entry_PEEP.setMaximum(30)
+		self.entry_PEEP.setMaximum(20)
 		self.entry_PEEP.setSingleStep(0.5)
-		self.entry_PEEP.setValue(MCU.PEEP_DEFAULT)
+		self.entry_PEEP.setValue(MicrocontrollerDef.PEEP_DEFAULT)
 
 		self.entry_Pi = QDoubleSpinBox()
 		self.entry_Pi.setFont(self.font)
 		self.entry_Pi.setMinimum(5)
 		self.entry_Pi.setMaximum(50)
 		self.entry_Pi.setSingleStep(1)
-		self.entry_Pi.setValue(MCU.pinsp_DEFAULT)
+		self.entry_Pi.setValue(15)
 
 		self.entry_RiseTime = QDoubleSpinBox()
 		self.entry_RiseTime.setFont(self.font)
 		self.entry_RiseTime.setMinimum(50)
 		self.entry_RiseTime.setMaximum(500)
 		self.entry_RiseTime.setSingleStep(1)
-		self.entry_RiseTime.setValue(MCU.pc_rise_time_ms_DEFAULT)
+		self.entry_RiseTime.setValue(100)
 
 		self.entry_Flow = QDoubleSpinBox()
 		self.entry_Flow.setFont(self.font)
 		self.entry_Flow.setMinimum(20)
 		self.entry_Flow.setMaximum(100)
 		self.entry_Flow.setSingleStep(5)
-		self.entry_Flow.setValue(MCU.valve_pos_open_steps_DEFAULT_abs)
+		self.entry_Flow.setValue(100)
 
 		self.entry_PID_P = QDoubleSpinBox()
 		self.entry_PID_P.setDecimals(5)
@@ -200,7 +200,7 @@ class ControlPanel(QFrame):
 		self.entry_PID_P.setMinimum(0.000001)
 		self.entry_PID_P.setMaximum(0.1)
 		self.entry_PID_P.setSingleStep(0.0001)
-		self.entry_PID_P.setValue(MCU.P_default)
+		self.entry_PID_P.setValue(0.01)
 
 		self.entry_PID_I_frac = QDoubleSpinBox()
 		self.entry_PID_I_frac.setDecimals(5)
@@ -208,7 +208,14 @@ class ControlPanel(QFrame):
 		self.entry_PID_I_frac.setMinimum(0.000001)
 		self.entry_PID_I_frac.setMaximum(1)
 		self.entry_PID_I_frac.setSingleStep(0.001)
-		self.entry_PID_I_frac.setValue(MCU.I_frac_default)
+		self.entry_PID_I_frac.setValue(0.1)
+
+		self.entry_Flow = QDoubleSpinBox()
+		self.entry_Flow.setFont(self.font)
+		self.entry_Flow.setMinimum(20)
+		self.entry_Flow.setMaximum(125)
+		self.entry_Flow.setSingleStep(5)
+		self.entry_Flow.setValue(100)
 
 		self.entry_FlowDeceleratingSlope = QDoubleSpinBox()
 		self.entry_FlowDeceleratingSlope.setFont(self.font)
@@ -216,13 +223,6 @@ class ControlPanel(QFrame):
 		self.entry_FlowDeceleratingSlope.setMaximum(100)
 		self.entry_FlowDeceleratingSlope.setSingleStep(5)
 		self.entry_FlowDeceleratingSlope.setValue(0)
-
-		self.entry_TriggerTh = QDoubleSpinBox()
-		self.entry_TriggerTh.setFont(self.font)
-		self.entry_TriggerTh.setMinimum(-5)
-		self.entry_TriggerTh.setMaximum(0)
-		self.entry_TriggerTh.setSingleStep(0.1)
-		self.entry_TriggerTh.setValue(MCU.paw_trigger_th_DEFAULT)
 
 		self.mode = MODE_PC_AC
 		self.dropdown_modeManu = QComboBox()
@@ -232,17 +232,7 @@ class ControlPanel(QFrame):
 		self.btn_onoff = QPushButton('On/Off')
 		self.btn_onoff.setDefault(False)
 		self.btn_onoff.setCheckable(True)
-		self.btn_onoff.setChecked(False)
-
-		self.entry_Exhalation_Control_P_RiseTime = QDoubleSpinBox()
-		self.entry_Exhalation_Control_P_RiseTime.setFont(self.font)
-		self.entry_Exhalation_Control_P_RiseTime.setMinimum(0)
-		self.entry_Exhalation_Control_P_RiseTime.setMaximum(1000)
-		self.entry_Exhalation_Control_P_RiseTime.setSingleStep(1)
-		self.entry_Exhalation_Control_P_RiseTime.setValue(MCU.rise_time_ms_exhalation_control_DEFAULT)
-
-		self.label_print = QLabel()
-		self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+		self.btn_onoff.setChecked(True)
 
 		grid_line0 = QGridLayout()
 		grid_line0.addWidget(QLabel('VT (ml)',font=self.font), 0,0)
@@ -264,9 +254,10 @@ class ControlPanel(QFrame):
 		grid_line4.addWidget(QLabel('Flow',font=self.font), 0,0)
 		grid_line4.addWidget(self.entry_Flow, 0,1)
 
-		# grid_line5 = QGridLayout()
-		# grid_line5.addWidget(QLabel('FlowDec',font=self.font), 0,0)
-		# grid_line5.addWidget(self.entry_FlowDeceleratingSlope, 0,1)
+		grid_line5 = QGridLayout()
+		grid_line5.addWidget(QLabel('FlowDec',font=self.font), 0,0)
+		grid_line5.addWidget(self.entry_FlowDeceleratingSlope, 0,1)
+
 
 		grid_line6 = QGridLayout()
 		grid_line6.addWidget(QLabel('P_Insp',font=self.font), 0,0)
@@ -275,10 +266,6 @@ class ControlPanel(QFrame):
 		grid_line7 = QGridLayout()
 		grid_line7.addWidget(QLabel('Rise Time (ms)',font=self.font), 0,0)
 		grid_line7.addWidget(self.entry_RiseTime, 0,1)
-
-		grid_line12 = QGridLayout()
-		grid_line12.addWidget(QLabel('Trigger th (cmH2O)',font=self.font), 0,0)
-		grid_line12.addWidget(self.entry_TriggerTh, 0,1)
 
 		grid_line8 = QGridLayout()
 		grid_line8.addWidget(QLabel('P Gain',font=self.font), 0,0)
@@ -291,49 +278,13 @@ class ControlPanel(QFrame):
 		grid_line10 = QGridLayout()
 		grid_line10.addWidget(self.dropdown_modeManu,0,0)
 		grid_line10.addWidget(self.btn_onoff,0,1)
-		grid_line10.addWidget(QLabel('exhalation control pressure rise time (set 0 for open loop control)'),0,2)
-		grid_line10.addWidget(self.entry_Exhalation_Control_P_RiseTime,0,3)
-
-		# grid_line11 = QGridLayout()
-		# grid_line11.addWidget(self.label_print,0,0,10,0)
-
-		# for displaying stepper position and flow/pressure measurements
-		self.label_stepper_pos = QLabel()
-		self.label_stepper_pos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-		self.label_stepper_pos.setFixedWidth(50)
-		self.label_flow_air = QLabel()
-		self.label_flow_air.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-		self.label_flow_air.setFixedWidth(50)
-		self.label_flow_proximal = QLabel()
-		self.label_flow_proximal.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-		self.label_flow_proximal.setFixedWidth(50)
-		self.label_p_exhalation_control = QLabel()
-		self.label_p_exhalation_control.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-		self.label_p_exhalation_control.setFixedWidth(50)
-		self.label_p_airway = QLabel()
-		self.label_p_airway.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-		self.label_p_airway.setFixedWidth(50)
-		# self.label_print = QLabel()
-		# self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-
-		grid_line11 = QGridLayout()
-		grid_line11.addWidget(QLabel('stepper pos'),0,0)
-		grid_line11.addWidget(self.label_stepper_pos,0,1)
-		grid_line11.addWidget(QLabel('flow_air'),0,2)
-		grid_line11.addWidget(self.label_flow_air,0,3)
-		grid_line11.addWidget(QLabel('flow_proximal'),0,4)
-		grid_line11.addWidget(self.label_flow_proximal,0,5)
-		grid_line11.addWidget(QLabel('p exhalation control'),0,6)
-		grid_line11.addWidget(self.label_p_exhalation_control,0,7)
-		grid_line11.addWidget(QLabel('p airway'),0,8)
-		grid_line11.addWidget(self.label_p_airway,0,9)
 
 		self.grid = QGridLayout()
 		self.grid.addLayout(grid_line0,0,0)
 		self.grid.addLayout(grid_line1,0,1)
 		self.grid.addLayout(grid_line2,0,2)
 		self.grid.addLayout(grid_line3,0,3)
-		# self.grid.addLayout(grid_line5,0,4)
+		self.grid.addLayout(grid_line5,0,4)
 
 		self.grid.addLayout(grid_line6,1,0)
 		self.grid.addLayout(grid_line7,1,1)
@@ -342,8 +293,7 @@ class ControlPanel(QFrame):
 		self.grid.addLayout(grid_line4,1,4)
 
 		self.grid.addLayout(grid_line10,2,0)
-		self.grid.addLayout(grid_line11,3,0)
-		# self.grid.addWidget(self.label_print,3,0,1,8)
+
 
 		self.setLayout(self.grid)
 
@@ -357,12 +307,10 @@ class ControlPanel(QFrame):
 		self.entry_RiseTime.valueChanged.connect(self.ventController.setRiseTime)
 		self.entry_PID_P.valueChanged.connect(self.ventController.setPID_P)
 		self.entry_PID_I_frac.valueChanged.connect(self.ventController.setPID_I_frac)
-		self.entry_TriggerTh.valueChanged.connect(self.ventController.setTriggerTh)
 
 		self.btn_onoff.clicked.connect(self.ventController.setONOFF)
 		self.dropdown_modeManu.currentTextChanged.connect(self.ventController.updateMode)
-		self.entry_Exhalation_Control_P_RiseTime.valueChanged.connect(self.ventController.setExhalationControlPRiseTime)
-
+		
 # from Deepak
 class PlotWidget(pg.GraphicsLayoutWidget):
 
@@ -457,9 +405,9 @@ class WaveformDisplay(QFrame):
 
 	def add_components(self):
 		self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
-		# self.plotWidgets['Airway Pressure'].plot1.setYRange(min=WAVEFORMS.PAW_MIN,max=WAVEFORMS.PAW_MAX)
-		# self.plotWidgets['Flow Rate'].plot1.setYRange(min=WAVEFORMS.FLOW_MIN,max=WAVEFORMS.FLOW_MAX)
-		# self.plotWidgets['Volume'].plot1.setYRange(min=WAVEFORMS.V_MIN,max=WAVEFORMS.V_MAX)
+		self.plotWidgets['Airway Pressure'].plot1.setYRange(min=WAVEFORMS.PAW_MIN,max=WAVEFORMS.PAW_MAX)
+		self.plotWidgets['Flow Rate'].plot1.setYRange(min=WAVEFORMS.FLOW_MIN,max=WAVEFORMS.FLOW_MAX)
+		self.plotWidgets['Volume'].plot1.setYRange(min=WAVEFORMS.V_MIN,max=WAVEFORMS.V_MAX)
 
 		grid = QGridLayout() 
 		for ii, key in enumerate(PLOTS):

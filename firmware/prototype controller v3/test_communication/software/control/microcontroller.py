@@ -12,8 +12,8 @@ class Microcontroller():
     def __init__(self,parent=None):
         self.serial = None
         self.platform_name = platform.system()
-        self.tx_buffer_length = MCU.CMD_LENGTH
-        self.rx_buffer_length = MCU.MSG_LENGTH
+        self.tx_buffer_length = MicrocontrollerDef.CMD_LENGTH
+        self.rx_buffer_length = MicrocontrollerDef.MSG_LENGTH
 
         # AUTO-DETECT the Arduino! By Deepak
         arduino_ports = [
@@ -68,9 +68,9 @@ class Microcontroller():
         cmd[2] = int(65535*value) & 0xff
         self.serial.write(cmd)
 
-    def set_mode(self,cmd_id,value):
+    def set_mode(self,CMD_ID,value):
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = cmd_id
+        cmd[0] = CMD_ID
         cmd[1] = int(value)
         self.serial.write(cmd)
 
@@ -101,9 +101,10 @@ class Microcontroller():
         if self.serial.in_waiting==0:
             return None
         if self.serial.in_waiting % self.rx_buffer_length != 0:
-            print(self.serial.in_waiting)
-            # self.serial.reset_input_buffer()
             num_bytes_in_rx_buffer = self.serial.in_waiting
+            print(num_bytes_in_rx_buffer)
+            # self.serial.reset_input_buffer()
+            # self.serial.read(num_bytes_in_rx_buffer)
             for i in range(num_bytes_in_rx_buffer):
                 self.serial.read()
             print('reset input buffer')
@@ -128,7 +129,7 @@ class Microcontroller():
         if n_microsteps > 65535:
             n_microsteps = 65535
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = MCU.CMD_STEPPER_CONTROL_AIR
+        cmd[0] = MicrocontrollerDef.CMD_STEPPER_CONTROL_AIR
         cmd[1] = direction
         cmd[2] = int(n_microsteps) >> 8
         cmd[3] = int(n_microsteps) & 0xff
@@ -136,22 +137,22 @@ class Microcontroller():
 
     def close_z(self):
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = MCU.CMD_CLOSE_VALVE
+        cmd[0] = MicrocontrollerDef.CMD_CLOSE_VALVE
         cmd[1] = 0
         self.serial.write(cmd)
         print('trying to close z')
 
     def setbias_z(self):
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = MCU.CMD_SET_BIAS_FLOW
+        cmd[0] = MicrocontrollerDef.CMD_SET_BIAS_FLOW
         self.serial.write(cmd)
         print('set the current opening as \"zero\" opening')
 
 
 class Microcontroller_Simulation():
     def __init__(self,parent=None):
-        self.tx_buffer_length = MCU.CMD_LENGTH
-        self.rx_buffer_length = MCU.MSG_LENGTH
+        self.tx_buffer_length = MicrocontrollerDef.CMD_LENGTH
+        self.rx_buffer_length = MicrocontrollerDef.MSG_LENGTH
 
     def close(self):
         pass
