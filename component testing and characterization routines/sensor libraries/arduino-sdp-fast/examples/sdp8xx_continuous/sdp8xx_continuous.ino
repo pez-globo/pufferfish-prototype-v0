@@ -1,6 +1,6 @@
 #include <Wire.h>
 
-#include <sdpsensor.h>
+#include <sdpsensor-fast.h>
 
 SDP8XXSensor sdp;
 
