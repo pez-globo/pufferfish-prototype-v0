@@ -96,12 +96,14 @@ class MCU:
     CMD_RiseTime = 6
     CMD_PID_P = 7
     CMD_PID_I_frac = 8
-    CMD_MODE = 9;
-    CMD_CLOSE_VALVE = 10;
+    CMD_MODE = 9
+    CMD_CLOSE_VALVE = 10
     CMD_STEPPER_CONTROL_AIR = 11
     CMD_STEPPER_CONTROL_OXYGEN = 12
     CMD_SET_BIAS_FLOW = 13
     CMD_Trigger_th = 14
+    CMD_ONOFF = 15
+    CMD_Exhalation_Control_RiseTime = 16
 
     CMD_FlowDeceleratingSlope = 5
 
@@ -114,9 +116,11 @@ class MCU:
     pc_rise_time_ms_DEFAULT = 200;
     P_default = 0.01
     I_frac_default = 0.1
+    valve_pos_open_steps_DEFAULT_abs = 100
+    rise_time_ms_exhalation_control_DEFAULT = 0
 
-    TIMER_PERIOD_ms = 1.25
-    DATA_INTERVAL_ms = 32.5
+    TIMER_PERIOD_ms = 1.40
+    DATA_INTERVAL_ms = TIMER_PERIOD_ms*26
     TIMEPOINT_PER_UPDATE = 26
     RECORD_LENGTH_BYTE = 30
 

@@ -68,6 +68,7 @@ class VentController(QObject):
         self.P = MCU.P_default
         self.I_frac = MCU.I_frac_default
         self.trigger_th = MCU.paw_trigger_th_DEFAULT
+        self.exhalationControlPRiseTime = MCU.rise_time_ms_exhalation_control_DEFAULT
 
     def setVT(self,value):
         self.microcontroller.set_parameter(MCU.CMD_Vt,value/MCU.VT_FS)
@@ -113,24 +114,29 @@ class VentController(QObject):
         self.I_frac = value
 
     def setONOFF(self,state):
-        if state == False:
-            self.microcontroller.set_mode(MCU.CMD_MODE,0) # to add mode selection
+        self.is_breathing = state
+        if self.is_breathing == False:
+            self.microcontroller.set_mode(MCU.CMD_ONOFF,0) # to add mode selection
             print('stop breathing')
         else:
-            self.microcontroller.set_mode(MCU.CMD_MODE,self.mode) 
-        self.mode = state
-
+            self.microcontroller.set_mode(MCU.CMD_ONOFF,1) 
+            print('start breathing')
+        
     def updateMode(self,mode):
         print('update mode')
         if mode == MODE_PC_AC_STRING:
             self.mode = MODE_PC_AC
-            # self.microcontroller.set_mode(MCU.CMD_MODE,self.mode) 
+            self.microcontroller.set_mode(MCU.CMD_MODE,self.mode) 
         if mode == MODE_VC_AC_STRING:
             self.mode = MODE_VC_AC
-            # self.microcontroller.set_mode(MCU.CMD_MODE,self.mode) 
+            self.microcontroller.set_mode(MCU.CMD_MODE,self.mode) 
         if mode == MODE_PSV_STRING:
             self.mode = MODE_PSV
-            # self.microcontroller.set_mode(MCU.CMD_MODE,self.mode) 
+            self.microcontroller.set_mode(MCU.CMD_MODE,self.mode) 
+
+    def setExhalationControlPRiseTime(self,value):
+        self.microcontroller.set_parameter(MCU.CMD_Exhalation_Control_RiseTime,value/MCU.PC_RISE_TIME_MS_FS)
+        self.exhalationControlPRiseTime = value
 
 # class DataLogger(QObject):
 #     def __init__(self,microcontroller):
@@ -149,6 +155,12 @@ class Waveforms(QObject):
     signal_Volume = Signal(float,float)
     signal_Flow = Signal(float,float)
     signal_print = Signal(str)
+
+    signal_stepper_pos = Signal(str)
+    signal_flow_air = Signal(str)
+    signal_flow_proximal = Signal(str)
+    signal_p_exhalation_control = Signal(str)
+    signal_p_airway = Signal(str)
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
@@ -192,7 +204,7 @@ class Waveforms(QObject):
                 # self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
                 self.signal_Paw.emit(self.time,self.Paw)
                 self.signal_Flow.emit(self.time,self.Flow)
-                self.signal_Volume.emit(self.time,self.Volume)
+                self.signal_Volume.emit(self.time,self.Volume)                
 
         else:
             readout = self.microcontroller.read_received_packet_nowait()
@@ -240,19 +252,27 @@ class Waveforms(QObject):
                     # self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MCU.N_BYTES_DATA)/65536)*MCU.VOLUME_FS
 
                     record_from_MCU = str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume)
-                    record_settings = str(self.time_now) + '\t' + str(self.ventController.Vt) + '\t' + str(self.ventController.Ti) + '\t' + str(self.ventController.RR) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.Pinsp) + '\t' + str(self.ventController.riseTime) + '\t' + str(self.ventController.P) + '\t' + str(self.ventController.I_frac) + '\t' + str(self.ventController.trigger_th) + '\t' + str(self.ventController.mode)    
-                    self.signal_print.emit(record_from_MCU)
+                    record_settings = str(self.time_now) + '\t' + str(self.ventController.Vt) + '\t' + str(self.ventController.Ti) + '\t' + str(self.ventController.RR) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.Pinsp) + '\t' + str(self.ventController.riseTime) + '\t' + str(self.ventController.P) + '\t' + str(self.ventController.I_frac) + '\t' + str(self.ventController.trigger_th) + '\t' + str(self.ventController.mode) + '\t' + str(self.ventController.exhalationControlPRiseTime)
+                    # self.signal_print.emit(record_from_MCU)
                     # saved variables
                     self.file.write(record_from_MCU + '\t' + record_settings + '\n')
-                    print(record_from_MCU)
+                    # print(record_from_MCU)
+                    # record_from_MCU_debug = 'sterpper pos: ' + str(self.stepper_air_pos) + '\t\t flow_air: ' + "{:.2f}".format(self.flow_air) + '\t flow_proximal: ' + "{:.2f}".format(self.flow_proximal) + '\t p_exhalation control: ' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t p_airway: ' + "{:.2f}".format(self.pressure_aw_cmH2O)
+                    # self.signal_print.emit(record_from_MCU_debug)
 
-            # reduce display refresh rate
-            self.counter_display = self.counter_display + 1
-            if self.counter_display>=1:
-                self.counter_display = 0
-                self.signal_Paw.emit(self.time,self.pressure_aw_cmH2O)
-                self.signal_Flow.emit(self.time,self.flow_proximal)
-                self.signal_Volume.emit(self.time,self.Volume)
+                # reduce display refresh rate
+                self.counter_display = self.counter_display + 1
+                if self.counter_display>=1:
+                    self.counter_display = 0
+                    self.signal_Paw.emit(self.time,self.pressure_aw_cmH2O)
+                    self.signal_Flow.emit(self.time,self.flow_proximal)
+                    self.signal_Volume.emit(self.time,self.volume)
+                    self.signal_stepper_pos.emit("{:.2f}".format(self.stepper_air_pos))
+                    self.signal_flow_air.emit("{:.2f}".format(self.flow_air))
+                    self.signal_flow_proximal.emit("{:.2f}".format(self.flow_proximal))
+                    self.signal_p_exhalation_control.emit("{:.2f}".format(self.pressure_exhalation_control_cmH2O))
+                    self.signal_p_airway.emit("{:.2f}".format(self.pressure_aw_cmH2O))
+
 
         # file flushing
         self.counter_file_flush = self.counter_file_flush + 1

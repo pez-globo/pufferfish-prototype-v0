@@ -15,7 +15,7 @@
 /***************************************************************************************************/
 static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 9000;
 uint32_t exhalation_control_PEEP_duty = 5000;
-static const float TIMER_PERIOD_us = 1250; // in us
+static const float TIMER_PERIOD_us = 1400; // in us
 static const bool USE_SERIAL_MONITOR = false;
 static const int MSG_LENGTH = 780;
 # define LOGGING_UNDERSAMPLING  1
@@ -81,6 +81,8 @@ static const uint8_t CMD_STEPPER_CONTROL_AIR = 11;
 static const uint8_t CMD_STEPPER_CONTROL_OXYGEN = 12;
 static const uint8_t CMD_SET_BIAS_FLOW = 13;
 static const uint8_t CMD_Trigger_th = 14;
+static const uint8_t CMD_ONOFF = 15;
+static const uint8_t CMD_Exhalation_Control_RiseTime = 16;
 
 // full scale values
 static const float flow_FS = 200;
@@ -92,7 +94,7 @@ static const float Vt_FS = 1500;
 static const float PEEP_FS = 30;
 static const float RR_FS = 60;
 static const float valve_pos_open_steps_FS = -125;
-static const float pc_rise_time_ms_FS = 500;
+static const float pc_rise_time_ms_FS = 1000;
 static const float PID_coefficient_P_FS = 0.1;
 static const float PID_coefficient_I_frac_FS = 1;
 
@@ -102,12 +104,13 @@ float RR = 18;
 float Ti = 1;
 float time_inspiratory_ms = Ti * 1000;
 float Vt = 250;
-float PEEP = 5;
+float PEEP = 0;
 float paw_trigger_th = -1.5;
 float pc_rise_time_ms = 200;
 float pinsp_setpoint = 20;
 float psupport = 10;
 bool pressure_support_enabled = false;
+float valve_pos_open_steps = -100;
 
 // measured variables
 float dP = 0; 
@@ -126,7 +129,8 @@ volatile float mPEEP = 0;
 
 // breathing control
 float cycle_period_ms = 0; // duration of each breathing cycle
-float cycle_time_ms = 0;  // current time in the breathing cycle
+volatile float cycle_time_ms = 0;  // current time in the breathing cycle
+volatile float time_ms_into_exhalation = 0;
 
 // PID pressure control
 float PID_coefficient_P = 0.01;
@@ -138,12 +142,18 @@ volatile float paw_setpoint = 0;
 volatile float PID_Insp_Integral = 0;
 volatile float PID_Insp_Prop = 0;
 volatile float paw_error = 0;
-volatile float paw_error_integrated = 0;
-volatile float paw_error_differential = 0;
+
+float PID_coefficient_P_exhalation_control = 0.02;
+float PID_coefficient_I_exhalation_control = 0.005;
+float rise_time_ms_exhalation_control = 0; 
+volatile float p_exhalation_control_setpoint_rise = 0;
+volatile float PID_exhalation_control_Integral = 0;
+volatile float PID_exhalation_control_Prop = 0;
+volatile float p_exhalation_control_error = 0;
 
 // valve control
-float valve_pos_open_steps = -100;
 volatile float valve_opening = 0; // 0 - 1
+volatile float valve_exhalation_control_closing = 0;
 
 bool flag_close_valve_air_in_progress = false;
 bool flag_valve_air_flow_detected = false;
@@ -157,7 +167,7 @@ volatile bool flag_log_data = false;
 volatile bool flag_read_sensor = false;
 
 // breathing control related flags
-volatile bool is_breathing = true;
+volatile bool is_breathing = false;
 volatile bool is_in_inspiratory_phase = false;
 volatile bool is_in_pressure_regulation = false;
 volatile bool is_in_expiratory_phase = false;
@@ -197,22 +207,22 @@ Honeywell_ABP abp_30psi_2(
   30,      // maximum pressure
   "psi"   // pressure unit
 );
-Honeywell_ABP abp_5psi_1(
+Honeywell_ABP abp_1psi_1(
   0x28,   // I2C address
   0,      // minimum pressure
-  5,      // maximum pressure
+  1,      // maximum pressure
   "psi"   // pressure unit
 );
-Honeywell_ABP abp_5psi_2(
+Honeywell_ABP abp_1psi_2(
   0x28,   // I2C address
   0,      // minimum pressure
-  5,      // maximum pressure
+  1,      // maximum pressure
   "psi"   // pressure unit
 );
-Honeywell_ABP abp_5psi_3(
+Honeywell_ABP abp_1psi_3(
   0x28,   // I2C address
   0,      // minimum pressure
-  5,      // maximum pressure
+  1,      // maximum pressure
   "psi"   // pressure unit
 );
 
@@ -381,11 +391,12 @@ void timer_interruptHandler()
   // read sensor value
   flag_read_sensor = true;
 
-  // update cycle timer
-  cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us / 1000;
-
   if (is_breathing)
   {
+    
+    // update cycle timer
+    cycle_time_ms = cycle_time_ms + TIMER_PERIOD_us / 1000;
+    
     if (mode == MODE_PC_AC || mode == MODE_PSV)
     {
       if (mode == MODE_PC_AC)
@@ -401,7 +412,7 @@ void timer_interruptHandler()
           mvolume = 0;
           mflow_peak = 0;
           mPEEP = mpaw;
-          set_valve2_state(0);
+          set_valve2_closing(1);
           digitalWrite(13, HIGH);
           PID_Insp_Integral = 0;
           //is_in_pressure_support = false; // for testing pressure support only
@@ -411,7 +422,7 @@ void timer_interruptHandler()
       if(mode == MODE_PSV)
       {
         // patient triggered breath
-        if ( mpaw < paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false )
+        if ( mpaw < PEEP + paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false )
         {
           cycle_time_ms = 0;
           is_in_inspiratory_phase = true;
@@ -420,8 +431,7 @@ void timer_interruptHandler()
           PEEP_is_reached = false;
           mvolume = 0;
           mflow_peak = 0;
-          mPEEP = mpaw;
-          set_valve2_state(0);
+          set_valve2_closing(1);
           digitalWrite(13, HIGH);
           PID_Insp_Integral = 0;
           is_in_pressure_support = true;
@@ -432,7 +442,6 @@ void timer_interruptHandler()
           //  is_in_pressure_support = true;
         }
       }
-      
       
       if(is_in_pressure_regulation_rise == true && cycle_time_ms <= time_inspiratory_ms)
       {
@@ -489,7 +498,7 @@ void timer_interruptHandler()
         is_in_expiratory_phase = true;
         valve_opening = 0;
         set_valve1_pos(valve_opening);
-        set_valve2_state(1);
+        set_valve2_closing(0);
         digitalWrite(13, LOW);
       }
     }
@@ -507,7 +516,7 @@ void timer_interruptHandler()
         mvolume = 0;
         mflow_peak = 0;
         mPEEP = mpaw;
-        set_valve2_state(0);
+        set_valve2_closing(1);
         valve_opening = 0.36;
         set_valve1_pos(valve_opening);
         digitalWrite(13, HIGH);
@@ -516,7 +525,6 @@ void timer_interruptHandler()
       {
         valve_opening = 0;
         set_valve1_pos(valve_opening);
-        set_valve2_state(1);
         is_in_inspiratory_phase = false;
       }
     }    
@@ -538,6 +546,7 @@ void timer_interruptHandler()
     */
 
     // breathing control - change to exhalation when Ti is reached
+    // if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
     if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
     {
       is_in_inspiratory_phase = false;
@@ -546,22 +555,38 @@ void timer_interruptHandler()
       is_in_expiratory_phase = true;
       valve_opening = 0;
       set_valve1_pos(valve_opening);
-      set_valve2_state(1);
+      set_valve2_closing(0);
       digitalWrite(13, LOW);
+
+      // exhalation control
+      time_ms_into_exhalation = 0;
+      valve_exhalation_control_closing = 0;
+      PID_exhalation_control_Integral = 0;
+      p_exhalation_control_setpoint_rise = 0;
     }
 
     if (is_in_expiratory_phase == true)
     { 
-      /*
-      if (mpaw > PEEP && PEEP_is_reached == false)
-        set_valve2_state(1);
-      else
+      // for debugging, when rise_time_ms_exhalation_control is set to 0, do open loop control of exhalation control pressure
+      if (rise_time_ms_exhalation_control > 0)
       {
-        set_valve2_state(0);
-        PEEP_is_reached = true;
+        time_ms_into_exhalation = time_ms_into_exhalation + TIMER_PERIOD_us / 1000;
+        // calculate setpoint
+        p_exhalation_control_setpoint_rise = time_ms_into_exhalation > rise_time_ms_exhalation_control? PEEP : PEEP * (time_ms_into_exhalation/rise_time_ms_exhalation_control);
+        // calculate error
+        p_exhalation_control_error = p_exhalation_control_setpoint_rise - mpexhalation;
+        PID_exhalation_control_Integral = PID_exhalation_control_Integral + PID_coefficient_I_exhalation_control*p_exhalation_control_error;
+        PID_exhalation_control_Integral = PID_exhalation_control_Integral > 1 ? 1 : PID_exhalation_control_Integral;
+        PID_exhalation_control_Integral = PID_exhalation_control_Integral < 0 ? 0 : PID_exhalation_control_Integral;
+        PID_Insp_Prop = PID_coefficient_P_exhalation_control*PID_coefficient_I_exhalation_control;
+        // generate command
+        valve_exhalation_control_closing = PID_Insp_Prop + PID_exhalation_control_Integral;
+        valve_exhalation_control_closing = valve_exhalation_control_closing > 1 ? 1 : valve_exhalation_control_closing;
+        valve_exhalation_control_closing = valve_exhalation_control_closing < 0 ? 0 : valve_exhalation_control_closing;
+        set_valve2_closing(valve_exhalation_control_closing);
       }
-      */
-      
+      else
+        set_valve2_closing(PEEP/PEEP_FS);
     }
   }
 
@@ -572,7 +597,6 @@ void timer_interruptHandler()
     counter_log_data = 0;
     flag_log_data = true;
   }
-
 }
 
 /***************************************************************************************************/
@@ -602,7 +626,9 @@ void loop()
       else if (buffer_rx[0] == CMD_PEEP)
       {
         PEEP = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*PEEP_FS;
-        exhalation_control_PEEP_duty = (PEEP/PEEP_FS)*(PWM_PERIOD_PIN_35);
+        // when debugging (is_breathing set to 0), set exhalation valve closing to PEEP/PEEP_FS
+        if (is_breathing == false)
+          set_valve2_closing(PEEP/PEEP_FS);
       }
       else if (buffer_rx[0] == CMD_Flow)
         valve_pos_open_steps = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * valve_pos_open_steps_FS;
@@ -621,26 +647,7 @@ void loop()
         PID_coefficient_I = PID_coefficient_P*PID_coefficient_I_frac;
       }
       else if (buffer_rx[0] == CMD_MODE)
-      {
-        if (buffer_rx[1] == MODE_OFF)
-          is_breathing = false;
-        else if (buffer_rx[1] == MODE_PC_AC)
-        {
-          mode = MODE_PC_AC;
-          is_breathing = true;
-        }
-        else if (buffer_rx[1] == MODE_VC_AC)
-        {
-          mode = MODE_VC_AC;
-          is_breathing = true;
-        }
-        else if (buffer_rx[1] == MODE_PSV)
-        {
-          mode = MODE_PSV;
-          is_breathing = true;
-        }
-        // @TODO: separate on/off control          
-      }
+        mode = buffer_rx[1];
       else if (buffer_rx[0] == CMD_CLOSE_VALVE)
       {
         if (buffer_rx[1] == 0)
@@ -656,6 +663,10 @@ void loop()
         stepper_Z.setCurrentPosition(0);
       else if (buffer_rx[0] == CMD_Trigger_th)
         paw_trigger_th =  - ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
+      else if (buffer_rx[0] == CMD_ONOFF)
+        is_breathing = buffer_rx[1];
+      else if (buffer_rx[0] == CMD_Exhalation_Control_RiseTime)
+        rise_time_ms_exhalation_control =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * pc_rise_time_ms_FS;
     }
   }
 
@@ -670,15 +681,15 @@ void loop()
     enableMuxPort(3);
     abp_30psi_2.update();
     enableMuxPort(4);
-    abp_5psi_1.update();
+    abp_1psi_1.update();
     enableMuxPort(5);
-    abp_5psi_2.update();
+    abp_1psi_2.update();
     enableMuxPort(6);
-    abp_5psi_3.update();
+    abp_1psi_3.update();
 
-    mpexhalation = abp_5psi_1.pressure()*70.307;
-    mppatient = abp_5psi_2.pressure()*70.307;
-    mpaw = abp_5psi_3.pressure()*70.307;
+    mpexhalation = abp_1psi_1.pressure()*70.307;
+    mppatient = abp_1psi_2.pressure()*70.307;
+    mpaw = abp_1psi_3.pressure()*70.307;
 
     mp_air = abp_30psi_1.pressure();
     mp_oxygen = abp_30psi_2.pressure();
@@ -817,6 +828,7 @@ void loop()
 
     if (buffer_tx_ptr == MSG_LENGTH)
     {
+      buffer_tx_ptr = 0; // this was missing
       if(USE_SERIAL_MONITOR)
       {
           SerialUSB.print(mpaw);
@@ -827,7 +839,6 @@ void loop()
       }
       else
         SerialUSB.write(buffer_tx, MSG_LENGTH);
-      
     }
   }
 
@@ -849,6 +860,7 @@ float get_valve1_pos()
   return stepper_Z.currentPosition();
 }
 
+/*
 void set_valve2_state(int state)
 {
   
@@ -859,6 +871,15 @@ void set_valve2_state(int state)
   // control PEEP
      change_duty(*pwm_wrapper_pin35_ptr,exhalation_control_PEEP_duty,PWM_PERIOD_PIN_35);
 }
+*/
+void set_valve2_closing(float closing)
+{
+  float duty_cycle_fraction = 0.3 + closing;
+  if (duty_cycle_fraction > 0.999)
+    duty_cycle_fraction = 0.999;
+  change_duty(*pwm_wrapper_pin35_ptr,duty_cycle_fraction*PWM_PERIOD_PIN_35,PWM_PERIOD_PIN_35);
+}
+
 
 /***************************************************************************************************/
 /********************************************* pwm_lib *********************************************/
