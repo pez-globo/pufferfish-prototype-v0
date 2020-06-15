@@ -119,7 +119,7 @@ class NavigationController(QObject):
                 flow = (utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+6:i*N_BYTES_PER_RECORD+8],2)/(65536/2))*FLOW_FS
                 pressure_1 = ((data[i*N_BYTES_PER_RECORD+8]*256+data[i*N_BYTES_PER_RECORD+9])/65536.0)*PRESSURE_FS
                 pressure_2 = (utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+10:i*N_BYTES_PER_RECORD+12],2)/(65536/2))*PRESSURE_FS2
-                self.file.write(str(cycle_count)+','+str(stepper1_pos)+','+str(flow)+','+str(pressure_1)+','+str(pressure_2)+'\n')
+                self.file.write(str(cycle_count)+','+str(stepper1_pos)+','+"{:.2f}".format(flow)+','+"{:.2f}".format(pressure_1)+','+"{:.2f}".format(pressure_2)+'\n')
                 print(str(cycle_count)+'\t'+str(stepper1_pos)+'\t'+"{:.2f}".format(flow)+'\t'+"{:.2f}".format(pressure_1)+'\t'+"{:.2f}".format(pressure_2))
             self.file.flush()
 
