@@ -32,10 +32,10 @@ class Motion:
     MICROSTEPS_Y = 2
     MICROSTEPS_Z = 2
 
-    # STEPS_PER_MM_XY = 78.74*MICROSTEPS_Y # change the unit from per mm to per step (NMB)
-    STEPS_PER_MM_XY = 19.68*MICROSTEPS_Y # change the unit from per mm to per step (Dings linear actuator (J))
+    STEPS_PER_MM = 78.74*MICROSTEPS_Y # change the unit from per mm to per step (NMB)
+    # STEPS_PER_MM_XY = 19.68*MICROSTEPS_Y # change the unit from per mm to per step (Dings linear actuator (J))
 
-    STEPS_PER_MM_Z = 82.02*MICROSTEPS_Z  # change the unit from per mm to per step
+    # STEPS_PER_MM_Z = 82.02*MICROSTEPS_Z  # change the unit from per mm to per step
 
     def __init__(self):
         pass
@@ -64,11 +64,7 @@ class Acquisition:
 class PosUpdate:
     INTERVAL_MS = 25
 
-class MicrocontrollerDef:
-    MSG_LENGTH = 100
-    FIELD_NUM = 7
-    CMD_LENGTH = 4
-    N_BYTES_POS = 3
+
 
 class Force:
 
@@ -80,9 +76,16 @@ class Force:
 
 
 
-
-N_BYTES_PER_RECORD = 4
+N_VALVES = 2
+N_BYTES_PER_RECORD = 8
 FLOW_FS = 200
 PRESSURE_FS = 60
 # Encoder Counter per mm (1um per count RLS miniature linear encoder)
 ENCODER_COUNTS_PER_MM = 500
+
+class MicrocontrollerDef:
+    MESSAGE_BUNDLE_SIZE = 10
+    MSG_LENGTH = MESSAGE_BUNDLE_SIZE*N_VALVES*N_BYTES_PER_RECORD
+    FIELD_NUM = 7
+    CMD_LENGTH = 4
+    N_BYTES_POS = 3

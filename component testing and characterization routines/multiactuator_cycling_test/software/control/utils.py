@@ -24,3 +24,6 @@ def unsigned_to_signed(unsigned_array,N):
         signed = signed + int(unsigned_array[i])*(256**(N-1-i))
     signed = signed - (256**N)/2
     return signed
+
+def data4byte_to_int(array):
+    return array[3] + (256)*array[2] + (65536)*array[1] + (16777216)*array[0]

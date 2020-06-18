@@ -9,6 +9,8 @@ from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
 from control._def import *
+from functools import partial
+
 
 class CameraSettingsWidget(QFrame):
 
@@ -348,115 +350,191 @@ class NavigationWidget(QFrame):
         self.setFrameStyle(QFrame.Panel | QFrame.Raised)
 
     def add_components(self):
-        self.label_Xpos = QLabel()
-        self.label_Xpos.setNum(0)
-        self.label_Xpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.entry_dX = QDoubleSpinBox()
-        self.entry_dX.setMinimum(0) 
-        self.entry_dX.setMaximum(2000) 
-        self.entry_dX.setSingleStep(1)
-        self.entry_dX.setValue(0)
-        self.btn_moveX_forward = QPushButton('Forward')
-        self.btn_moveX_forward.setDefault(False)
-        self.btn_moveX_backward = QPushButton('Backward')
-        self.btn_moveX_backward.setDefault(False)
-        self.btn_close_valveX = QPushButton('close the valve')
-        self.btn_close_valveX.setDefault(False)
-        self.btn_cycle_valveX = QPushButton('cycle the valve')
-        self.btn_cycle_valveX.setDefault(False)
+        self.label_position = {ii: QLabel() for ii in range(N_VALVES)}
+        self.entry_delta = {ii: QDoubleSpinBox() for ii in range(N_VALVES)}
+        self.button_move_forward = {ii: QPushButton('Forward') for ii in range(N_VALVES)}
+        self.button_move_backward = {ii: QPushButton('Backward') for ii in range(N_VALVES)}
+        self.button_cycle_valve = {ii: QPushButton('Cycle valve') for ii in range(N_VALVES)}
+        self.button_home_valve = {ii: QPushButton('Home valve') for ii in range(N_VALVES)}
+
+        # Buttons to command all valves at once
+        self.entry_delta_all = QDoubleSpinBox()
+        self.button_move_forward_all = QPushButton('Forward')
+        self.button_move_backward_all = QPushButton('Backward')
+        self.button_cycle_valve_all = QPushButton('Cycle valves')
+        self.button_home_valve_all = QPushButton('Home valve')
+
+
+        for ii in range(N_VALVES):
+            self.label_position[ii].setNum(0)
+            self.label_position[ii].setFrameStyle(QFrame.Panel | QFrame.Sunken)
+
+            self.entry_delta[ii].setMinimum(0) 
+            self.entry_delta[ii].setMaximum(2000) 
+            self.entry_delta[ii].setSingleStep(1) 
+            self.entry_delta[ii].setValue(0)
+
+            self.button_move_forward[ii].setDefault(False)
+            self.button_move_backward[ii].setDefault(False)
+            self.button_cycle_valve[ii].setDefault(False)
+            self.button_cycle_valve[ii].setCheckable(True)
+            self.button_cycle_valve[ii].setChecked(False)
+            self.button_home_valve[ii].setDefault(False)
+
+       
+
+        self.entry_delta_all.setMinimum(0) 
+        self.entry_delta_all.setMaximum(2000) 
+        self.entry_delta_all.setSingleStep(1) 
+        self.entry_delta_all.setValue(0)
+
+        self.button_move_forward_all.setDefault(False)
+        self.button_move_backward_all.setDefault(False)
+        self.button_cycle_valve_all.setDefault(False) 
+        self.button_cycle_valve_all.setCheckable(True)
+        self.button_cycle_valve_all.setChecked(False)
+        self.button_home_valve_all.setDefault(False)  
+
+
         
-        self.label_Ypos = QLabel()
-        self.label_Ypos.setNum(0)
-        self.label_Ypos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.entry_dY = QDoubleSpinBox()
-        self.entry_dY.setMinimum(0)
-        self.entry_dY.setMaximum(2000)
-        self.entry_dY.setSingleStep(1)
-        self.entry_dY.setValue(0)
-        self.btn_moveY_forward = QPushButton('Forward')
-        self.btn_moveY_forward.setDefault(False)
-        self.btn_moveY_backward = QPushButton('Backward')
-        self.btn_moveY_backward.setDefault(False)
-        self.btn_close_valveY = QPushButton('close the valve')
-        self.btn_close_valveY.setDefault(False)
-        self.btn_cycle_valveY = QPushButton('cycle the valve')
-        self.btn_cycle_valveY.setDefault(False)
+        grid_line = QGridLayout()
 
-        self.label_Zpos = QLabel()
-        self.label_Zpos.setNum(0)
-        self.label_Zpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.entry_dZ = QDoubleSpinBox()
-        self.entry_dZ.setMinimum(0) 
-        self.entry_dZ.setMaximum(2000) 
-        self.entry_dZ.setSingleStep(1)
-        self.entry_dZ.setValue(0)
-        self.btn_moveZ_forward = QPushButton('Forward')
-        self.btn_moveZ_forward.setDefault(False)
-        self.btn_moveZ_backward = QPushButton('Backward')
-        self.btn_moveZ_backward.setDefault(False)
-        self.btn_close_valveZ = QPushButton('close the valve')
-        self.btn_close_valveZ.setDefault(False)
-        self.btn_cycle_valveZ = QPushButton('cycle the valve')
-        self.btn_cycle_valveZ.setDefault(False)
-        
-        grid_line0 = QGridLayout()
-        grid_line0.addWidget(QLabel('X (mm)'), 0,0)
-        grid_line0.addWidget(self.label_Xpos, 0,1)
-        grid_line0.addWidget(self.entry_dX, 0,2)
-        grid_line0.addWidget(self.btn_moveX_forward, 0,3)
-        grid_line0.addWidget(self.btn_moveX_backward, 0,4)
-        grid_line0.addWidget(self.btn_close_valveX, 0,5)
-        grid_line0.addWidget(self.btn_cycle_valveX, 0,6)
+        for ii in range(N_VALVES):
+            grid_line.addWidget(QLabel('Valve {}'.format(ii+1)), ii,0)
+            grid_line.addWidget(self.label_position[ii], ii, 1)
+            grid_line.addWidget(self.entry_delta[ii], ii, 2)
+            grid_line.addWidget(self.button_move_forward[ii], ii, 3)
+            grid_line.addWidget(self.button_move_backward[ii], ii, 4)
+            grid_line.addWidget(self.button_cycle_valve[ii], ii, 5)
+            grid_line.addWidget(self.button_home_valve[ii], ii, 6)
 
-        grid_line1 = QGridLayout()
-        grid_line1.addWidget(QLabel('Y (mm)'), 0,0)
-        grid_line1.addWidget(self.label_Ypos, 0,1)
-        grid_line1.addWidget(self.entry_dY, 0,2)
-        grid_line1.addWidget(self.btn_moveY_forward, 0,3)
-        grid_line1.addWidget(self.btn_moveY_backward, 0,4)
-        grid_line1.addWidget(self.btn_close_valveY, 0,5)
-        grid_line1.addWidget(self.btn_cycle_valveY, 0,6)
+        grid_line_1 = QGridLayout()
+        grid_line_1.addWidget(QLabel('All Valves'), 0,0)
+        grid_line_1.addWidget(self.entry_delta_all, 0, 2)
+        grid_line_1.addWidget(self.button_move_forward_all, 0, 3)
+        grid_line_1.addWidget(self.button_move_backward_all, 0, 4)
+        grid_line_1.addWidget(self.button_cycle_valve_all, 0, 5)
+        grid_line_1.addWidget(self.button_home_valve_all, 0, 6)
 
-        grid_line2 = QGridLayout()
-        grid_line2.addWidget(QLabel('Z (um)'), 0,0)
-        grid_line2.addWidget(self.label_Zpos, 0,1)
-        grid_line2.addWidget(self.entry_dZ, 0,2)
-        grid_line2.addWidget(self.btn_moveZ_forward, 0,3)
-        grid_line2.addWidget(self.btn_moveZ_backward, 0,4)
-        grid_line2.addWidget(self.btn_close_valveZ, 0,5)
-        grid_line2.addWidget(self.btn_cycle_valveZ, 0,6)
 
         self.grid = QGridLayout()
-        self.grid.addLayout(grid_line0,0,0)
-        self.grid.addLayout(grid_line1,1,0)
-        self.grid.addLayout(grid_line2,2,0)
+        self.grid.addLayout(grid_line,0,0)
+        self.grid.addLayout(grid_line_1,1,0)
         self.setLayout(self.grid)
 
-        self.btn_moveX_forward.clicked.connect(self.move_x_forward)
-        self.btn_moveX_backward.clicked.connect(self.move_x_backward)
-        self.btn_moveY_forward.clicked.connect(self.move_y_forward)
-        self.btn_moveY_backward.clicked.connect(self.move_y_backward)
-        self.btn_moveZ_forward.clicked.connect(self.move_z_forward)
-        self.btn_moveZ_backward.clicked.connect(self.move_z_backward)
-        self.btn_close_valveX.clicked.connect(self.navigationController.close_x)
-        self.btn_close_valveY.clicked.connect(self.navigationController.close_y)
-        self.btn_close_valveZ.clicked.connect(self.navigationController.close_z)
-        self.btn_cycle_valveX.clicked.connect(self.navigationController.cycle_x)
-        self.btn_cycle_valveY.clicked.connect(self.navigationController.cycle_y)
-        self.btn_cycle_valveZ.clicked.connect(self.navigationController.cycle_z)
+        # Button actions
+        for ii in range(N_VALVES):
+
+            self.button_move_forward[ii].clicked.connect(partial(self.move_forward, ii))
+            self.button_move_backward[ii].clicked.connect(partial(self.move_backward, ii))
+
+            self.button_cycle_valve[ii].clicked.connect(partial(self.handle_cycle_valve_button, ii))
+
+            self.button_home_valve[ii].clicked.connect(partial(self.navigationController.home_valve, ii))
+
+
+        self.button_move_forward_all.clicked.connect(partial(self.move_forward, N_VALVES+1))
+        self.button_move_backward_all.clicked.connect(partial(self.move_backward, N_VALVES+1))
+
+        self.button_cycle_valve_all.clicked.connect(self.handle_cycle_all_valves_button)
+
+        self.button_home_valve_all.clicked.connect(partial(self.navigationController.home_valve, N_VALVES+1))
+
+    
+    def move_forward(self, valve_id):
+        if(valve_id < N_VALVES):
+            self.navigationController.move_valve(valve_id, self.entry_delta[valve_id].value())
+        else:
+            self.navigationController.move_valve(valve_id, self.entry_delta_all.value())
+
+
+    def move_backward(self, valve_id):
+        if(valve_id < N_VALVES):
+            self.navigationController.move_valve(valve_id, -self.entry_delta[valve_id].value())
+        else:
+            self.navigationController.move_valve(valve_id, -self.entry_delta_all.value())
+            
+    def set_position_labels(self, valve_positions):
+        for ii in range(N_VALVES):
+            self.label_position[ii].setNum(valve_positions[ii])
+
+    def handle_cycle_valve_button(self, valve_id):
+
+        if(self.button_cycle_valve[valve_id].isChecked()==True):
+            print('Start Cycling valve :{}'.format(valve_id))
+            self.navigationController.start_cycle_valve(valve_id)
+            self.button_cycle_valve[valve_id].setText('Stop cycling')
+        elif (self.button_cycle_valve[valve_id].isChecked() == False):
+            print('Stop Cycling valve :{}'.format(valve_id))
+            self.navigationController.stop_cycle_valve(valve_id)
+            self.button_cycle_valve[valve_id].setText('Cycle valve')
+    
+    def handle_cycle_all_valves_button(self):
+
+        if(self.button_cycle_valve_all.isChecked()==True):
+            self.navigationController.start_cycle_valve(N_VALVES+1)
+            self.button_cycle_valve_all.setText('Stop cycling')
+            # Disable other buttons
+            for ii in range(N_VALVES):
+                self.button_cycle_valve[ii].setEnabled(False)
+
+        elif (self.button_cycle_valve_all.isChecked() == False):
+            self.navigationController.stop_cycle_valve(N_VALVES+1)
+            self.button_cycle_valve_all.setText('Cycle valves')
+            # Enable other buttons
+            for ii in range(N_VALVES):
+                self.button_cycle_valve[ii].setEnabled(True)
+
+
+
         
-    def move_x_forward(self):
-        self.navigationController.move_x(self.entry_dX.value())
-    def move_x_backward(self):
-        self.navigationController.move_x(-self.entry_dX.value())
-    def move_y_forward(self):
-        self.navigationController.move_y(self.entry_dY.value())
-    def move_y_backward(self):
-        self.navigationController.move_y(-self.entry_dY.value())
-    def move_z_forward(self):
-        self.navigationController.move_z(self.entry_dZ.value())
-    def move_z_backward(self):
-        self.navigationController.move_z(-self.entry_dZ.value())
+
+
+
+
+class DataDisplayWidget(QFrame):
+
+    def __init__(self, main=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_components()
+        self.setFrameStyle(QFrame.Panel | QFrame.Raised)
+
+    def add_components(self):
+
+        self.label_cycles = {ii: QLabel() for ii in range(N_VALVES)}
+        self.label_temperature = {ii: QLabel() for ii in range(N_VALVES)}
+
+        for ii in range(N_VALVES):
+            self.label_cycles[ii].setNum(0)
+            self.label_temperature[ii].setFrameStyle(QFrame.Panel | QFrame.Sunken)
+
+        grid_line_0 = QGridLayout()
+
+        grid_line_0.addWidget(QLabel('Cycles'),0,0)
+        grid_line_0.addWidget(QLabel('Temperature'),0,1)
+
+        grid_line_1 = QGridLayout()
+        for ii in range(N_VALVES):
+            
+            grid_line_1.addWidget(self.label_cycles[ii], ii, 0)
+            grid_line_1.addWidget(self.label_temperature[ii], ii, 1)
+
+        self.grid = QGridLayout()
+        self.grid.addLayout(grid_line_0,0,0)
+        self.grid.addLayout(grid_line_1,1,0)
+
+        self.setLayout(self.grid)
+
+    def set_temperature_labels(self, valve_temperatures):
+         for ii in range(N_VALVES):
+            self.label_temperature[ii].setNum(valve_temperatures[ii])
+
+    def set_cycle_labels(self, valve_cycles):
+         for ii in range(N_VALVES):
+            self.label_cycles[ii].setNum(valve_cycles[ii])
+
+
+
 
 class AutoFocusWidget(QFrame):
     def __init__(self, autofocusController, main=None, *args, **kwargs):

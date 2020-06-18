@@ -134,8 +134,8 @@ class NavigationController(QObject):
                 # self.file.write(str(stepper1_pos)+','+str(stepper2_pos)+','+str(stepper3_pos)+','+str(flow)+','+str(pressure_1)+','+str(pressure_2)+','+str(pressure_3)+'\n')
                 # print(str(stepper1_pos)+'\t'+str(stepper2_pos)+'\t'+str(stepper3_pos)+'\t'+"{:.2f}".format(flow)+'\t'+"{:.2f}".format(pressure_1)+'\t'+"{:.2f}".format(pressure_2)+'\t'+"{:.2f}".format(pressure_3))
 
-                stepper1_openLoop_pos = (1/Motion.STEPS_PER_MM_XY)*utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD*2+2],2)
-                stepper1_closedLoop_pos = (1/ENCODER_COUNTS_PER_MM)*utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD*2+4],2)
+                stepper1_openLoop_pos = (1/Motion.STEPS_PER_MM_XY)*utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+0:i*N_BYTES_PER_RECORD+2],2)
+                stepper1_closedLoop_pos = (1/ENCODER_COUNTS_PER_MM)*utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+2:i*N_BYTES_PER_RECORD+4],2)
                 
                 # stepper3_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+4:i*N_BYTES_PER_RECORD*2+6],2)
                 

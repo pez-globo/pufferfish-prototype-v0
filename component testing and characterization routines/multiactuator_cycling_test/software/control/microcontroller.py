@@ -15,6 +15,8 @@ class Microcontroller():
         self.tx_buffer_length = MicrocontrollerDef.CMD_LENGTH
         self.rx_buffer_length = MicrocontrollerDef.MSG_LENGTH
 
+        print('Rec buffer size: {}'.format(self.rx_buffer_length))
+
         # AUTO-DETECT the Arduino! By Deepak
         arduino_ports = [
                 p.device
@@ -47,82 +49,122 @@ class Microcontroller():
         cmd[1] = state
         self.serial.write(cmd)
 
-    def move_x(self,delta):
+    # def move_x(self,delta):
+    #     direction = int((np.sign(delta)+1)/2)
+    #     n_microsteps = abs(delta*Motion.STEPS_PER_MM_XY)
+    #     if n_microsteps > 65535:
+    #         n_microsteps = 65535
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 0
+    #     cmd[1] = direction
+    #     cmd[2] = int(n_microsteps) >> 8
+    #     cmd[3] = int(n_microsteps) & 0xff
+    #     self.serial.write(cmd)
+    #     time.sleep(WaitTime.BASE + WaitTime.X*abs(delta))
+
+    # def move_y(self,delta):
+    #     direction = int((np.sign(delta)+1)/2)
+    #     n_microsteps = abs(delta*Motion.STEPS_PER_MM_XY)
+    #     if n_microsteps > 65535:
+    #         n_microsteps = 65535
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 1
+    #     cmd[1] = direction
+    #     cmd[2] = int(n_microsteps) >> 8
+    #     cmd[3] = int(n_microsteps) & 0xff
+    #     self.serial.write(cmd)
+    #     time.sleep(WaitTime.BASE + WaitTime.Y*abs(delta))
+
+    # def move_z(self,delta):
+    #     direction = int((np.sign(delta)+1)/2)
+    #     n_microsteps = abs(delta*Motion.STEPS_PER_MM_Z)
+    #     if n_microsteps > 65535:
+    #         n_microsteps = 65535
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 2
+    #     cmd[1] = direction
+    #     cmd[2] = int(n_microsteps) >> 8
+    #     cmd[3] = int(n_microsteps) & 0xff
+    #     self.serial.write(cmd)
+    #     time.sleep(WaitTime.BASE + WaitTime.Z*abs(delta))
+
+    # def close_x(self):
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 3
+    #     cmd[1] = 0
+    #     self.serial.write(cmd)
+    #     print('trying to close x')
+    # def close_y(self):
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 3
+    #     cmd[1] = 1
+    #     self.serial.write(cmd)
+    #     print('trying to close y')
+    # def close_z(self):
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 3
+    #     cmd[1] = 2
+    #     self.serial.write(cmd)
+    #     print('trying to close z')
+
+    # def cycle_x(self):
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 4
+    #     cmd[1] = 0
+    #     self.serial.write(cmd)
+    #     print('trying to cycle x')
+    # def cycle_y(self):
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 4
+    #     cmd[1] = 1
+    #     self.serial.write(cmd)
+    #     print('trying to cycle y')
+    # def cycle_z(self):
+    #     cmd = bytearray(self.tx_buffer_length)
+    #     cmd[0] = 4
+    #     cmd[1] = 2
+    #     self.serial.write(cmd)
+    #     print('trying to cycle z')
+
+    def start_cycle_valve(self, valve_id):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = valve_id
+        cmd[1] = 2
+        self.serial.write(cmd)
+        print('start cycling valve: {}'.format(valve_id))
+
+    def stop_cycle_valve(self, valve_id):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = valve_id
+        cmd[1] = 3
+        self.serial.write(cmd)
+        print('stop cycling valve: {}'.format(valve_id))
+
+    def move_valve(self, valve_id, delta):
+
         direction = int((np.sign(delta)+1)/2)
-        n_microsteps = abs(delta*Motion.STEPS_PER_MM_XY)
+
+        n_microsteps = abs(delta*Motion.STEPS_PER_MM)
         if n_microsteps > 65535:
             n_microsteps = 65535
+
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 0
+        cmd[0] = valve_id
         cmd[1] = direction
         cmd[2] = int(n_microsteps) >> 8
         cmd[3] = int(n_microsteps) & 0xff
+
         self.serial.write(cmd)
         time.sleep(WaitTime.BASE + WaitTime.X*abs(delta))
 
-    def move_y(self,delta):
-        direction = int((np.sign(delta)+1)/2)
-        n_microsteps = abs(delta*Motion.STEPS_PER_MM_XY)
-        if n_microsteps > 65535:
-            n_microsteps = 65535
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 1
-        cmd[1] = direction
-        cmd[2] = int(n_microsteps) >> 8
-        cmd[3] = int(n_microsteps) & 0xff
-        self.serial.write(cmd)
-        time.sleep(WaitTime.BASE + WaitTime.Y*abs(delta))
+    def home_valve(self, valve_id):
 
-    def move_z(self,delta):
-        direction = int((np.sign(delta)+1)/2)
-        n_microsteps = abs(delta*Motion.STEPS_PER_MM_Z)
-        if n_microsteps > 65535:
-            n_microsteps = 65535
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 2
-        cmd[1] = direction
-        cmd[2] = int(n_microsteps) >> 8
-        cmd[3] = int(n_microsteps) & 0xff
-        self.serial.write(cmd)
-        time.sleep(WaitTime.BASE + WaitTime.Z*abs(delta))
 
-    def close_x(self):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 3
-        cmd[1] = 0
+        cmd[0] = valve_id
+        cmd[1] = 4
         self.serial.write(cmd)
-        print('trying to close x')
-    def close_y(self):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 3
-        cmd[1] = 1
-        self.serial.write(cmd)
-        print('trying to close y')
-    def close_z(self):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 3
-        cmd[1] = 2
-        self.serial.write(cmd)
-        print('trying to close z')
 
-    def cycle_x(self):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 4
-        cmd[1] = 0
-        self.serial.write(cmd)
-        print('trying to cycle x')
-    def cycle_y(self):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 4
-        cmd[1] = 1
-        self.serial.write(cmd)
-        print('trying to cycle y')
-    def cycle_z(self):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 4
-        cmd[1] = 2
-        self.serial.write(cmd)
-        print('trying to cycle z')
 
     def send_command(self,command):
         cmd = bytearray(self.tx_buffer_length)
@@ -190,20 +232,34 @@ class Microcontroller():
         return data
 
     def read_received_packet_nowait(self):
+        num_bytes_in_rx_buffer = self.serial.in_waiting
+        print(num_bytes_in_rx_buffer)
         # wait to receive data
-        if self.serial.in_waiting==0:
+        if num_bytes_in_rx_buffer == 0:
             print('Waiting for data')
             return None
-        if self.serial.in_waiting % self.rx_buffer_length != 0:
-            print('Buffer not full')
-            return None
-        
+
         # get rid of old data
         num_bytes_in_rx_buffer = self.serial.in_waiting
         if num_bytes_in_rx_buffer > self.rx_buffer_length:
             print('getting rid of old data')
             for i in range(num_bytes_in_rx_buffer-self.rx_buffer_length):
                 self.serial.read()
+
+        num_bytes_in_rx_buffer = self.serial.in_waiting
+        if num_bytes_in_rx_buffer % self.rx_buffer_length != 0:
+            # if(num_bytes_in_rx_buffer == 1020):
+            #     print('clearing buffer')
+            #     for i in range(num_bytes_in_rx_buffer):
+            #         self.serial.read()
+            #     return None
+            # else:
+            print('Buffer not full')
+            return None
+
+
+
+        
         
         # read the buffer
         data=[]
