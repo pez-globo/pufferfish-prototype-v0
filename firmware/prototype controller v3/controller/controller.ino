@@ -16,7 +16,7 @@
 static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 9000;
 uint32_t exhalation_control_PEEP_duty = 5000;
 static const float TIMER_PERIOD_us = 1400; // in us
-static const bool USE_SERIAL_MONITOR = false;
+static const bool USE_SERIAL_MONITOR = true; // for debug
 static const int MSG_LENGTH = 780;
 # define LOGGING_UNDERSAMPLING  1
 
@@ -281,14 +281,14 @@ void setup() {
     if (ret_sfm3000_1 == 0) 
     {
       if(USE_SERIAL_MONITOR)
-        SerialUSB.print("init() for sensor 1: success\n");
+        SerialUSB.print("init() for sensor SFM3000 - air: success\n");
       break;
     } 
     else 
     {
       if(USE_SERIAL_MONITOR)
       {
-        SerialUSB.print("init() for sensor 1: failed, ret = ");
+        SerialUSB.print("init() for sensor SFM3000 - air: failed, ret = ");
         SerialUSB.println(ret_sfm3000_1);
       }
       delay(1000);
@@ -305,14 +305,14 @@ void setup() {
     if (ret_sfm3000_2 == 0) 
     {
       if(USE_SERIAL_MONITOR)
-        SerialUSB.print("init() for sensor 2: success\n");
+        SerialUSB.print("init() for sensor SFM3000 - oxygen: success\n");
       break;
     } 
     else 
     {
       if(USE_SERIAL_MONITOR)
       {
-        SerialUSB.print("init() for sensor 2: failed, ret = ");
+        SerialUSB.print("init() for sensor SFM3000 - oxygen: failed, ret = ");
         SerialUSB.println(ret_sfm3000_2);
       }
       delay(1000);
@@ -831,11 +831,13 @@ void loop()
       buffer_tx_ptr = 0; // this was missing
       if(USE_SERIAL_MONITOR)
       {
-          SerialUSB.print(mpaw);
-          SerialUSB.print("\t ");
-          SerialUSB.print(mflow_proximal);
-          SerialUSB.print("\t ");
-          SerialUSB.println(mvolume);
+        /*
+        SerialUSB.print(mpaw);
+        SerialUSB.print("\t ");
+        SerialUSB.print(mflow_proximal);
+        SerialUSB.print("\t ");
+        SerialUSB.println(mvolume);
+        */
       }
       else
         SerialUSB.write(buffer_tx, MSG_LENGTH);
