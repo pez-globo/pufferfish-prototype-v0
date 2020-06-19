@@ -47,6 +47,8 @@ long int test_counter[N_valves] = {0};
 int DIRECTION[N_valves] = {28, 24};
 int STEP[N_valves] = {26, 22};
 
+// Steppers
+AccelStepper stepper[N_valves] = {AccelStepper(AccelStepper::DRIVER, 26 , 28), AccelStepper(AccelStepper::DRIVER, 22, 24)};
 
 //----------------------------------------------------------------------------------------------
 // LIMIT SWITCH Pins
@@ -115,7 +117,6 @@ static const int N_BYTES_POS = 3;
 /*******************************************************************
  ************************* STEPPER CONTROL *************************
  *******************************************************************/
-AccelStepper stepper[N_valves] = AccelStepper(AccelStepper::DRIVER, 0, 1);
 
  
 static const int UART_CS_S0 = 46;
@@ -201,7 +202,7 @@ void setup()
     pinMode(STEP[ii], OUTPUT); pinMode(DIRECTION[ii], OUTPUT);
     pinMode(LIMIT_SWITCH[ii], INPUT_PULLUP);
     // Initialize AccelStepper objects
-    stepper[ii] =  AccelStepper(AccelStepper::DRIVER, STEP[ii], DIRECTION[ii]);
+//    stepper[ii] =  AccelStepper(AccelStepper::DRIVER, STEP[ii], DIRECTION[ii]);
   }
 
   pinMode(UART_CS_S0, OUTPUT);
@@ -216,7 +217,7 @@ void setup()
     while(!STEPPER_SERIAL);
     Driver.begin();
     Driver.I_scale_analog(false);  
-    Driver.rms_current(500,0.3); //I_run and holdMultiplier
+    Driver.rms_current(100,0.3); //I_run and holdMultiplier
     Driver.microsteps(MICROSTEPPING_N);
     Driver.pwm_autoscale(true);
     Driver.TPOWERDOWN(2);
@@ -402,9 +403,9 @@ void loop()
           for (int valve_id=0; valve_id < N_valves; valve_id++)
           { 
              // Send the no:of cycles (4 byte unsigned int)
-//            long int temp = cycle_count[valve_id];
+            long int temp = cycle_count[valve_id];
             // Testing
-            long int temp = test_counter[valve_id];
+//            long int temp = test_counter[valve_id];
             buffer_tx[buffer_tx_ptr++] = byte(temp >>24);
             buffer_tx[buffer_tx_ptr++] = byte(temp >>16);
             buffer_tx[buffer_tx_ptr++] = byte(temp >> 8);
