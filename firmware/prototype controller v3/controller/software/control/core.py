@@ -251,8 +251,15 @@ class Waveforms(QObject):
                     # self.Flow = (utils.unsigned_to_signed(readout[2:4],MCU.N_BYTES_DATA)/(65536/2))*MCU.FLOW_FS
                     # self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MCU.N_BYTES_DATA)/65536)*MCU.VOLUME_FS
 
-                    record_from_MCU = str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume)
-                    record_settings = str(self.time_now) + '\t' + str(self.ventController.Vt) + '\t' + str(self.ventController.Ti) + '\t' + str(self.ventController.RR) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.Pinsp) + '\t' + str(self.ventController.riseTime) + '\t' + str(self.ventController.P) + '\t' + str(self.ventController.I_frac) + '\t' + str(self.ventController.trigger_th) + '\t' + str(self.ventController.mode) + '\t' + str(self.ventController.exhalationControlPRiseTime)
+                    record_from_MCU = (
+                        str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + str(self.stepper_oxygen_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + 
+                        "{:.2f}".format(self.flow_oxygen) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + 
+                        "{:.2f}".format(self.pressure_patient_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume) )
+                    record_settings = (
+                        str(self.time_now) + '\t' + str(self.ventController.Vt) + '\t' + str(self.ventController.Ti) + '\t' + str(self.ventController.RR) + '\t' + 
+                        str(self.ventController.PEEP) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.Pinsp) + '\t' + str(self.ventController.riseTime) + '\t' + 
+                        str(self.ventController.P) + '\t' + str(self.ventController.I_frac) + '\t' + str(self.ventController.trigger_th) + '\t' + str(self.ventController.mode) + '\t' + 
+                        str(self.ventController.exhalationControlPRiseTime) )
                     # self.signal_print.emit(record_from_MCU)
                     # saved variables
                     self.file.write(record_from_MCU + '\t' + record_settings + '\n')
