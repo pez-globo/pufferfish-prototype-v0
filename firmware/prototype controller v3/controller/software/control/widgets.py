@@ -135,6 +135,9 @@ class NavigationWidget(QFrame):
 
 
 class ControlPanel(QFrame):
+
+	signal_logging_onoff = Signal(bool,str)
+
 	def __init__(self, ventController, main=None, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.font = QFont()
@@ -241,58 +244,48 @@ class ControlPanel(QFrame):
 		self.entry_Exhalation_Control_P_RiseTime.setSingleStep(1)
 		self.entry_Exhalation_Control_P_RiseTime.setValue(MCU.rise_time_ms_exhalation_control_DEFAULT)
 
-		self.label_print = QLabel()
-		self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+		self.lineEdit_experimentID = QLineEdit()
 
-		grid_line0 = QGridLayout()
-		grid_line0.addWidget(QLabel('VT (ml)',font=self.font), 0,0)
-		grid_line0.addWidget(self.entry_VT, 0,1)
+		self.btn_logging_onoff = QPushButton('Logging On/Off')
+		self.btn_logging_onoff.setDefault(False)
+		self.btn_logging_onoff.setCheckable(True)
+		self.btn_logging_onoff.setChecked(False)
 
-		grid_line1 = QGridLayout()
-		grid_line1.addWidget(QLabel('Ti (s)',font=self.font), 0,0)
-		grid_line1.addWidget(self.entry_Ti, 0,1)
+		# self.label_print = QLabel()
+		# self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 
-		grid_line2 = QGridLayout()
-		grid_line2.addWidget(QLabel('RR (/min)',font=self.font), 0,0)
-		grid_line2.addWidget(self.entry_RR, 0,1)
+		grid_line0 = QHBoxLayout()
+		grid_line0.addWidget(QLabel('Ti (s)',font=self.font))
+		grid_line0.addWidget(self.entry_Ti)
+		grid_line0.addWidget(QLabel('RR (/min)',font=self.font))
+		grid_line0.addWidget(self.entry_RR)
+		grid_line0.addWidget(QLabel('PEEP (cmH2O)',font=self.font))
+		grid_line0.addWidget(self.entry_PEEP)
+		grid_line0.addWidget(QLabel('Flow',font=self.font))
+		grid_line0.addWidget(self.entry_Flow)
+		grid_line0.addWidget(QLabel('Trigger th (cmH2O)',font=self.font))
+		grid_line0.addWidget(self.entry_TriggerTh)
 
-		grid_line3 = QGridLayout()
-		grid_line3.addWidget(QLabel('PEEP (cmH2O)',font=self.font), 0,0)
-		grid_line3.addWidget(self.entry_PEEP, 0,1)
+		grid_line1 = QHBoxLayout()
+		grid_line1.addWidget(QLabel('P_Insp',font=self.font))
+		grid_line1.addWidget(self.entry_Pi)
+		grid_line1.addWidget(QLabel('Rise Time (ms)',font=self.font))
+		grid_line1.addWidget(self.entry_RiseTime)
+		grid_line1.addWidget(QLabel('P Gain',font=self.font))
+		grid_line1.addWidget(self.entry_PID_P)
+		grid_line1.addWidget(QLabel('I Gain (frac)',font=self.font))
+		grid_line1.addWidget(self.entry_PID_I_frac)
+		grid_line1.addWidget(QLabel('VT (ml)',font=self.font))
+		grid_line1.addWidget(self.entry_VT)
 
-		grid_line4 = QGridLayout()
-		grid_line4.addWidget(QLabel('Flow',font=self.font), 0,0)
-		grid_line4.addWidget(self.entry_Flow, 0,1)
-
-		# grid_line5 = QGridLayout()
-		# grid_line5.addWidget(QLabel('FlowDec',font=self.font), 0,0)
-		# grid_line5.addWidget(self.entry_FlowDeceleratingSlope, 0,1)
-
-		grid_line6 = QGridLayout()
-		grid_line6.addWidget(QLabel('P_Insp',font=self.font), 0,0)
-		grid_line6.addWidget(self.entry_Pi, 0,1)
-
-		grid_line7 = QGridLayout()
-		grid_line7.addWidget(QLabel('Rise Time (ms)',font=self.font), 0,0)
-		grid_line7.addWidget(self.entry_RiseTime, 0,1)
-
-		grid_line12 = QGridLayout()
-		grid_line12.addWidget(QLabel('Trigger th (cmH2O)',font=self.font), 0,0)
-		grid_line12.addWidget(self.entry_TriggerTh, 0,1)
-
-		grid_line8 = QGridLayout()
-		grid_line8.addWidget(QLabel('P Gain',font=self.font), 0,0)
-		grid_line8.addWidget(self.entry_PID_P, 0,1)
-
-		grid_line9 = QGridLayout()
-		grid_line9.addWidget(QLabel('I Gain (frac)',font=self.font), 0,0)
-		grid_line9.addWidget(self.entry_PID_I_frac, 0,1)
-
-		grid_line10 = QGridLayout()
-		grid_line10.addWidget(self.dropdown_modeManu,0,0)
-		grid_line10.addWidget(self.btn_onoff,0,1)
-		grid_line10.addWidget(QLabel('exhalation control pressure rise time (set 0 for open loop control)'),0,2)
-		grid_line10.addWidget(self.entry_Exhalation_Control_P_RiseTime,0,3)
+		grid_line2 = QHBoxLayout()
+		grid_line2.addWidget(self.dropdown_modeManu)
+		grid_line2.addWidget(self.btn_onoff)
+		grid_line2.addWidget(QLabel('exhalation control pressure rise time (set 0 for open loop control)'))
+		grid_line2.addWidget(self.entry_Exhalation_Control_P_RiseTime)
+		grid_line2.addWidget(QLabel('File Prefix'))
+		grid_line2.addWidget(self.lineEdit_experimentID)
+		grid_line2.addWidget(self.btn_logging_onoff)
 
 		# grid_line11 = QGridLayout()
 		# grid_line11.addWidget(self.label_print,0,0,10,0)
@@ -304,6 +297,9 @@ class ControlPanel(QFrame):
 		self.label_flow_air = QLabel()
 		self.label_flow_air.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 		self.label_flow_air.setFixedWidth(50)
+		self.label_flow_oxygen = QLabel()
+		self.label_flow_oxygen.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+		self.label_flow_oxygen.setFixedWidth(50)
 		self.label_flow_proximal = QLabel()
 		self.label_flow_proximal.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 		self.label_flow_proximal.setFixedWidth(50)
@@ -313,36 +309,33 @@ class ControlPanel(QFrame):
 		self.label_p_airway = QLabel()
 		self.label_p_airway.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 		self.label_p_airway.setFixedWidth(50)
+		self.label_p_aux = QLabel()
+		self.label_p_aux.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+		self.label_p_aux.setFixedWidth(50)
 		# self.label_print = QLabel()
 		# self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 
-		grid_line11 = QGridLayout()
-		grid_line11.addWidget(QLabel('stepper pos'),0,0)
-		grid_line11.addWidget(self.label_stepper_pos,0,1)
-		grid_line11.addWidget(QLabel('flow_air'),0,2)
-		grid_line11.addWidget(self.label_flow_air,0,3)
-		grid_line11.addWidget(QLabel('flow_proximal'),0,4)
-		grid_line11.addWidget(self.label_flow_proximal,0,5)
-		grid_line11.addWidget(QLabel('p exhalation control'),0,6)
-		grid_line11.addWidget(self.label_p_exhalation_control,0,7)
-		grid_line11.addWidget(QLabel('p airway'),0,8)
-		grid_line11.addWidget(self.label_p_airway,0,9)
+		grid_line3 = QHBoxLayout()
+		grid_line3.addWidget(QLabel('stepper pos'))
+		grid_line3.addWidget(self.label_stepper_pos)
+		grid_line3.addWidget(QLabel('flow_air'))
+		grid_line3.addWidget(self.label_flow_air)
+		grid_line3.addWidget(QLabel('flow_oxygen'))
+		grid_line3.addWidget(self.label_flow_oxygen)
+		grid_line3.addWidget(QLabel('flow_proximal'))
+		grid_line3.addWidget(self.label_flow_proximal)
+		grid_line3.addWidget(QLabel('p exhalation control'))
+		grid_line3.addWidget(self.label_p_exhalation_control)
+		grid_line3.addWidget(QLabel('p airway'))
+		grid_line3.addWidget(self.label_p_airway)
+		grid_line3.addWidget(QLabel('p aux'))
+		grid_line3.addWidget(self.label_p_aux)
 
 		self.grid = QGridLayout()
 		self.grid.addLayout(grid_line0,0,0)
-		self.grid.addLayout(grid_line1,0,1)
-		self.grid.addLayout(grid_line2,0,2)
-		self.grid.addLayout(grid_line3,0,3)
-		# self.grid.addLayout(grid_line5,0,4)
-
-		self.grid.addLayout(grid_line6,1,0)
-		self.grid.addLayout(grid_line7,1,1)
-		self.grid.addLayout(grid_line8,1,2)
-		self.grid.addLayout(grid_line9,1,3)
-		self.grid.addLayout(grid_line4,1,4)
-
-		self.grid.addLayout(grid_line10,2,0)
-		self.grid.addLayout(grid_line11,3,0)
+		self.grid.addLayout(grid_line1,1,0)
+		self.grid.addLayout(grid_line2,2,0)
+		self.grid.addLayout(grid_line3,3,0)
 		# self.grid.addWidget(self.label_print,3,0,1,8)
 
 		self.setLayout(self.grid)
@@ -362,6 +355,12 @@ class ControlPanel(QFrame):
 		self.btn_onoff.clicked.connect(self.ventController.setONOFF)
 		self.dropdown_modeManu.currentTextChanged.connect(self.ventController.updateMode)
 		self.entry_Exhalation_Control_P_RiseTime.valueChanged.connect(self.ventController.setExhalationControlPRiseTime)
+
+		self.btn_logging_onoff.clicked.connect(self.logging_onoff)
+
+	def logging_onoff(self,state):
+		self.signal_logging_onoff.emit(state,self.lineEdit_experimentID.text())
+		
 
 # from Deepak
 class PlotWidget(pg.GraphicsLayoutWidget):

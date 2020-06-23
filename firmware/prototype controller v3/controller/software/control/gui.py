@@ -49,6 +49,7 @@ class VentDevGUI(QMainWindow):
 		self.setCentralWidget(self.centralWidget)
 
 		# make connections
+		self.controlPanel.signal_logging_onoff.connect(self.waveforms.logging_onoff)
 		self.waveforms.signal_Paw.connect(self.waveformDisplay.plotWidgets['Airway Pressure'].update_plot)
 		self.waveforms.signal_Flow.connect(self.waveformDisplay.plotWidgets['Flow Rate'].update_plot)
 		self.waveforms.signal_Volume.connect(self.waveformDisplay.plotWidgets['Volume'].update_plot)

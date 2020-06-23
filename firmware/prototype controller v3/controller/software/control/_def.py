@@ -139,7 +139,7 @@ PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
 PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
 
-SIMULATION = False    
+SIMULATION = True    
 
 MODE_VC_AC = 1
 MODE_PC_AC = 2
@@ -149,7 +149,7 @@ MODE_PC_AC_STRING = 'PC-CMV'
 MODE_PSV_STRING = 'PSV'
 
 if SIMULATION:
-    WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/2/MCU.TIMEPOINT_PER_UPDATE
+    WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/2
 else:
     WAVEFORMS.UPDATE_INTERVAL_MS = MCU.DATA_INTERVAL_ms/2
 

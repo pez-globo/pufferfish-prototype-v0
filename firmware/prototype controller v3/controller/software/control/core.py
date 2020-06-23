@@ -187,11 +187,22 @@ class Waveforms(QObject):
         self.counter_display = 0
         self.counter_file_flush = 0
 
+        self.logging_is_on = True
+
+    def logging_onoff(self,state,experimentID):
+        self.logging_is_on = state
+        if state == False:
+            self.file.close()
+        else:
+            self.experimentID = experimentID
+            self.file = open(str(Path.home()) + "/Downloads/" + self.experimentID + '_' + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
+
     def update_waveforms(self):
         # self.time = self.time + (1/1000)*WAVEFORMS.UPDATE_INTERVAL_MS
       
         if SIMULATION:
             # test plotting multiple data points at a time
+            #for i in range(MCU.TIMEPOINT_PER_UPDATE):
             for i in range(MCU.TIMEPOINT_PER_UPDATE):
                 # Use the processor clock to determine elapsed time since last function call
                 self.time_now = time.time()
@@ -202,9 +213,9 @@ class Waveforms(QObject):
                 self.Volume = (self.Volume + 0.2/MCU.TIMEPOINT_PER_UPDATE)%5
                 self.Flow = (self.Flow + 0.2/MCU.TIMEPOINT_PER_UPDATE)%5
                 # self.file.write(str(self.time_now)+','+str(self.Paw)+','+str(self.Flow)+','+str(self.Volume)+'\n')
-                self.signal_Paw.emit(self.time,self.Paw)
-                self.signal_Flow.emit(self.time,self.Flow)
-                self.signal_Volume.emit(self.time,self.Volume)                
+            self.signal_Paw.emit(self.time,self.Paw)
+            self.signal_Flow.emit(self.time,self.Flow)
+            self.signal_Volume.emit(self.time,self.Volume)                
 
         else:
             readout = self.microcontroller.read_received_packet_nowait()
@@ -254,15 +265,17 @@ class Waveforms(QObject):
                     record_from_MCU = (
                         str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + str(self.stepper_oxygen_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + 
                         "{:.2f}".format(self.flow_oxygen) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + 
-                        "{:.2f}".format(self.pressure_patient_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume) )
+                        "{:.2f}".format(self.pressure_patient_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume) ) + '\t' + "{:.2f}".format(self.dP)
                     record_settings = (
                         str(self.time_now) + '\t' + str(self.ventController.Vt) + '\t' + str(self.ventController.Ti) + '\t' + str(self.ventController.RR) + '\t' + 
                         str(self.ventController.PEEP) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.Pinsp) + '\t' + str(self.ventController.riseTime) + '\t' + 
                         str(self.ventController.P) + '\t' + str(self.ventController.I_frac) + '\t' + str(self.ventController.trigger_th) + '\t' + str(self.ventController.mode) + '\t' + 
                         str(self.ventController.exhalationControlPRiseTime) )
                     # self.signal_print.emit(record_from_MCU)
+                   
                     # saved variables
-                    self.file.write(record_from_MCU + '\t' + record_settings + '\n')
+                    if logging_is_on:
+                        self.file.write(record_from_MCU + '\t' + record_settings + '\n')
                     # print(record_from_MCU)
                     # record_from_MCU_debug = 'sterpper pos: ' + str(self.stepper_air_pos) + '\t\t flow_air: ' + "{:.2f}".format(self.flow_air) + '\t flow_proximal: ' + "{:.2f}".format(self.flow_proximal) + '\t p_exhalation control: ' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t p_airway: ' + "{:.2f}".format(self.pressure_aw_cmH2O)
                     # self.signal_print.emit(record_from_MCU_debug)
