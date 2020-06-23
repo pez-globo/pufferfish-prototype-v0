@@ -312,6 +312,9 @@ class ControlPanel(QFrame):
 		self.label_p_aux = QLabel()
 		self.label_p_aux.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 		self.label_p_aux.setFixedWidth(50)
+		self.label_dP = QLabel()
+		self.label_dP.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+		self.label_dP.setFixedWidth(50)
 		# self.label_print = QLabel()
 		# self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 
@@ -330,6 +333,8 @@ class ControlPanel(QFrame):
 		grid_line3.addWidget(self.label_p_airway)
 		grid_line3.addWidget(QLabel('p aux'))
 		grid_line3.addWidget(self.label_p_aux)
+		grid_line3.addWidget(QLabel('dP'))
+		grid_line3.addWidget(self.label_dP)
 
 		self.grid = QGridLayout()
 		self.grid.addLayout(grid_line0,0,0)

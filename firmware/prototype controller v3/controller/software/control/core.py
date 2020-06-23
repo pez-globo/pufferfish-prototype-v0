@@ -161,6 +161,8 @@ class Waveforms(QObject):
     signal_flow_proximal = Signal(str)
     signal_p_exhalation_control = Signal(str)
     signal_p_airway = Signal(str)
+    signal_p_aux = Signal(str)
+    signal_dP = Signal(str)
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
@@ -293,6 +295,8 @@ class Waveforms(QObject):
                     self.signal_flow_proximal.emit("{:.2f}".format(self.flow_proximal))
                     self.signal_p_exhalation_control.emit("{:.2f}".format(self.pressure_exhalation_control_cmH2O))
                     self.signal_p_airway.emit("{:.2f}".format(self.pressure_aw_cmH2O))
+                    self.signal_p_aux.emit("{:.2f}".format(self.pressure_patient_cmH2O))
+                    self.signal_dP.emit("{:.2f}".format(self.dP))
 
 
         # file flushing
