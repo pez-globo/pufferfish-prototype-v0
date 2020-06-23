@@ -247,7 +247,7 @@ class ControlPanel(QFrame):
 		self.lineEdit_experimentID = QLineEdit()
 
 		self.btn_logging_onoff = QPushButton('Logging On/Off')
-		self.btn_logging_onoff.setDefault(False)
+		self.btn_logging_onoff.setDefault(True)
 		self.btn_logging_onoff.setCheckable(True)
 		self.btn_logging_onoff.setChecked(False)
 
