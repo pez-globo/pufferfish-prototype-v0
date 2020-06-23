@@ -275,7 +275,7 @@ class Waveforms(QObject):
                     # self.signal_print.emit(record_from_MCU)
                    
                     # saved variables
-                    if logging_is_on:
+                    if self.logging_is_on:
                         self.file.write(record_from_MCU + '\t' + record_settings + '\n')
                     # print(record_from_MCU)
                     # record_from_MCU_debug = 'sterpper pos: ' + str(self.stepper_air_pos) + '\t\t flow_air: ' + "{:.2f}".format(self.flow_air) + '\t flow_proximal: ' + "{:.2f}".format(self.flow_proximal) + '\t p_exhalation control: ' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t p_airway: ' + "{:.2f}".format(self.pressure_aw_cmH2O)
