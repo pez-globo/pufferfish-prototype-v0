@@ -69,18 +69,19 @@ class MCU:
     RR_FS = 60.0
 
     # full scale
-    flow_FS = 200;
-    volume_FS = 1500;
-    paw_FS = 100;
-    psupply_FS = 30;
-    Ti_FS = 5;
-    Vt_FS = 1500;
-    PEEP_FS = 30;
-    RR_FS = 60;
-    valve_pos_open_steps_FS = -125;
-    pc_rise_time_ms_FS = 500;
-    PID_coefficient_P_FS = 0.1;
-    PID_coefficient_I_frac_FS = 1;
+    flow_FS = 200
+    volume_FS = 1500
+    paw_FS = 100
+    psupply_FS = 30
+    Ti_FS = 5
+    Vt_FS = 1500
+    PEEP_FS = 30
+    RR_FS = 60
+    valve_pos_open_steps_FS = -125
+    pc_rise_time_ms_FS = 500
+    PID_coefficient_P_FS = 0.1
+    PID_coefficient_I_frac_FS = 1
+    dP_FS = 500
     
     VALVE_POS_OPEN_STEPS_FS = 125;
     PC_RISE_TIME_MS_FS = 500;

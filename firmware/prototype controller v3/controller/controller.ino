@@ -97,6 +97,7 @@ static const float valve_pos_open_steps_FS = -125;
 static const float pc_rise_time_ms_FS = 1000;
 static const float PID_coefficient_P_FS = 0.1;
 static const float PID_coefficient_I_frac_FS = 1;
+static const float dP_FS = 500;
 
 // set parameters and their default values
 int mode = MODE_PC_AC;
@@ -809,13 +810,13 @@ void loop()
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
     // field 12 volume
-    tmp_long = (65536 / 2) * mvolume / volume_FS;;
+    tmp_long = (65536 / 2) * mvolume / volume_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
-    // field 13 reserved for FiO2
-    tmp_long = 0;
+    // field 13 reserved for FiO2 (for now repurpose for storing dP)
+    tmp_long = (65536 / 2) * dP / dP_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);

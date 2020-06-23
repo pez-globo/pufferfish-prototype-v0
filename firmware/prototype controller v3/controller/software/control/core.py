@@ -256,6 +256,7 @@ class Waveforms(QObject):
                     # volume
                     self.volume = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+24:i*MCU.RECORD_LENGTH_BYTE+26],2)/(65536/2)*MCU.volume_FS
                     # FiO2
+                    self.dP = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+26:i*MCU.RECORD_LENGTH_BYTE+28],2)/(65536/2)*dP_FS
                     # humidity
 
                     # self.Paw = (utils.unsigned_to_signed(readout[0:2],MCU.N_BYTES_DATA)/(65536/2))*MCU.PAW_FS 
