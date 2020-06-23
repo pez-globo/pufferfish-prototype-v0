@@ -99,6 +99,9 @@ static const float PID_coefficient_P_FS = 0.1;
 static const float PID_coefficient_I_frac_FS = 1;
 static const float dP_FS = 500;
 
+// parameters
+static const float exhalation_flow_no_trigger_threshold = -10;
+
 // set parameters and their default values
 int mode = MODE_PC_AC;
 float RR = 18;
@@ -112,6 +115,9 @@ float pinsp_setpoint = 20;
 float psupport = 10;
 bool pressure_support_enabled = false;
 float valve_pos_open_steps = -100;
+
+float p_exhalation_control_target = 0; // the pressure applied to the membrane is different from the target PEEP
+// p_exhalation_control_target = 0.4799 * PEEP - 0.2744
 
 // measured variables
 float dP = 0; 
@@ -416,10 +422,23 @@ void timer_interruptHandler()
           set_valve2_closing(1);
           digitalWrite(13, HIGH);
           PID_Insp_Integral = 0;
-          //is_in_pressure_support = false; // for testing pressure support only
+        }
+        // patient triggered breath
+        if ( mpaw < PEEP + paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false && mflow_proximal > exhalation_flow_no_trigger_threshold  )
+        {
+          cycle_time_ms = 0;
+          is_in_inspiratory_phase = true;
+          is_in_pressure_regulation_rise = true;
+          is_in_expiratory_phase = false;
+          PEEP_is_reached = false;
+          mvolume = 0;
+          mflow_peak = 0;
+          set_valve2_closing(1);
+          digitalWrite(13, HIGH);
+          PID_Insp_Integral = 0;
         }
       }
-      // for the first test only support PC-CMV and PSV
+
       if(mode == MODE_PSV)
       {
         // patient triggered breath
@@ -522,6 +541,23 @@ void timer_interruptHandler()
         set_valve1_pos(valve_opening);
         digitalWrite(13, HIGH);
       }
+
+      // patient triggered breath
+        if ( mpaw < PEEP + paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false && mflow_proximal > exhalation_flow_no_trigger_threshold )
+        {
+          cycle_time_ms = 0;
+          is_in_inspiratory_phase = true;
+          is_in_expiratory_phase = false;
+          PEEP_is_reached = false;
+          mvolume = 0;
+          mflow_peak = 0;
+          set_valve2_closing(1);
+          valve_opening = 0.36;
+          set_valve1_pos(valve_opening);
+          digitalWrite(13, HIGH);
+        }
+
+      // stop the inspiratory flow when the set tidal volume is delivered
       if (mvolume >= Vt && is_in_inspiratory_phase == true)
       {
         valve_opening = 0;
@@ -573,7 +609,7 @@ void timer_interruptHandler()
       {
         time_ms_into_exhalation = time_ms_into_exhalation + TIMER_PERIOD_us / 1000;
         // calculate setpoint
-        p_exhalation_control_setpoint_rise = time_ms_into_exhalation > rise_time_ms_exhalation_control? PEEP : PEEP * (time_ms_into_exhalation/rise_time_ms_exhalation_control);
+        p_exhalation_control_setpoint_rise = time_ms_into_exhalation > rise_time_ms_exhalation_control? p_exhalation_control_target : p_exhalation_control_target * (time_ms_into_exhalation/rise_time_ms_exhalation_control);
         // calculate error
         p_exhalation_control_error = p_exhalation_control_setpoint_rise - mpexhalation;
         PID_exhalation_control_Integral = PID_exhalation_control_Integral + PID_coefficient_I_exhalation_control*p_exhalation_control_error;
@@ -627,6 +663,8 @@ void loop()
       else if (buffer_rx[0] == CMD_PEEP)
       {
         PEEP = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536)*PEEP_FS;
+        p_exhalation_control_target = PEEP*0.4799-0.2744;
+        p_exhalation_control_target = p_exhalation_control_target > 0 ? p_exhalation_control_target : 0;
         // when debugging (is_breathing set to 0), set exhalation valve closing to PEEP/PEEP_FS
         if (is_breathing == false)
           set_valve2_closing(PEEP/PEEP_FS);
