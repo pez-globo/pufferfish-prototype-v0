@@ -300,10 +300,11 @@ class Waveforms(QObject):
 
 
         # file flushing
-        self.counter_file_flush = self.counter_file_flush + 1
-        if self.counter_file_flush>=500:
-            self.counter_file_flush = 0
-            self.file.flush()
+        if self.logging_is_on:
+            self.counter_file_flush = self.counter_file_flush + 1
+            if self.counter_file_flush>=500:
+                self.counter_file_flush = 0
+                self.file.flush()
 
     def close(self):
         self.file.close()

@@ -130,7 +130,7 @@ class WAVEFORMS:
     DISPLAY_RANGE_S = 10 # In seconds
     CYCLE_GAP = 5 # In sample num
     PAW_MIN = 0
-    PAW_MAX = 50
+    PAW_MAX = 30
     FLOW_MIN = -150
     FLOW_MAX = 150
     V_MIN = 0

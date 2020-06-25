@@ -247,9 +247,9 @@ class ControlPanel(QFrame):
 		self.lineEdit_experimentID = QLineEdit()
 
 		self.btn_logging_onoff = QPushButton('Logging On/Off')
-		self.btn_logging_onoff.setDefault(True)
+		self.btn_logging_onoff.setDefault(False)
 		self.btn_logging_onoff.setCheckable(True)
-		self.btn_logging_onoff.setChecked(False)
+		self.btn_logging_onoff.setChecked(True)
 
 		# self.label_print = QLabel()
 		# self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
@@ -461,7 +461,7 @@ class WaveformDisplay(QFrame):
 
 	def add_components(self):
 		self.plotWidgets = {key: PlotWidget(title = key, color = 'b') for key in PLOTS}
-		# self.plotWidgets['Airway Pressure'].plot1.setYRange(min=WAVEFORMS.PAW_MIN,max=WAVEFORMS.PAW_MAX)
+		self.plotWidgets['Airway Pressure'].plot1.setYRange(min=WAVEFORMS.PAW_MIN,max=WAVEFORMS.PAW_MAX)
 		# self.plotWidgets['Flow Rate'].plot1.setYRange(min=WAVEFORMS.FLOW_MIN,max=WAVEFORMS.FLOW_MAX)
 		# self.plotWidgets['Volume'].plot1.setYRange(min=WAVEFORMS.V_MIN,max=WAVEFORMS.V_MAX)
 
