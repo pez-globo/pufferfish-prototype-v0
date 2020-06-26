@@ -152,7 +152,7 @@ volatile float paw_error = 0;
 
 float PID_coefficient_P_exhalation_control = 0.02;
 float PID_coefficient_I_exhalation_control = 0.005;
-float rise_time_ms_exhalation_control = 0; 
+float rise_time_ms_exhalation_control = 400; 
 volatile float p_exhalation_control_setpoint_rise = 0;
 volatile float PID_exhalation_control_Integral = 0;
 volatile float PID_exhalation_control_Prop = 0;

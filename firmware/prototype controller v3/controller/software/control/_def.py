@@ -110,7 +110,7 @@ class MCU:
 
     Ti_DEFAULT = 1
     RR_DEFAULT = 18
-    PEEP_DEFAULT = 5
+    PEEP_DEFAULT = 0
     Vt_DEFAULT = 250
     pinsp_DEFAULT = 20;
     paw_trigger_th_DEFAULT = -1.5;
@@ -118,7 +118,7 @@ class MCU:
     P_default = 0.01
     I_frac_default = 0.1
     valve_pos_open_steps_DEFAULT_abs = 100
-    rise_time_ms_exhalation_control_DEFAULT = 0
+    rise_time_ms_exhalation_control_DEFAULT = 400
 
     TIMER_PERIOD_ms = 1.40
     DATA_INTERVAL_ms = TIMER_PERIOD_ms*26
