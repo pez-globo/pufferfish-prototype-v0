@@ -163,6 +163,9 @@ class Waveforms(QObject):
     signal_p_airway = Signal(str)
     signal_p_aux = Signal(str)
     signal_dP = Signal(str)
+    signal_p_supply_air = Signal(str)
+    signal_p_supply_oxygen = Signal(str)
+    signal_fio2 = Signal(str)
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
@@ -256,15 +259,16 @@ class Waveforms(QObject):
                     # airway pressure
                     self.pressure_aw_cmH2O = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+22:i*MCU.RECORD_LENGTH_BYTE+24],2)/(65536/2)*MCU.paw_FS
                     # volume
+                    tmp_volume_total = self.volume # for FiO2 calculation
                     self.volume = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+24:i*MCU.RECORD_LENGTH_BYTE+26],2)/(65536/2)*MCU.volume_FS
                     # FiO2
                     self.dP = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+26:i*MCU.RECORD_LENGTH_BYTE+28],2)/(65536/2)*MCU.dP_FS
                     # humidity
                     self.volume_oxygen = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+28:i*MCU.RECORD_LENGTH_BYTE+30],2)/(65536/2)*MCU.volume_FS
 
-                    # self.Paw = (utils.unsigned_to_signed(readout[0:2],MCU.N_BYTES_DATA)/(65536/2))*MCU.PAW_FS 
-                    # self.Flow = (utils.unsigned_to_signed(readout[2:4],MCU.N_BYTES_DATA)/(65536/2))*MCU.FLOW_FS
-                    # self.Volume = (utils.unsigned_to_unsigned(readout[4:6],MCU.N_BYTES_DATA)/65536)*MCU.VOLUME_FS
+                    # fio2 calculation
+                    if self.volume >= tmp_volume_total:
+                        self.fio2 = ( (self.volume - self.volume_oxygen)*0.21 + self.volume_oxygen*1 ) / self.volume
 
                     record_from_MCU = (
                         str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + str(self.stepper_oxygen_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + 
@@ -298,7 +302,9 @@ class Waveforms(QObject):
                     self.signal_p_airway.emit("{:.2f}".format(self.pressure_aw_cmH2O))
                     self.signal_p_aux.emit("{:.2f}".format(self.pressure_patient_cmH2O))
                     self.signal_dP.emit("{:.2f}".format(self.dP))
-
+                    self.signal_p_supply_air.emit("{:.2f}".format(self.pressure_upstream_air_psi))
+                    self.signal_p_supply_oxygen.emit("{:.2f}".format(self.pressure_upstream_oxygen_psi))
+                    self.signal_fio2.emit("{:.0f}".format(self.fio2*100))
 
         # file flushing
         if self.logging_is_on:
