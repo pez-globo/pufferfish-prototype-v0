@@ -167,6 +167,7 @@ class Waveforms(QObject):
     signal_p_supply_air = Signal(str)
     signal_p_supply_oxygen = Signal(str)
     signal_fio2 = Signal(str)
+    signal_flow_oxygen = Signal(str)
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
@@ -176,6 +177,7 @@ class Waveforms(QObject):
         self.ventController = ventController
         self.Paw = 0
         self.Volume = 0
+        self.volume = 0
         self.Flow = 0
         self.time = 0
         self.timer_update_waveform = QTimer()
@@ -269,8 +271,11 @@ class Waveforms(QObject):
 
                     # fio2 calculation; note here volume is actually mass
                     if self.volume >= tmp_volume_total:
-                        self.fio2 = ( (self.volume - self.volume_oxygen)*0.2314 + self.volume_oxygen*1 ) / (self.volume)
-
+                        if(self.volume==0):
+                            self.fio2 = 0
+                        else:
+                            self.fio2 = ( (self.volume - self.volume_oxygen)*0.2314 + self.volume_oxygen*1 ) / (self.volume)
+                        
                     record_from_MCU = (
                         str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + str(self.stepper_oxygen_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + 
                         "{:.2f}".format(self.flow_oxygen) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + 
@@ -306,7 +311,11 @@ class Waveforms(QObject):
                     self.signal_dP.emit("{:.2f}".format(self.dP))
                     self.signal_p_supply_air.emit("{:.2f}".format(self.pressure_upstream_air_psi))
                     self.signal_p_supply_oxygen.emit("{:.2f}".format(self.pressure_upstream_oxygen_psi))
-                    self.signal_fio2.emit("{:.0f}".format(self.fio2*100))
+                    if self.fio2 >= 0.21 and self.fio2 <=1:
+                        self.signal_fio2.emit("{:.0f}".format(self.fio2*100))
+                    else:
+                        self.signal_fio2.emit("-")
+                    self.signal_flow_oxygen.emit("{:.2f}".format(self.flow_oxygen))
 
         # file flushing
         if self.logging_is_on:
