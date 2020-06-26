@@ -742,7 +742,7 @@ void loop()
     if (ret_sfm3000_1 == 0)
       mflow_air = sfm3000_1.get_flow();
     if (ret_sfm3000_2 == 0)
-      mflow_oxygen = sfm3000_2.get_flow();
+      mflow_oxygen = sfm3000_2.get_flow()*142.8/140;
     mflow_total = mflow_air + mflow_oxygen;
     
     if (sdp.readContinuous() == 0)
