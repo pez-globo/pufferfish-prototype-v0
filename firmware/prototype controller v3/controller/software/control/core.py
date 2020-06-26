@@ -266,9 +266,9 @@ class Waveforms(QObject):
                     # humidity
                     self.volume_oxygen = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+28:i*MCU.RECORD_LENGTH_BYTE+30],2)/(65536/2)*MCU.volume_FS
 
-                    # fio2 calculation
+                    # fio2 calculation; note here volume is actually mass
                     if self.volume >= tmp_volume_total:
-                        self.fio2 = ( (self.volume - self.volume_oxygen)*0.21 + self.volume_oxygen*1 ) / self.volume
+                        self.fio2 = ( (self.volume - self.volume_oxygen)*0.2314 + self.volume_oxygen*1 ) / (self.volume)
 
                     record_from_MCU = (
                         str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + str(self.stepper_oxygen_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + 
