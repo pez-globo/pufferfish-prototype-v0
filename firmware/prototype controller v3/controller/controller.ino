@@ -741,12 +741,30 @@ void loop()
     
     if (sdp.readContinuous() == 0)
       dP = sdp.getDifferentialPressure();
+
+    // convert dP to flow (calibration coefficients need to be obtained for each sensor)
+    if (dP>=100)
+      mflow_proximal = -0.0004*dP*dP + 0.4266*dP + 14.6174;
+    else if (dP<100 && dP>=3)
+      mflow_proximal = -0.0005*dP*dP + 0.5618*dP + 2.3038;
+    else if (dP<3 && dP>=0)
+      mflow_proximal = -0.1909*dP*dP + 1.8461*dP + 0.0113;
+    else if (dP<0 && dP>=-3)
+      mflow_proximal = 0.0319*dP*dP + 1.0575*dP + -0.4434;
+    else if (dP<-3 && dP>=-100)
+      mflow_proximal = 0.0002*dP*dP + 0.5464*dP + -2.3002;
+    else if (dP<-100)
+      mflow_proximal = 0.0005*dP*dP + 0.4731*dP + -11.8645;
+    if(abs(mflow_proximal) < 0.5)
+      mflow_proximal = 0;
+    /*
     if(abs(dP)<0.3)
       mflow_proximal = 0;
     else if(dP >=3 )
       mflow_proximal = dP * coefficient_dP2flow + coefficient_dp2flow_offset;
     else
       mflow_proximal = dP * coefficient_dP2flow - coefficient_dp2flow_offset;
+    */
     
     mvolume = mvolume + mflow_proximal * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
     flag_read_sensor = false;
