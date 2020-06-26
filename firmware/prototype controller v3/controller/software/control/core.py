@@ -69,6 +69,7 @@ class VentController(QObject):
         self.I_frac = MCU.I_frac_default
         self.trigger_th = MCU.paw_trigger_th_DEFAULT
         self.exhalationControlPRiseTime = MCU.rise_time_ms_exhalation_control_DEFAULT
+        self.fio2_set = MCU.fio2_DEFAULT/100
 
     def setVT(self,value):
         self.microcontroller.set_parameter(MCU.CMD_Vt,value/MCU.VT_FS)
@@ -87,7 +88,8 @@ class VentController(QObject):
         self.PEEP = value
 
     def setFlow(self,value):
-        self.microcontroller.set_parameter(MCU.CMD_Flow,value/MCU.VALVE_POS_OPEN_STEPS_FS)
+        # self.microcontroller.set_parameter(MCU.CMD_Flow,value/MCU.VALVE_POS_OPEN_STEPS_FS)
+        self.microcontroller.set_parameter(MCU.CMD_Flow,value/100)
 
     # def setFlowDeceleratingSlope(self,value):
     #     self.microcontroller.set_parameter(MCU.CMD_FlowDeceleratingSlope,value/100)
@@ -137,6 +139,14 @@ class VentController(QObject):
     def setExhalationControlPRiseTime(self,value):
         self.microcontroller.set_parameter(MCU.CMD_Exhalation_Control_RiseTime,value/MCU.PC_RISE_TIME_MS_FS)
         self.exhalationControlPRiseTime = value
+
+    def setFiO2(self,value):
+        self.fio2_set = value/100
+        if self.fio2_set < 0.23:
+            self.fio2_set = 0.23
+        if self.fio2_set > 1.00:
+            self.fio2_set = 1.00
+        self.microcontroller.set_parameter(MCU.CMD_SET_FIO2,self.fio2_set)
 
 # class DataLogger(QObject):
 #     def __init__(self,microcontroller):
@@ -234,6 +244,7 @@ class Waveforms(QObject):
                 # self.time_diff = self.time_now - self.time_prev
                 # self.time_prev = self.time_now
                 # self.time += self.time_diff
+                self.time_now = time.time()
 
                 for i in range(MCU.TIMEPOINT_PER_UPDATE):
                     # time
@@ -263,24 +274,23 @@ class Waveforms(QObject):
                     # airway pressure
                     self.pressure_aw_cmH2O = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+22:i*MCU.RECORD_LENGTH_BYTE+24],2)/(65536/2)*MCU.paw_FS
                     # volume
-                    tmp_volume_total = self.volume # for FiO2 calculation
                     self.volume = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+24:i*MCU.RECORD_LENGTH_BYTE+26],2)/(65536/2)*MCU.volume_FS
-                    # FiO2
-                    self.dP = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+26:i*MCU.RECORD_LENGTH_BYTE+28],2)/(65536/2)*MCU.dP_FS
-                    # humidity
+                    # FiO2 (repurposed)
+                    # self.dP = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+26:i*MCU.RECORD_LENGTH_BYTE+28],2)/(65536/2)*MCU.dP_FS
+                    self.dP = 0
+                    self.volume_air = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+26:i*MCU.RECORD_LENGTH_BYTE+28],2)/(65536/2)*MCU.volume_FS
+                    # humidity (repurposed)
                     self.volume_oxygen = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+28:i*MCU.RECORD_LENGTH_BYTE+30],2)/(65536/2)*MCU.volume_FS
 
                     # fio2 calculation; note here volume is actually mass
-                    if (self.volume >= tmp_volume_total) and (self.volume >= 100):
-                        if(self.volume==0):
-                            self.fio2 = 0
-                        else:
-                            self.fio2 = ( (self.volume - self.volume_oxygen)*0.2314 + self.volume_oxygen*1 ) / (self.volume)
+                    if (self.volume_air + self.volume_oxygen) > 100:
+                        self.fio2 = ( self.volume_air*0.23 + self.volume_oxygen*1 ) / (self.volume_air + self.volume_oxygen)
                         
                     record_from_MCU = (
                         str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + str(self.stepper_oxygen_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + 
                         "{:.2f}".format(self.flow_oxygen) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + 
-                        "{:.2f}".format(self.pressure_patient_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume) ) + '\t' + "{:.2f}".format(self.dP) + '\t' + "{:.2f}".format(self.volume_oxygen)
+                        "{:.2f}".format(self.pressure_patient_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume)  + '\t' + "{:.2f}".format(self.dP) + 
+                        '\t' + "{:.2f}".format(self.volume_air) + '\t' + "{:.2f}".format(self.volume_oxygen) )
                     record_settings = (
                         str(self.time_now) + '\t' + str(self.ventController.Vt) + '\t' + str(self.ventController.Ti) + '\t' + str(self.ventController.RR) + '\t' + 
                         str(self.ventController.PEEP) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.Pinsp) + '\t' + str(self.ventController.riseTime) + '\t' + 

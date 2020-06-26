@@ -194,8 +194,9 @@ class ControlPanel(QFrame):
 		self.entry_Flow.setFont(self.font)
 		self.entry_Flow.setMinimum(20)
 		self.entry_Flow.setMaximum(100)
-		self.entry_Flow.setSingleStep(5)
-		self.entry_Flow.setValue(MCU.valve_pos_open_steps_DEFAULT_abs)
+		self.entry_Flow.setSingleStep(1)
+		# self.entry_Flow.setValue(MCU.valve_pos_open_steps_DEFAULT_abs)
+		self.entry_Flow.setValue(MCU.valve_opening_vc_DEFAULT)
 
 		self.entry_PID_P = QDoubleSpinBox()
 		self.entry_PID_P.setDecimals(5)
@@ -244,6 +245,13 @@ class ControlPanel(QFrame):
 		self.entry_Exhalation_Control_P_RiseTime.setSingleStep(1)
 		self.entry_Exhalation_Control_P_RiseTime.setValue(MCU.rise_time_ms_exhalation_control_DEFAULT)
 
+		self.entry_fio2 = QDoubleSpinBox()
+		self.entry_fio2.setFont(self.font)
+		self.entry_fio2.setMinimum(23)
+		self.entry_fio2.setMaximum(100)
+		self.entry_fio2.setSingleStep(1)
+		self.entry_fio2.setValue(MCU.fio2_DEFAULT)
+
 		self.lineEdit_experimentID = QLineEdit()
 
 		self.btn_logging_onoff = QPushButton('Logging On/Off')
@@ -261,7 +269,7 @@ class ControlPanel(QFrame):
 		grid_line0.addWidget(self.entry_RR)
 		grid_line0.addWidget(QLabel('PEEP (cmH2O)',font=self.font))
 		grid_line0.addWidget(self.entry_PEEP)
-		grid_line0.addWidget(QLabel('Flow',font=self.font))
+		grid_line0.addWidget(QLabel('VC Flow (%)',font=self.font))
 		grid_line0.addWidget(self.entry_Flow)
 		grid_line0.addWidget(QLabel('Trigger th (cmH2O)',font=self.font))
 		grid_line0.addWidget(self.entry_TriggerTh)
@@ -283,6 +291,8 @@ class ControlPanel(QFrame):
 		grid_line2.addWidget(self.btn_onoff)
 		grid_line2.addWidget(QLabel('exhalation control pressure rise time (set 0 for open loop control)'))
 		grid_line2.addWidget(self.entry_Exhalation_Control_P_RiseTime)
+		grid_line2.addWidget(QLabel('FiO2 (%)'))
+		grid_line2.addWidget(self.entry_fio2)
 		grid_line2.addWidget(QLabel('File Prefix'))
 		grid_line2.addWidget(self.lineEdit_experimentID)
 		grid_line2.addWidget(self.btn_logging_onoff)
@@ -383,6 +393,7 @@ class ControlPanel(QFrame):
 		self.btn_onoff.clicked.connect(self.ventController.setONOFF)
 		self.dropdown_modeManu.currentTextChanged.connect(self.ventController.updateMode)
 		self.entry_Exhalation_Control_P_RiseTime.valueChanged.connect(self.ventController.setExhalationControlPRiseTime)
+		self.entry_fio2.valueChanged.connect(self.ventController.setFiO2)
 
 		self.btn_logging_onoff.clicked.connect(self.logging_onoff)
 

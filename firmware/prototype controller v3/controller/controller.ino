@@ -85,6 +85,7 @@ static const uint8_t CMD_ONOFF = 15;
 static const uint8_t CMD_Exhalation_Control_RiseTime = 16;
 static const uint8_t CMD_CLOSE_VALVE_OXYGEN = 17;
 static const uint8_t CMD_SET_BIAS_FLOW_OXYGEN = 18;
+static const uint8_t CMD_SET_FIO2 = 19;
 
 // full scale values
 static const float flow_FS = 200;
@@ -115,8 +116,10 @@ float paw_trigger_th = -1.5;
 float pc_rise_time_ms = 200;
 float pinsp_setpoint = 20;
 float psupport = 10;
+float fio2 = 0.50;
 bool pressure_support_enabled = false;
 float valve_pos_open_steps = -100;
+float valve_opening_vc = 0.4;
 
 float p_exhalation_control_target = 0; // the pressure applied to the membrane is different from the target PEEP
 // p_exhalation_control_target = 0.4799 * PEEP - 0.2744
@@ -135,6 +138,7 @@ float mp_oxygen = 0;
 volatile float mflow_peak = 0;
 volatile float mvolume = 0;
 volatile float mvolume_oxygen = 0;
+volatile float mvolume_air = 0;
 volatile float mPEEP = 0;
 
 // breathing control
@@ -163,6 +167,8 @@ volatile float p_exhalation_control_error = 0;
 
 // valve control
 volatile float valve_opening = 0; // 0 - 1
+volatile float valve_opening_air = 0; // 0 - 1
+volatile float valve_opening_oxygen = 0; // 0 - 1
 volatile float valve_exhalation_control_closing = 0;
 
 bool flag_close_valve_air_in_progress = false;
@@ -445,6 +451,7 @@ void timer_interruptHandler()
           is_in_expiratory_phase = false;
           PEEP_is_reached = false;
           mvolume = 0;
+          mvolume_air = 0;
           mvolume_oxygen = 0;
           mflow_peak = 0;
           mPEEP = mpaw;
@@ -461,6 +468,7 @@ void timer_interruptHandler()
           is_in_expiratory_phase = false;
           PEEP_is_reached = false;
           mvolume = 0;
+          mvolume_air = 0;
           mvolume_oxygen = 0;
           mflow_peak = 0;
           set_valve2_closing(1);
@@ -480,6 +488,7 @@ void timer_interruptHandler()
           is_in_expiratory_phase = false;
           PEEP_is_reached = false;
           mvolume = 0;
+          mvolume_air = 0;
           mvolume_oxygen = 0;
           mflow_peak = 0;
           set_valve2_closing(1);
@@ -521,7 +530,10 @@ void timer_interruptHandler()
         valve_opening = PID_Insp_Prop + PID_Insp_Integral;
         valve_opening = valve_opening > 1 ? 1 : valve_opening;
         valve_opening = valve_opening < 0 ? 0 : valve_opening;
-        set_valve1_pos(valve_opening);
+        valve_opening_air = (1-fio2)/0.77 * valve_opening;
+        valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening;
+        set_valve_air_pos(valve_opening_air);
+        set_valve_oxygen_pos(valve_opening_oxygen);
       }
   
       if(is_in_pressure_regulation_plateau)
@@ -536,7 +548,10 @@ void timer_interruptHandler()
         valve_opening = PID_Insp_Prop + PID_Insp_Integral;
         valve_opening = valve_opening > 1 ? 1 : valve_opening;
         valve_opening = valve_opening < 0 ? 0 : valve_opening;
-        set_valve1_pos(valve_opening);
+        valve_opening_air = (1-fio2)/0.77 * valve_opening;
+        valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening;
+        set_valve_air_pos(valve_opening_air);
+        set_valve_oxygen_pos(valve_opening_oxygen);
       }
 
       // advanced termination
@@ -547,8 +562,10 @@ void timer_interruptHandler()
         is_in_pressure_regulation_plateau = false;
         is_in_pressure_support = false;
         is_in_expiratory_phase = true;
-        valve_opening = 0;
-        set_valve1_pos(valve_opening);
+        valve_opening_air = 0;
+        set_valve_air_pos(valve_opening_air);
+        valve_opening_oxygen = 0;
+        set_valve_oxygen_pos(valve_opening_oxygen);
         
         time_ms_into_exhalation = 0;
         valve_exhalation_control_closing = 0;
@@ -569,36 +586,45 @@ void timer_interruptHandler()
         is_in_expiratory_phase = false;
         PEEP_is_reached = false;
         mvolume = 0;
+        mvolume_air = 0;
         mvolume_oxygen = 0;
         mflow_peak = 0;
         mPEEP = mpaw;
         set_valve2_closing(1);
-        valve_opening = 0.36;
-        set_valve1_pos(valve_opening);
+        valve_opening_air = (1-fio2)/0.77 * valve_opening_vc;
+        valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening_vc;
+        set_valve_air_pos(valve_opening_air);
+        set_valve_oxygen_pos(valve_opening_oxygen);
+        
         digitalWrite(13, HIGH);
       }
 
       // patient triggered breath
-        if ( mpaw < PEEP + paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false && mflow_proximal > exhalation_flow_no_trigger_threshold )
-        {
-          cycle_time_ms = 0;
-          is_in_inspiratory_phase = true;
-          is_in_expiratory_phase = false;
-          PEEP_is_reached = false;
-          mvolume = 0;
-          mvolume_oxygen = 0;
-          mflow_peak = 0;
-          set_valve2_closing(1);
-          valve_opening = 0.36;
-          set_valve1_pos(valve_opening);
-          digitalWrite(13, HIGH);
-        }
-
+      if ( mpaw < PEEP + paw_trigger_th && is_in_expiratory_phase && is_in_inspiratory_phase == false && mflow_proximal > exhalation_flow_no_trigger_threshold )
+      {
+        cycle_time_ms = 0;
+        is_in_inspiratory_phase = true;
+        is_in_expiratory_phase = false;
+        PEEP_is_reached = false;
+        mvolume = 0;
+        mvolume_air = 0;
+        mvolume_oxygen = 0;
+        mflow_peak = 0;
+        set_valve2_closing(1);
+        valve_opening_air = (1-fio2)/0.77 * valve_opening_vc;
+        valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening_vc;
+        set_valve_air_pos(valve_opening_air);
+        set_valve_oxygen_pos(valve_opening_oxygen);
+        digitalWrite(13, HIGH);
+      }
+        
       // stop the inspiratory flow when the set tidal volume is delivered
       if (mvolume >= Vt && is_in_inspiratory_phase == true)
       {
-        valve_opening = 0;
-        set_valve1_pos(valve_opening);
+        valve_opening_air = 0;
+        set_valve_air_pos(valve_opening_air);
+        valve_opening_oxygen = 0;
+        set_valve_oxygen_pos(valve_opening_oxygen);
         is_in_inspiratory_phase = false;
       }
     }    
@@ -607,8 +633,8 @@ void timer_interruptHandler()
     // generate decelerating waveform
     if (cycle_time_ms > 200 && is_in_inspiratory_phase )
     {
-      valve_opening_percentage = valve_opening_percentage - decelerating_rate;
-      stepper_Z.moveTo(-valve_opening_percentage*travel*steps_per_mm_XY);
+      valve_opening_air_percentage = valve_opening_air_percentage - decelerating_rate;
+      stepper_Z.moveTo(-valve_opening_air_percentage*travel*steps_per_mm_XY);
     }
 
     // breathing control - stop inspiratory mflow when Vt is reached
@@ -627,8 +653,8 @@ void timer_interruptHandler()
       is_in_pressure_regulation_rise = false;
       is_in_pressure_regulation_plateau = false;
       is_in_expiratory_phase = true;
-      valve_opening = 0;
-      set_valve1_pos(valve_opening);
+      valve_opening_air = 0;
+      set_valve_air_pos(valve_opening_air);
       set_valve2_closing(0);
       digitalWrite(13, LOW);
 
@@ -706,8 +732,10 @@ void loop()
         if (is_breathing == false)
           set_valve2_closing(PEEP/PEEP_FS);
       }
+      //      else if (buffer_rx[0] == CMD_Flow)
+      //        valve_pos_open_steps = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * valve_pos_open_steps_FS;
       else if (buffer_rx[0] == CMD_Flow)
-        valve_pos_open_steps = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * valve_pos_open_steps_FS;
+        valve_opening_vc = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536);
       else if (buffer_rx[0] == CMD_Pinsp)
         pinsp_setpoint =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
       else if (buffer_rx[0] == CMD_RiseTime)
@@ -754,6 +782,8 @@ void loop()
         is_breathing = buffer_rx[1];
       else if (buffer_rx[0] == CMD_Exhalation_Control_RiseTime)
         rise_time_ms_exhalation_control =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * pc_rise_time_ms_FS;
+      else if (buffer_rx[0] == CMD_SET_FIO2)
+        fio2 =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536);
     }
   }
 
@@ -815,6 +845,7 @@ void loop()
     */
     
     mvolume = mvolume + mflow_proximal * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
+    mvolume_air = mvolume_air + mflow_air * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
     mvolume_oxygen = mvolume_oxygen + mflow_oxygen * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
     flag_read_sensor = false;
   }
@@ -945,8 +976,16 @@ void loop()
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
+    /*
     // field 13 reserved for FiO2 (for now repurpose for storing dP)
     tmp_long = (65536 / 2) * dP / dP_FS;
+    tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
+    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+    */
+    
+    // field 13 reserved for humidity (for now repurpose for storing volume_air)    
+    tmp_long = (65536 / 2) * mvolume_air / volume_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
@@ -977,21 +1016,33 @@ void loop()
 
   // run stepper
   stepper_Z.run();
-
+  stepper_Y.run();
+  
 }
 
 /***************************************************************************************************/
 /********************************************* valves **********************************************/
 /***************************************************************************************************/
-void set_valve1_pos(float pos)
+void set_valve_air_pos(float pos)
 {
   stepper_Z.moveTo(valve_pos_open_steps * pos);
 }
 
-float get_valve1_pos()
+float get_valve_air_pos()
 {
   return stepper_Z.currentPosition();
 }
+
+void set_valve_oxygen_pos(float pos)
+{
+  stepper_Y.moveTo(valve_pos_open_steps * pos);
+}
+
+float get_valve_oxygen_pos()
+{
+  return stepper_Y.currentPosition();
+}
+
 
 /*
 void set_valve2_state(int state)
