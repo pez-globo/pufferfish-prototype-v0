@@ -61,6 +61,9 @@ class VentDevGUI(QMainWindow):
 		self.waveforms.signal_p_airway.connect(self.controlPanel.label_p_airway.setText)
 		self.waveforms.signal_p_aux.connect(self.controlPanel.label_p_aux.setText)
 		self.waveforms.signal_dP.connect(self.controlPanel.label_dP.setText)
+		self.waveforms.signal_p_supply_air.connect(self.controlPanel.label_p_supply_air.setText)
+		self.waveforms.signal_p_supply_oxygen.connect(self.controlPanel.label_p_supply_oxygen.setText)
+		self.waveforms.signal_fio2.connect(self.controlPanel.label_fio2.setText)
 
 
 	def closeEvent(self, event):
