@@ -98,13 +98,15 @@ class MCU:
     CMD_PID_P = 7
     CMD_PID_I_frac = 8
     CMD_MODE = 9
-    CMD_CLOSE_VALVE = 10
+    CMD_CLOSE_VALVE_AIR = 10
     CMD_STEPPER_CONTROL_AIR = 11
     CMD_STEPPER_CONTROL_OXYGEN = 12
-    CMD_SET_BIAS_FLOW = 13
+    CMD_SET_BIAS_FLOW_AIR = 13
     CMD_Trigger_th = 14
     CMD_ONOFF = 15
     CMD_Exhalation_Control_RiseTime = 16
+    CMD_CLOSE_VALVE_OXYGEN = 17
+    CMD_SET_BIAS_FLOW_OXYGEN = 18
 
     CMD_FlowDeceleratingSlope = 5
 
@@ -140,7 +142,7 @@ PLOTS = ['Airway Pressure', 'Flow Rate', 'Volume']
 PLOT_VARIABLES = {'Airway Pressure':'P_aw', 'Flow Rate':'Flow_rate', 'Volume':'Volume'}
 PLOT_UNITS = {'Airway Pressure':'cmH20', 'Flow Rate':'L/min', 'Volume':'mL'}
 
-SIMULATION = False    
+SIMULATION = True    
 
 MODE_VC_AC = 1
 MODE_PC_AC = 2

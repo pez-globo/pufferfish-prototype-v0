@@ -84,7 +84,7 @@ class NavigationWidget(QFrame):
         grid_line0.addWidget(self.btn_setbias_valveX, 0,6)
 
         grid_line1 = QGridLayout()
-        grid_line1.addWidget(QLabel('Y (mm)'), 0,0)
+        grid_line1.addWidget(QLabel('stepper_oxygen'), 0,0)
         grid_line1.addWidget(self.label_Ypos, 0,1)
         grid_line1.addWidget(self.entry_dY, 0,2)
         grid_line1.addWidget(self.btn_moveY_forward, 0,3)
@@ -93,7 +93,7 @@ class NavigationWidget(QFrame):
         grid_line1.addWidget(self.btn_setbias_valveY, 0,6)
 
         grid_line2 = QGridLayout()
-        grid_line2.addWidget(QLabel('Z (um)'), 0,0)
+        grid_line2.addWidget(QLabel('stepper_air'), 0,0)
         grid_line2.addWidget(self.label_Zpos, 0,1)
         grid_line2.addWidget(self.entry_dZ, 0,2)
         grid_line2.addWidget(self.btn_moveZ_forward, 0,3)
@@ -103,8 +103,8 @@ class NavigationWidget(QFrame):
 
         self.grid = QGridLayout()
         # self.grid.addLayout(grid_line0,0,0)
-        # self.grid.addLayout(grid_line1,1,0)
-        self.grid.addLayout(grid_line2,2,0)
+        self.grid.addLayout(grid_line1,1,1)
+        self.grid.addLayout(grid_line2,1,0)
         self.setLayout(self.grid)
 
         self.btn_moveX_forward.clicked.connect(self.move_x_forward)

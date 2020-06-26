@@ -148,6 +148,32 @@ class Microcontroller():
         print('set the current opening as \"zero\" opening')
 
 
+    def move_y(self,delta):
+        direction = int((np.sign(delta)+1)/2)
+        n_microsteps = abs(delta*Motion.STEPS_PER_MM_Z)
+        if n_microsteps > 65535:
+            n_microsteps = 65535
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = MCU.CMD_STEPPER_CONTROL_OXYGEN
+        cmd[1] = direction
+        cmd[2] = int(n_microsteps) >> 8
+        cmd[3] = int(n_microsteps) & 0xff
+        self.serial.write(cmd)
+
+    def close_y(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = MCU.CMD_CLOSE_VALVE_OXYGEN
+        cmd[1] = 0
+        self.serial.write(cmd)
+        print('trying to close z')
+
+    def setbias_y(self):
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = MCU.CMD_SET_BIAS_FLOW_OXYGEN
+        self.serial.write(cmd)
+        print('set the current opening as \"zero\" opening')
+
+
 class Microcontroller_Simulation():
     def __init__(self,parent=None):
         self.tx_buffer_length = MCU.CMD_LENGTH
