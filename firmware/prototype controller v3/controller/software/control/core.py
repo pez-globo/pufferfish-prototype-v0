@@ -180,6 +180,7 @@ class Waveforms(QObject):
         self.volume = 0
         self.Flow = 0
         self.time = 0
+        self.fio2 = 0
         self.timer_update_waveform = QTimer()
         self.timer_update_waveform.setInterval(MCU.DATA_INTERVAL_ms/2)
         self.timer_update_waveform.timeout.connect(self.update_waveforms)

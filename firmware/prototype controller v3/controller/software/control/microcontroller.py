@@ -136,7 +136,7 @@ class Microcontroller():
 
     def close_z(self):
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = MCU.CMD_CLOSE_VALVE
+        cmd[0] = MCU.CMD_CLOSE_VALVE_AIR
         cmd[1] = 0
         self.serial.write(cmd)
         print('trying to close z')
