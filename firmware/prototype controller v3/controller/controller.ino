@@ -103,7 +103,7 @@ static const float PID_coefficient_I_frac_FS = 1;
 static const float dP_FS = 500;
 
 // parameters
-static const float exhalation_flow_no_trigger_threshold = -10;
+static const float exhalation_flow_no_trigger_threshold = -20;
 
 // set parameters and their default values
 int mode = MODE_PC_AC;
