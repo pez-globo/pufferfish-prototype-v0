@@ -270,7 +270,7 @@ class Waveforms(QObject):
                     self.volume_oxygen = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+28:i*MCU.RECORD_LENGTH_BYTE+30],2)/(65536/2)*MCU.volume_FS
 
                     # fio2 calculation; note here volume is actually mass
-                    if self.volume >= tmp_volume_total:
+                    if (self.volume >= tmp_volume_total) and (self.volume >= 100):
                         if(self.volume==0):
                             self.fio2 = 0
                         else:
