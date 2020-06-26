@@ -76,13 +76,15 @@ static const uint8_t CMD_RiseTime = 6;
 static const uint8_t CMD_PID_P = 7;
 static const uint8_t CMD_PID_I_frac = 8;
 static const uint8_t CMD_MODE = 9;
-static const uint8_t CMD_CLOSE_VALVE = 10;
+static const uint8_t CMD_CLOSE_VALVE_AIR = 10;
 static const uint8_t CMD_STEPPER_CONTROL_AIR = 11;
 static const uint8_t CMD_STEPPER_CONTROL_OXYGEN = 12;
-static const uint8_t CMD_SET_BIAS_FLOW = 13;
+static const uint8_t CMD_SET_BIAS_FLOW_AIR = 13;
 static const uint8_t CMD_Trigger_th = 14;
 static const uint8_t CMD_ONOFF = 15;
 static const uint8_t CMD_Exhalation_Control_RiseTime = 16;
+static const uint8_t CMD_CLOSE_VALVE_OXYGEN = 17;
+static const uint8_t CMD_SET_BIAS_FLOW_OXYGEN = 18;
 
 // full scale values
 static const float flow_FS = 200;
@@ -247,16 +249,24 @@ static const int UART_CS_S1 = 47;
 #define STEPPER_SERIAL Serial3
 static const uint8_t X_driver_ADDRESS = 0b00;
 static const float R_SENSE = 0.11f;
+// air valve
 TMC2209Stepper Z_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
 static const int Z_dir = 28;
 static const int Z_step = 26;
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Z_N_microstepping; 
-//constexpr float MAX_VELOCITY_Z_mm = 25; 
-//constexpr float MAX_ACCELERATION_Z_mm = 2000; // 12.5 ms to reach max speed
 constexpr float MAX_VELOCITY_Z_mm = 25; 
-constexpr float MAX_ACCELERATION_Z_mm = 1600; // 12.5 ms to reach max speed
+constexpr float MAX_ACCELERATION_Z_mm = 1600;
 AccelStepper stepper_Z = AccelStepper(AccelStepper::DRIVER, Z_step, Z_dir);
+// oxygen valve
+TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
+static const int Y_dir = 24;
+static const int Y_step = 22;
+static const int Y_N_microstepping = 2;
+static const long steps_per_mm_Y = 30*Z_N_microstepping; 
+constexpr float MAX_VELOCITY_Y_mm = 25; 
+constexpr float MAX_ACCELERATION_Y_mm = 1600;
+AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 
 /***************************************************************************************************/
 /******************************************* setup *************************************************/
@@ -357,6 +367,8 @@ void setup() {
   // stepper driver init.
   pinMode(Z_dir, OUTPUT);
   pinMode(Z_step, OUTPUT);
+  pinMode(Y_dir, OUTPUT);
+  pinMode(Y_step, OUTPUT);
   pinMode(UART_CS_S0, OUTPUT);
   pinMode(UART_CS_S1, OUTPUT);
   // initialize stepper driver
@@ -377,6 +389,21 @@ void setup() {
   stepper_Z.setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
   stepper_Z.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
   stepper_Z.enableOutputs();
+
+  select_driver(2);
+  while(!STEPPER_SERIAL);
+  Y_driver.begin();
+  Y_driver.I_scale_analog(false);  
+  Y_driver.rms_current(350,0.2); //I_run and holdMultiplier
+  Y_driver.microsteps(Y_N_microstepping);
+  Y_driver.pwm_autoscale(true);
+  Y_driver.TPOWERDOWN(2);
+  Y_driver.en_spreadCycle(false);
+  Y_driver.toff(4);
+  stepper_Y.setPinsInverted(false, false, true);
+  stepper_Y.setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
+  stepper_Y.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
+  stepper_Y.enableOutputs();
 
   // calculate the cycle period
   cycle_period_ms = (60 / RR) * 1000;
@@ -522,7 +549,11 @@ void timer_interruptHandler()
         is_in_expiratory_phase = true;
         valve_opening = 0;
         set_valve1_pos(valve_opening);
-        set_valve2_closing(0);
+        
+        time_ms_into_exhalation = 0;
+        valve_exhalation_control_closing = 0;
+        PID_exhalation_control_Integral = 0;
+        p_exhalation_control_setpoint_rise = 0;
         digitalWrite(13, LOW);
       }
     }
@@ -693,19 +724,30 @@ void loop()
       }
       else if (buffer_rx[0] == CMD_MODE)
         mode = buffer_rx[1];
-      else if (buffer_rx[0] == CMD_CLOSE_VALVE)
+      else if (buffer_rx[0] == CMD_CLOSE_VALVE_AIR)
       {
         if (buffer_rx[1] == 0)
           flag_close_valve_air_in_progress = true; // close the air valve
-        // @TODO: close oxygen valve
+      }
+      else if (buffer_rx[0] == CMD_CLOSE_VALVE_OXYGEN)
+      {
+        if (buffer_rx[1] == 0)
+          flag_close_valve_oxygen_in_progress = true; // close the oxygen valve
       }
       else if (buffer_rx[0] == CMD_STEPPER_CONTROL_AIR)
       {
         long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
         stepper_Z.runToNewPosition(stepper_Z.currentPosition()+relative_position);
       }
-      else if (buffer_rx[0] == CMD_SET_BIAS_FLOW)
+      else if (buffer_rx[0] == CMD_STEPPER_CONTROL_OXYGEN)
+      {
+        long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
+        stepper_Y.runToNewPosition(stepper_Y.currentPosition()+relative_position);
+      }
+      else if (buffer_rx[0] == CMD_SET_BIAS_FLOW_AIR)
         stepper_Z.setCurrentPosition(0);
+      else if (buffer_rx[0] == CMD_SET_BIAS_FLOW_OXYGEN)
+        stepper_Y.setCurrentPosition(0);
       else if (buffer_rx[0] == CMD_Trigger_th)
         paw_trigger_th =  - ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
       else if (buffer_rx[0] == CMD_ONOFF)
@@ -803,6 +845,32 @@ void loop()
     }
   }
 
+  if (flag_close_valve_oxygen_in_progress && ret_sfm3000_2 == 0)
+  {
+    if (mflow_oxygen >= 0.2)
+    {
+      flag_valve_oxygen_flow_detected = true;
+      stepper_Y.runToNewPosition(stepper_Y.currentPosition() + 1);
+    }
+    else
+    {
+      if (flag_valve_oxygen_flow_detected)
+      {
+        stepper_Y.runToNewPosition(stepper_Y.currentPosition() + 1);
+        stepper_Y.setCurrentPosition(0);
+        flag_close_valve_oxygen_in_progress = false;
+        flag_valve_oxygen_flow_detected = false;
+        flag_valve_oxygen_close_position_reset = true;
+      }
+      else
+      {
+        flag_close_valve_oxygen_in_progress = false;
+        flag_valve_oxygen_flow_detected = false;
+        flag_valve_oxygen_close_position_reset = false;
+      }
+    }
+  }
+
   if (flag_log_data)
   {
     flag_log_data = false;
@@ -819,8 +887,7 @@ void loop()
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
     // field 3: motor position - oxygen valve
-    // tmp_uint16 = signed2NBytesUnsigned(stepper_Z.currentPosition(), 2);
-    tmp_uint16 = 0;
+    tmp_uint16 = signed2NBytesUnsigned(stepper_Y.currentPosition(), 2);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
