@@ -260,6 +260,7 @@ class Waveforms(QObject):
                     # FiO2
                     self.dP = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+26:i*MCU.RECORD_LENGTH_BYTE+28],2)/(65536/2)*MCU.dP_FS
                     # humidity
+                    self.volume_oxygen = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+28:i*MCU.RECORD_LENGTH_BYTE+30],2)/(65536/2)*MCU.volume_FS
 
                     # self.Paw = (utils.unsigned_to_signed(readout[0:2],MCU.N_BYTES_DATA)/(65536/2))*MCU.PAW_FS 
                     # self.Flow = (utils.unsigned_to_signed(readout[2:4],MCU.N_BYTES_DATA)/(65536/2))*MCU.FLOW_FS
@@ -268,7 +269,7 @@ class Waveforms(QObject):
                     record_from_MCU = (
                         str(self.time_ticks) + '\t' + str(self.stepper_air_pos) + '\t' + str(self.stepper_oxygen_pos) + '\t' + "{:.2f}".format(self.flow_air) + '\t' + 
                         "{:.2f}".format(self.flow_oxygen) + '\t' + "{:.2f}".format(self.flow_proximal) + '\t' +  "{:.2f}".format(self.pressure_exhalation_control_cmH2O) + '\t' + 
-                        "{:.2f}".format(self.pressure_patient_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume) ) + '\t' + "{:.2f}".format(self.dP)
+                        "{:.2f}".format(self.pressure_patient_cmH2O) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) + '\t' + "{:.2f}".format(self.volume) ) + '\t' + "{:.2f}".format(self.dP) + '\t' + "{:.2f}".format(self.volume_oxygen)
                     record_settings = (
                         str(self.time_now) + '\t' + str(self.ventController.Vt) + '\t' + str(self.ventController.Ti) + '\t' + str(self.ventController.RR) + '\t' + 
                         str(self.ventController.PEEP) + '\t' + str(self.ventController.PEEP) + '\t' + str(self.ventController.Pinsp) + '\t' + str(self.ventController.riseTime) + '\t' + 

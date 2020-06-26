@@ -132,6 +132,7 @@ float mp_air = 0;
 float mp_oxygen = 0;
 volatile float mflow_peak = 0;
 volatile float mvolume = 0;
+volatile float mvolume_oxygen = 0;
 volatile float mPEEP = 0;
 
 // breathing control
@@ -417,6 +418,7 @@ void timer_interruptHandler()
           is_in_expiratory_phase = false;
           PEEP_is_reached = false;
           mvolume = 0;
+          mvolume_oxygen = 0;
           mflow_peak = 0;
           mPEEP = mpaw;
           set_valve2_closing(1);
@@ -432,6 +434,7 @@ void timer_interruptHandler()
           is_in_expiratory_phase = false;
           PEEP_is_reached = false;
           mvolume = 0;
+          mvolume_oxygen = 0;
           mflow_peak = 0;
           set_valve2_closing(1);
           digitalWrite(13, HIGH);
@@ -450,6 +453,7 @@ void timer_interruptHandler()
           is_in_expiratory_phase = false;
           PEEP_is_reached = false;
           mvolume = 0;
+          mvolume_oxygen = 0;
           mflow_peak = 0;
           set_valve2_closing(1);
           digitalWrite(13, HIGH);
@@ -534,6 +538,7 @@ void timer_interruptHandler()
         is_in_expiratory_phase = false;
         PEEP_is_reached = false;
         mvolume = 0;
+        mvolume_oxygen = 0;
         mflow_peak = 0;
         mPEEP = mpaw;
         set_valve2_closing(1);
@@ -550,6 +555,7 @@ void timer_interruptHandler()
           is_in_expiratory_phase = false;
           PEEP_is_reached = false;
           mvolume = 0;
+          mvolume_oxygen = 0;
           mflow_peak = 0;
           set_valve2_closing(1);
           valve_opening = 0.36;
@@ -767,6 +773,7 @@ void loop()
     */
     
     mvolume = mvolume + mflow_proximal * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
+    mvolume_oxygen = mvolume_oxygen + mflow_oxygen * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
     flag_read_sensor = false;
   }
 
@@ -877,8 +884,8 @@ void loop()
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
-    // field 14 reserved for humidity
-    tmp_long = 0;
+    // field 14 reserved for humidity (for now repurpose for storing volume_oxygen)    
+    tmp_long = (65536 / 2) * mvolume_oxygen / volume_FS;
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
