@@ -15,7 +15,7 @@
 /***************************************************************************************************/
 static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 9000;
 uint32_t exhalation_control_PEEP_duty = 5000;
-static const float TIMER_PERIOD_us = 1400; // in us
+static const float TIMER_PERIOD_us = 1500; // in us
 static const bool USE_SERIAL_MONITOR = false; // for debug
 static const int MSG_LENGTH = 780;
 # define LOGGING_UNDERSAMPLING  1
