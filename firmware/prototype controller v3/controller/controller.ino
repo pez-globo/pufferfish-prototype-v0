@@ -655,6 +655,8 @@ void timer_interruptHandler()
       is_in_expiratory_phase = true;
       valve_opening_air = 0;
       set_valve_air_pos(valve_opening_air);
+      valve_opening_oxygen = 0;
+      set_valve_oxygen_pos(valve_opening_oxygen);
       set_valve2_closing(0);
       digitalWrite(13, LOW);
 
