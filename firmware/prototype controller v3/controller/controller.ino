@@ -649,15 +649,20 @@ void timer_interruptHandler()
     // if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
     if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
     {
+      // set state variables
       is_in_inspiratory_phase = false;
       is_in_pressure_regulation_rise = false;
       is_in_pressure_regulation_plateau = false;
       is_in_expiratory_phase = true;
+
+      // stop inspiratory flow
       valve_opening_air = 0;
       set_valve_air_pos(valve_opening_air);
       valve_opening_oxygen = 0;
       set_valve_oxygen_pos(valve_opening_oxygen);
       set_valve2_closing(0);
+
+      // turn off LED
       digitalWrite(13, LOW);
 
       // exhalation control
@@ -680,9 +685,9 @@ void timer_interruptHandler()
         PID_exhalation_control_Integral = PID_exhalation_control_Integral + PID_coefficient_I_exhalation_control*p_exhalation_control_error;
         PID_exhalation_control_Integral = PID_exhalation_control_Integral > 1 ? 1 : PID_exhalation_control_Integral;
         PID_exhalation_control_Integral = PID_exhalation_control_Integral < 0 ? 0 : PID_exhalation_control_Integral;
-        PID_Insp_Prop = PID_coefficient_P_exhalation_control*PID_coefficient_I_exhalation_control;
+        PID_exhalation_control_Prop = PID_coefficient_P_exhalation_control*PID_coefficient_I_exhalation_control;
         // generate command
-        valve_exhalation_control_closing = PID_Insp_Prop + PID_exhalation_control_Integral;
+        valve_exhalation_control_closing = PID_exhalation_control_Prop + PID_exhalation_control_Integral;
         valve_exhalation_control_closing = valve_exhalation_control_closing > 1 ? 1 : valve_exhalation_control_closing;
         valve_exhalation_control_closing = valve_exhalation_control_closing < 0 ? 0 : valve_exhalation_control_closing;
         set_valve2_closing(valve_exhalation_control_closing);
