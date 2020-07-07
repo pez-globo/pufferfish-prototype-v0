@@ -455,7 +455,8 @@ void timer_interruptHandler()
           mvolume_oxygen = 0;
           mflow_peak = 0;
           mPEEP = mpaw;
-          set_valve2_closing(1);
+          valve_exhalation_control_closing = 1;
+          set_valve2_closing(valve_exhalation_control_closing);
           digitalWrite(13, HIGH);
           PID_Insp_Integral = 0;
         }
@@ -471,7 +472,8 @@ void timer_interruptHandler()
           mvolume_air = 0;
           mvolume_oxygen = 0;
           mflow_peak = 0;
-          set_valve2_closing(1);
+          valve_exhalation_control_closing = 1;
+          set_valve2_closing(valve_exhalation_control_closing);
           digitalWrite(13, HIGH);
           PID_Insp_Integral = 0;
         }
@@ -491,7 +493,8 @@ void timer_interruptHandler()
           mvolume_air = 0;
           mvolume_oxygen = 0;
           mflow_peak = 0;
-          set_valve2_closing(1);
+          valve_exhalation_control_closing = 1;
+          set_valve2_closing(valve_exhalation_control_closing);
           digitalWrite(13, HIGH);
           PID_Insp_Integral = 0;
           is_in_pressure_support = true;
@@ -590,7 +593,8 @@ void timer_interruptHandler()
         mvolume_oxygen = 0;
         mflow_peak = 0;
         mPEEP = mpaw;
-        set_valve2_closing(1);
+        valve_exhalation_control_closing = 1;
+        set_valve2_closing(valve_exhalation_control_closing);
         valve_opening_air = (1-fio2)/0.77 * valve_opening_vc;
         valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening_vc;
         set_valve_air_pos(valve_opening_air);
@@ -610,7 +614,8 @@ void timer_interruptHandler()
         mvolume_air = 0;
         mvolume_oxygen = 0;
         mflow_peak = 0;
-        set_valve2_closing(1);
+        valve_exhalation_control_closing = 1;
+        set_valve2_closing(valve_exhalation_control_closing);
         valve_opening_air = (1-fio2)/0.77 * valve_opening_vc;
         valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening_vc;
         set_valve_air_pos(valve_opening_air);
@@ -660,8 +665,7 @@ void timer_interruptHandler()
       set_valve_air_pos(valve_opening_air);
       valve_opening_oxygen = 0;
       set_valve_oxygen_pos(valve_opening_oxygen);
-      set_valve2_closing(0);
-
+      
       // turn off LED
       digitalWrite(13, LOW);
 
@@ -693,7 +697,10 @@ void timer_interruptHandler()
         set_valve2_closing(valve_exhalation_control_closing);
       }
       else
-        set_valve2_closing(PEEP/PEEP_FS);
+      {
+        valve_exhalation_control_closing = p_exhalation_control_target;
+        set_valve2_closing(valve_exhalation_control_closing);
+      }
     }
   }
 
@@ -737,7 +744,10 @@ void loop()
         p_exhalation_control_target = p_exhalation_control_target > 0 ? p_exhalation_control_target : 0;
         // when debugging (is_breathing set to 0), set exhalation valve closing to PEEP/PEEP_FS
         if (is_breathing == false)
-          set_valve2_closing(PEEP/PEEP_FS);
+        {
+          valve_exhalation_control_closing = p_exhalation_control_target;
+          set_valve2_closing(valve_exhalation_control_closing);
+        }
       }
       //      else if (buffer_rx[0] == CMD_Flow)
       //        valve_pos_open_steps = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * valve_pos_open_steps_FS;
