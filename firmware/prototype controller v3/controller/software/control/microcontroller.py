@@ -143,7 +143,7 @@ class Microcontroller():
 
     def setbias_z(self):
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = MCU.CMD_SET_BIAS_FLOW
+        cmd[0] = MCU.CMD_SET_BIAS_FLOW_AIR
         self.serial.write(cmd)
         print('set the current opening as \"zero\" opening')
 
