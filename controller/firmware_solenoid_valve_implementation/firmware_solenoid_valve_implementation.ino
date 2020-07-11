@@ -1,9 +1,6 @@
-#include <TMCStepper.h>
-#include <TMCStepper_UTILITY.h>
 #include <Wire.h>
 #include <sdpsensor-fast.h>
 #include <sfm3x00.h>
-#include <AccelStepper.h>
 #include "Honeywell_ABP.h"
 #include "pwm_lib.h"
 #include <DueTimer.h>
@@ -23,23 +20,31 @@ static const int MSG_LENGTH = 780;
 /***************************************************************************************************/
 /********************************************* pwm_lib *********************************************/
 /***************************************************************************************************/
+// https://github.com/antodom/pwm_lib
+// http://www.robgray.com/temp/Due-pinout.pdf
 using namespace arduino_due::pwm_lib;
 
-//#define PWM_FREQUENCY 10000
-//#define PWM_PERIOD_PIN_35 1000 // 10000 x (1e-8 secs) = 1e-4 sec
-//#define PWM_DUTY_PIN_35 500
-
 #define PWM_FREQUENCY 10000
-#define PWM_PERIOD_PIN_35 10000 // 10000 x (1e-8 secs) = 1e-4 sec
-#define PWM_DUTY_PIN_35 0
+#define PWM_PERIOD 10000 // 10000 x (1e-8 secs) = 1e-4 sec
+#define PWM_DUTY 0
 
 // defining pwm object using pin 35, pin PC3 mapped to pin 35 on the DUE
 // this object uses PWM channel 0
 pwm<pwm_pin::PWMH0_PC3> pwm_pin35;
-pwm_wrapper<
-  decltype(pwm_pin35)
-> pwm_wrapper_pin35(pwm_pin35);
+pwm_wrapper<decltype(pwm_pin35)> pwm_wrapper_pin35(pwm_pin35);
 pwm_base* pwm_wrapper_pin35_ptr=&pwm_wrapper_pin35;
+
+// defining pwm object using pin 37, pin PC5 mapped to pin 37 on the DUE
+// this object uses PWM channel 1
+pwm<pwm_pin::PWMH1_PC5> pwm_pin37;
+pwm_wrapper<decltype(pwm_pin37)> pwm_wrapper_pin37(pwm_pin37);
+pwm_base* pwm_wrapper_pin37_ptr=&pwm_wrapper_pin37;
+
+// defining pwm object using pin 39, pin PC7 mapped to pin 39 on the DUE
+// this object uses PWM channel 2
+pwm<pwm_pin::PWMH2_PC7> pwm_pin39;
+pwm_wrapper<decltype(pwm_pin39)> pwm_wrapper_pin39(pwm_pin39);
+pwm_base* pwm_wrapper_pin39_ptr=&pwm_wrapper_pin39;
 
 /***************************************************************************************************/
 /******************************* proximal flow sensor calibration **********************************/
@@ -77,8 +82,8 @@ static const uint8_t CMD_PID_P = 7;
 static const uint8_t CMD_PID_I_frac = 8;
 static const uint8_t CMD_MODE = 9;
 static const uint8_t CMD_CLOSE_VALVE_AIR = 10;
-static const uint8_t CMD_STEPPER_CONTROL_AIR = 11;
-static const uint8_t CMD_STEPPER_CONTROL_OXYGEN = 12;
+static const uint8_t CMD_VALVE_CONTROL_AIR = 11;
+static const uint8_t CMD_VALVE_CONTROL_OXYGEN = 12;
 static const uint8_t CMD_SET_BIAS_FLOW_AIR = 13;
 static const uint8_t CMD_Trigger_th = 14;
 static const uint8_t CMD_ONOFF = 15;
@@ -171,6 +176,9 @@ volatile float valve_opening_air = 0; // 0 - 1
 volatile float valve_opening_oxygen = 0; // 0 - 1
 volatile float valve_exhalation_control_closing = 0;
 
+float valve_opening_air_bias = 0;
+float valve_opening_oxygen_bias = 0;
+
 bool flag_close_valve_air_in_progress = false;
 bool flag_valve_air_flow_detected = false;
 bool flag_valve_air_close_position_reset = false;
@@ -204,23 +212,22 @@ volatile uint32_t timestamp = 0; // in number of TIMER_PERIOD_us
 /***************************************************************************************************/
 /********************************************* sensors *********************************************/
 /***************************************************************************************************/
-
 SFM3000 sfm3000_1;
 SFM3000 sfm3000_2;
 SDP8XXSensor sdp;
 
 // create Honeywell_ABP instance
 // refer to datasheet for parameters
-Honeywell_ABP abp_30psi_1(
+Honeywell_ABP abp_60psi_1(
   0x28,   // I2C address
   0,      // minimum pressure
-  30,      // maximum pressure
+  60,      // maximum pressure
   "psi"   // pressure unit
 );
-Honeywell_ABP abp_30psi_2(
+Honeywell_ABP abp_60psi_2(
   0x28,   // I2C address
   0,      // minimum pressure
-  30,      // maximum pressure
+  60,      // maximum pressure
   "psi"   // pressure unit
 );
 Honeywell_ABP abp_1psi_1(
@@ -247,40 +254,14 @@ int ret_sfm3000_1 = 0;
 int ret_sfm3000_2 = 0;
 
 /***************************************************************************************************/
-/******************************************* stepper ***********************************************/
-/***************************************************************************************************/
-// stepper
-static const int UART_CS_S0 = 46;
-static const int UART_CS_S1 = 47;
-#define STEPPER_SERIAL Serial3
-static const uint8_t X_driver_ADDRESS = 0b00;
-static const float R_SENSE = 0.11f;
-// air valve
-TMC2209Stepper Z_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
-static const int Z_dir = 28;
-static const int Z_step = 26;
-static const int Z_N_microstepping = 2;
-static const long steps_per_mm_Z = 30*Z_N_microstepping; 
-constexpr float MAX_VELOCITY_Z_mm = 25; 
-constexpr float MAX_ACCELERATION_Z_mm = 1600;
-AccelStepper stepper_Z = AccelStepper(AccelStepper::DRIVER, Z_step, Z_dir);
-// oxygen valve
-TMC2209Stepper Y_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
-static const int Y_dir = 24;
-static const int Y_step = 22;
-static const int Y_N_microstepping = 2;
-static const long steps_per_mm_Y = 30*Z_N_microstepping; 
-constexpr float MAX_VELOCITY_Y_mm = 25; 
-constexpr float MAX_ACCELERATION_Y_mm = 1600;
-AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
-
-/***************************************************************************************************/
 /******************************************* setup *************************************************/
 /***************************************************************************************************/
 void setup() {
 
   // starting PWM signals
-  pwm_wrapper_pin35_ptr->start(PWM_PERIOD_PIN_35,PWM_DUTY_PIN_35);
+  pwm_wrapper_pin35_ptr->start(PWM_PERIOD,PWM_DUTY);
+  pwm_wrapper_pin37_ptr->start(PWM_PERIOD,PWM_DUTY);
+  pwm_wrapper_pin39_ptr->start(PWM_PERIOD,PWM_DUTY);
 
   // Initialize Native USB port
   SerialUSB.begin(2000000);
@@ -369,47 +350,6 @@ void setup() {
   }
   sdp.startContinuous(true);
   sdp.startContinuousWait(true);
-
-  // stepper driver init.
-  pinMode(Z_dir, OUTPUT);
-  pinMode(Z_step, OUTPUT);
-  pinMode(Y_dir, OUTPUT);
-  pinMode(Y_step, OUTPUT);
-  pinMode(UART_CS_S0, OUTPUT);
-  pinMode(UART_CS_S1, OUTPUT);
-  // initialize stepper driver
-  STEPPER_SERIAL.begin(115200);
-  delayMicroseconds(1000);
-  
-  select_driver(1);
-  while(!STEPPER_SERIAL);
-  Z_driver.begin();
-  Z_driver.I_scale_analog(false);  
-  Z_driver.rms_current(350,0.2); //I_run and holdMultiplier
-  Z_driver.microsteps(Z_N_microstepping);
-  Z_driver.pwm_autoscale(true);
-  Z_driver.TPOWERDOWN(2);
-  Z_driver.en_spreadCycle(false);
-  Z_driver.toff(4);
-  stepper_Z.setPinsInverted(false, false, true);
-  stepper_Z.setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
-  stepper_Z.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
-  stepper_Z.enableOutputs();
-
-  select_driver(2);
-  while(!STEPPER_SERIAL);
-  Y_driver.begin();
-  Y_driver.I_scale_analog(false);  
-  Y_driver.rms_current(350,0.2); //I_run and holdMultiplier
-  Y_driver.microsteps(Y_N_microstepping);
-  Y_driver.pwm_autoscale(true);
-  Y_driver.TPOWERDOWN(2);
-  Y_driver.en_spreadCycle(false);
-  Y_driver.toff(4);
-  stepper_Y.setPinsInverted(false, false, true);
-  stepper_Y.setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
-  stepper_Y.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
-  stepper_Y.enableOutputs();
 
   // calculate the cycle period
   cycle_period_ms = (60 / RR) * 1000;
@@ -535,8 +475,8 @@ void timer_interruptHandler()
         valve_opening = valve_opening < 0 ? 0 : valve_opening;
         valve_opening_air = (1-fio2)/0.77 * valve_opening;
         valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening;
-        set_valve_air_pos(valve_opening_air);
-        set_valve_oxygen_pos(valve_opening_oxygen);
+        set_valve_opening_air(valve_opening_air);
+        set_valve_opening_oxygen(valve_opening_oxygen);
       }
   
       if(is_in_pressure_regulation_plateau)
@@ -553,8 +493,8 @@ void timer_interruptHandler()
         valve_opening = valve_opening < 0 ? 0 : valve_opening;
         valve_opening_air = (1-fio2)/0.77 * valve_opening;
         valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening;
-        set_valve_air_pos(valve_opening_air);
-        set_valve_oxygen_pos(valve_opening_oxygen);
+        set_valve_opening_air(valve_opening_air);
+        set_valve_opening_oxygen(valve_opening_oxygen);
       }
 
       // advanced termination
@@ -566,9 +506,9 @@ void timer_interruptHandler()
         is_in_pressure_support = false;
         is_in_expiratory_phase = true;
         valve_opening_air = 0;
-        set_valve_air_pos(valve_opening_air);
+        set_valve_opening_air(valve_opening_air);
         valve_opening_oxygen = 0;
-        set_valve_oxygen_pos(valve_opening_oxygen);
+        set_valve_opening_oxygen(valve_opening_oxygen);
         
         time_ms_into_exhalation = 0;
         valve_exhalation_control_closing = 0;
@@ -597,8 +537,8 @@ void timer_interruptHandler()
         set_valve2_closing(valve_exhalation_control_closing);
         valve_opening_air = (1-fio2)/0.77 * valve_opening_vc;
         valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening_vc;
-        set_valve_air_pos(valve_opening_air);
-        set_valve_oxygen_pos(valve_opening_oxygen);
+        set_valve_opening_air(valve_opening_air);
+        set_valve_opening_oxygen(valve_opening_oxygen);
         
         digitalWrite(13, HIGH);
       }
@@ -618,8 +558,8 @@ void timer_interruptHandler()
         set_valve2_closing(valve_exhalation_control_closing);
         valve_opening_air = (1-fio2)/0.77 * valve_opening_vc;
         valve_opening_oxygen = (1-((1-fio2)/0.77)) * valve_opening_vc;
-        set_valve_air_pos(valve_opening_air);
-        set_valve_oxygen_pos(valve_opening_oxygen);
+        set_valve_opening_air(valve_opening_air);
+        set_valve_opening_oxygen(valve_opening_oxygen);
         digitalWrite(13, HIGH);
       }
         
@@ -627,28 +567,12 @@ void timer_interruptHandler()
       if (mvolume >= Vt && is_in_inspiratory_phase == true)
       {
         valve_opening_air = 0;
-        set_valve_air_pos(valve_opening_air);
+        set_valve_opening_air(valve_opening_air);
         valve_opening_oxygen = 0;
-        set_valve_oxygen_pos(valve_opening_oxygen);
+        set_valve_opening_oxygen(valve_opening_oxygen);
         is_in_inspiratory_phase = false;
       }
     }    
-
-    /*
-    // generate decelerating waveform
-    if (cycle_time_ms > 200 && is_in_inspiratory_phase )
-    {
-      valve_opening_air_percentage = valve_opening_air_percentage - decelerating_rate;
-      stepper_Z.moveTo(-valve_opening_air_percentage*travel*steps_per_mm_XY);
-    }
-
-    // breathing control - stop inspiratory mflow when Vt is reached
-    if (mvolume >= Vt && is_in_inspiratory_phase == true)
-    {
-      set_valve1_state(0);
-      is_in_inspiratory_phase = false;
-    }
-    */
 
     // breathing control - change to exhalation when Ti is reached
     // if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
@@ -662,9 +586,9 @@ void timer_interruptHandler()
 
       // stop inspiratory flow
       valve_opening_air = 0;
-      set_valve_air_pos(valve_opening_air);
+      set_valve_opening_air(valve_opening_air);
       valve_opening_oxygen = 0;
-      set_valve_oxygen_pos(valve_opening_oxygen);
+      set_valve_opening_oxygen(valve_opening_oxygen);
       
       // turn off LED
       digitalWrite(13, LOW);
@@ -779,20 +703,22 @@ void loop()
         if (buffer_rx[1] == 0)
           flag_close_valve_oxygen_in_progress = true; // close the oxygen valve
       }
-      else if (buffer_rx[0] == CMD_STEPPER_CONTROL_AIR)
+      else if (buffer_rx[0] == CMD_VALVE_CONTROL_AIR)
       {
-        long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
-        stepper_Z.runToNewPosition(stepper_Z.currentPosition()+relative_position);
+        float valve_opening = uint16_t(buffer_rx[2])*256 + uint16_t(buffer_rx[3]);
+        valve_opening = valve_opening/65535;
+        set_valve_opening_air(valve_opening);
       }
-      else if (buffer_rx[0] == CMD_STEPPER_CONTROL_OXYGEN)
+      else if (buffer_rx[0] == CMD_VALVE_CONTROL_OXYGEN)
       {
-        long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
-        stepper_Y.runToNewPosition(stepper_Y.currentPosition()+relative_position);
+        float valve_opening = uint16_t(buffer_rx[2])*256 + uint16_t(buffer_rx[3]);
+        valve_opening = valve_opening/65535;
+        set_valve_opening_oxygen(valve_opening);
       }
       else if (buffer_rx[0] == CMD_SET_BIAS_FLOW_AIR)
-        stepper_Z.setCurrentPosition(0);
+        valve_opening_air_bias = valve_opening_air;
       else if (buffer_rx[0] == CMD_SET_BIAS_FLOW_OXYGEN)
-        stepper_Y.setCurrentPosition(0);
+        valve_opening_oxygen_bias = valve_opening_oxygen;
       else if (buffer_rx[0] == CMD_Trigger_th)
         paw_trigger_th =  - ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
       else if (buffer_rx[0] == CMD_ONOFF)
@@ -811,9 +737,9 @@ void loop()
     enableMuxPort(1);
     int ret_sfm3000_2 = sfm3000_2.read_sample();
     enableMuxPort(2);
-    abp_30psi_1.update();
+    abp_60psi_1.update();
     enableMuxPort(3);
-    abp_30psi_2.update();
+    abp_60psi_2.update();
     enableMuxPort(4);
     abp_1psi_1.update();
     enableMuxPort(5);
@@ -825,8 +751,8 @@ void loop()
     mppatient = abp_1psi_2.pressure()*70.307;
     mpaw = abp_1psi_3.pressure()*70.307;
 
-    mp_air = abp_30psi_1.pressure();
-    mp_oxygen = abp_30psi_2.pressure();
+    mp_air = abp_60psi_1.pressure();
+    mp_oxygen = abp_60psi_2.pressure();
 
     if (ret_sfm3000_1 == 0)
       mflow_air = sfm3000_1.get_flow();
@@ -867,58 +793,6 @@ void loop()
     flag_read_sensor = false;
   }
 
-  if (flag_close_valve_air_in_progress && ret_sfm3000_1 == 0)
-  {
-    if (mflow_air >= 0.2)
-    {
-      flag_valve_air_flow_detected = true;
-      stepper_Z.runToNewPosition(stepper_Z.currentPosition() + 1);
-    }
-    else
-    {
-      if (flag_valve_air_flow_detected)
-      {
-        stepper_Z.runToNewPosition(stepper_Z.currentPosition() + 1);
-        stepper_Z.setCurrentPosition(0);
-        flag_close_valve_air_in_progress = false;
-        flag_valve_air_flow_detected = false;
-        flag_valve_air_close_position_reset = true;
-      }
-      else
-      {
-        flag_close_valve_air_in_progress = false;
-        flag_valve_air_flow_detected = false;
-        flag_valve_air_close_position_reset = false;
-      }
-    }
-  }
-
-  if (flag_close_valve_oxygen_in_progress && ret_sfm3000_2 == 0)
-  {
-    if (mflow_oxygen >= 0.2)
-    {
-      flag_valve_oxygen_flow_detected = true;
-      stepper_Y.runToNewPosition(stepper_Y.currentPosition() + 1);
-    }
-    else
-    {
-      if (flag_valve_oxygen_flow_detected)
-      {
-        stepper_Y.runToNewPosition(stepper_Y.currentPosition() + 1);
-        stepper_Y.setCurrentPosition(0);
-        flag_close_valve_oxygen_in_progress = false;
-        flag_valve_oxygen_flow_detected = false;
-        flag_valve_oxygen_close_position_reset = true;
-      }
-      else
-      {
-        flag_close_valve_oxygen_in_progress = false;
-        flag_valve_oxygen_flow_detected = false;
-        flag_valve_oxygen_close_position_reset = false;
-      }
-    }
-  }
-
   if (flag_log_data)
   {
     flag_log_data = false;
@@ -929,13 +803,13 @@ void loop()
     buffer_tx[buffer_tx_ptr++] = byte(timestamp >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(timestamp %256);
 
-    // field 2: motor position - air valve
-    tmp_uint16 = signed2NBytesUnsigned(stepper_Z.currentPosition(), 2);
+    // field 2: air valve opening
+    tmp_uint16 = 65535*valve_opening_air;
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
-    // field 3: motor position - oxygen valve
-    tmp_uint16 = signed2NBytesUnsigned(stepper_Y.currentPosition(), 2);
+    // field 3: oxygen valve opening
+    tmp_uint16 = 65535*valve_opening_oxygen;
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
@@ -1030,57 +904,35 @@ void loop()
         SerialUSB.write(buffer_tx, MSG_LENGTH);
     }
   }
-
-  // run stepper
-  stepper_Z.run();
-  stepper_Y.run();
   
 }
 
 /***************************************************************************************************/
 /********************************************* valves **********************************************/
 /***************************************************************************************************/
-void set_valve_air_pos(float pos)
+void set_valve_opening_air(float opening)
 {
-  stepper_Z.moveTo(valve_pos_open_steps * pos);
+  float duty_cycle_fraction = (valve_opening_air_bias + opening)/(valve_opening_air_bias+1);
+  if (duty_cycle_fraction > 0.999)
+    duty_cycle_fraction = 0.999;
+  change_duty(*pwm_wrapper_pin37_ptr,duty_cycle_fraction*PWM_PERIOD,PWM_PERIOD);
 }
 
-float get_valve_air_pos()
+void set_valve_opening_oxygen(float opening)
 {
-  return stepper_Z.currentPosition();
+  float duty_cycle_fraction = (valve_opening_oxygen_bias + opening)/(valve_opening_oxygen_bias + 1);
+  if (duty_cycle_fraction > 0.999)
+    duty_cycle_fraction = 0.999;
+  change_duty(*pwm_wrapper_pin39_ptr,duty_cycle_fraction*PWM_PERIOD,PWM_PERIOD);
 }
 
-void set_valve_oxygen_pos(float pos)
-{
-  stepper_Y.moveTo(valve_pos_open_steps * pos);
-}
-
-float get_valve_oxygen_pos()
-{
-  return stepper_Y.currentPosition();
-}
-
-
-/*
-void set_valve2_state(int state)
-{
-  
-  // close the valve
-  if (state == 0) 
-    change_duty(*pwm_wrapper_pin35_ptr,EXHALATION_CONTROL_DUTY_CLOSE,PWM_PERIOD_PIN_35);
-  else
-  // control PEEP
-     change_duty(*pwm_wrapper_pin35_ptr,exhalation_control_PEEP_duty,PWM_PERIOD_PIN_35);
-}
-*/
 void set_valve2_closing(float closing)
 {
   float duty_cycle_fraction = 0.3 + closing;
   if (duty_cycle_fraction > 0.999)
     duty_cycle_fraction = 0.999;
-  change_duty(*pwm_wrapper_pin35_ptr,duty_cycle_fraction*PWM_PERIOD_PIN_35,PWM_PERIOD_PIN_35);
+  change_duty(*pwm_wrapper_pin35_ptr,duty_cycle_fraction*PWM_PERIOD,PWM_PERIOD);
 }
-
 
 /***************************************************************************************************/
 /********************************************* pwm_lib *********************************************/
@@ -1117,28 +969,4 @@ long signed2NBytesUnsigned(long signedLong, int N)
 {
   long NBytesUnsigned = signedLong + pow(256L, N) / 2;
   return NBytesUnsigned;
-}
-
-void select_driver(int id)
-{
-  if(id==1)
-  {
-    digitalWrite(UART_CS_S0, LOW);
-    digitalWrite(UART_CS_S1, LOW);
-  }
-  if(id==2)
-  {
-    digitalWrite(UART_CS_S0, HIGH);
-    digitalWrite(UART_CS_S1, LOW);
-  }
-  if(id==3)
-  {
-    digitalWrite(UART_CS_S0, LOW);
-    digitalWrite(UART_CS_S1, HIGH);
-  }
-  if(id==4)
-  {
-    digitalWrite(UART_CS_S0, HIGH);
-    digitalWrite(UART_CS_S1, HIGH);
-  }
 }
