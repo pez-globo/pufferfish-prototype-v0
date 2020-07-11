@@ -125,7 +125,7 @@ class MCU:
     fio2_DEFAULT = 50
     valve_opening_vc_DEFAULT = 40
 
-    TIMER_PERIOD_ms = 1.40
+    TIMER_PERIOD_ms = 1.50
     DATA_INTERVAL_ms = TIMER_PERIOD_ms*26
     TIMEPOINT_PER_UPDATE = 26
     RECORD_LENGTH_BYTE = 30
