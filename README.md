@@ -7,7 +7,7 @@ This repository contains the software source and hardware design files for the v
 
 ### Software
 
-![Screenshot](/dev\ interface.png)
+![Screenshot](https://raw.githubusercontent.com/pez-globo/pufferfish-prototype-v0/develop/dev%20interface.png?token=ACHQOGXARA7TCMDJC3GTKYS7CJQEO)
 
 To program the Arduino Due
 - you need to make sure you have Arduino Due support in your IDE - follow instructions on https://www.arduino.cc/en/Guide/ArduinoDue
