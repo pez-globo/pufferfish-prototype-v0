@@ -9,6 +9,8 @@ from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
 from control._def import *
+from functools import partial
+
 
 class CameraSettingsWidget(QFrame):
 
@@ -348,115 +350,147 @@ class NavigationWidget(QFrame):
         self.setFrameStyle(QFrame.Panel | QFrame.Raised)
 
     def add_components(self):
-        self.label_Xpos = QLabel()
-        self.label_Xpos.setNum(0)
-        self.label_Xpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.entry_dX = QDoubleSpinBox()
-        self.entry_dX.setMinimum(0) 
-        self.entry_dX.setMaximum(2000) 
-        self.entry_dX.setSingleStep(1)
-        self.entry_dX.setValue(0)
-        self.btn_moveX_forward = QPushButton('Forward')
-        self.btn_moveX_forward.setDefault(False)
-        self.btn_moveX_backward = QPushButton('Backward')
-        self.btn_moveX_backward.setDefault(False)
-        self.btn_close_valveX = QPushButton('close the valve')
-        self.btn_close_valveX.setDefault(False)
-        self.btn_cycle_valveX = QPushButton('cycle the valve')
-        self.btn_cycle_valveX.setDefault(False)
-        
-        self.label_Ypos = QLabel()
-        self.label_Ypos.setNum(0)
-        self.label_Ypos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.entry_dY = QDoubleSpinBox()
-        self.entry_dY.setMinimum(0)
-        self.entry_dY.setMaximum(2000)
-        self.entry_dY.setSingleStep(1)
-        self.entry_dY.setValue(0)
-        self.btn_moveY_forward = QPushButton('Forward')
-        self.btn_moveY_forward.setDefault(False)
-        self.btn_moveY_backward = QPushButton('Backward')
-        self.btn_moveY_backward.setDefault(False)
-        self.btn_close_valveY = QPushButton('close the valve')
-        self.btn_close_valveY.setDefault(False)
-        self.btn_cycle_valveY = QPushButton('cycle the valve')
-        self.btn_cycle_valveY.setDefault(False)
+       
 
-        self.label_Zpos = QLabel()
-        self.label_Zpos.setNum(0)
-        self.label_Zpos.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.entry_dZ = QDoubleSpinBox()
-        self.entry_dZ.setMinimum(0) 
-        self.entry_dZ.setMaximum(2000) 
-        self.entry_dZ.setSingleStep(1)
-        self.entry_dZ.setValue(0)
-        self.btn_moveZ_forward = QPushButton('Forward')
-        self.btn_moveZ_forward.setDefault(False)
-        self.btn_moveZ_backward = QPushButton('Backward')
-        self.btn_moveZ_backward.setDefault(False)
-        self.btn_close_valveZ = QPushButton('close the valve')
-        self.btn_close_valveZ.setDefault(False)
-        self.btn_cycle_valveZ = QPushButton('cycle the valve')
-        self.btn_cycle_valveZ.setDefault(False)
+        self.entry_delta = QDoubleSpinBox()
+        self.entry_delta.setMinimum(0) 
+        self.entry_delta.setMaximum(2000) 
+        self.entry_delta.setSingleStep(1)
+        self.entry_delta.setValue(0)
+
+        self.btn_move_forward = QPushButton('Forward')
+        self.btn_move_forward.setDefault(False)
+        self.btn_move_backward = QPushButton('Backward')
+        self.btn_move_backward.setDefault(False)
+        self.btn_close_valve = QPushButton('close the valve')
+        self.btn_close_valve.setDefault(False)
+
+        # Active valve selection
+        self.active_valve_dropdown = QComboBox()
+        self.active_valve_dropdown.addItems(MicrocontrollerDef.N_VALVES_LIST)
+        self.active_valve_dropdown.setCurrentText(MicrocontrollerDef.DEFAULT_ACTIVE_VALVE)
+
+        # Measurement cycles per valve
+        self.entry_measurement_cycles = QDoubleSpinBox()
+        self.entry_measurement_cycles.setMinimum(0) 
+        self.entry_measurement_cycles.setMaximum(2000) 
+        self.entry_measurement_cycles.setSingleStep(1)
+        self.entry_measurement_cycles.setValue(MicrocontrollerDef.CYCLES_PER_VALVE)
+
+        self.btn_set_valve_cycles = QPushButton('Set valve cycles')
+        self.btn_set_valve_cycles.setDefault(False)
+        self.btn_set_valve_cycles.setCheckable(False)
+
+        # cycle all valves
+        self.btn_cycle_valve = QPushButton('cycle all valves')
+        self.btn_cycle_valve.setCheckable(True)
+        self.btn_cycle_valve.setChecked(False)
+        self.btn_cycle_valve.setDefault(False)
         
         grid_line0 = QGridLayout()
         grid_line0.addWidget(QLabel('X (mm)'), 0,0)
-        grid_line0.addWidget(self.label_Xpos, 0,1)
-        grid_line0.addWidget(self.entry_dX, 0,2)
-        grid_line0.addWidget(self.btn_moveX_forward, 0,3)
-        grid_line0.addWidget(self.btn_moveX_backward, 0,4)
-        grid_line0.addWidget(self.btn_close_valveX, 0,5)
-        grid_line0.addWidget(self.btn_cycle_valveX, 0,6)
+        grid_line0.addWidget(self.entry_delta, 0,1)
+        grid_line0.addWidget(self.btn_move_forward, 0,2)
+        grid_line0.addWidget(self.btn_move_backward, 0,3)
+        grid_line0.addWidget(self.btn_close_valve, 0,4)
 
         grid_line1 = QGridLayout()
-        grid_line1.addWidget(QLabel('Y (mm)'), 0,0)
-        grid_line1.addWidget(self.label_Ypos, 0,1)
-        grid_line1.addWidget(self.entry_dY, 0,2)
-        grid_line1.addWidget(self.btn_moveY_forward, 0,3)
-        grid_line1.addWidget(self.btn_moveY_backward, 0,4)
-        grid_line1.addWidget(self.btn_close_valveY, 0,5)
-        grid_line1.addWidget(self.btn_cycle_valveY, 0,6)
+        grid_line1.addWidget(QLabel('Select Active Valve'), 0, 0)
+        grid_line1.addWidget(self.active_valve_dropdown, 0, 1)
+        grid_line1.addWidget(QLabel('Measurement cycles per valve'), 0, 2)
+        grid_line1.addWidget(self.entry_measurement_cycles, 0, 3)
 
         grid_line2 = QGridLayout()
-        grid_line2.addWidget(QLabel('Z (um)'), 0,0)
-        grid_line2.addWidget(self.label_Zpos, 0,1)
-        grid_line2.addWidget(self.entry_dZ, 0,2)
-        grid_line2.addWidget(self.btn_moveZ_forward, 0,3)
-        grid_line2.addWidget(self.btn_moveZ_backward, 0,4)
-        grid_line2.addWidget(self.btn_close_valveZ, 0,5)
-        grid_line2.addWidget(self.btn_cycle_valveZ, 0,6)
 
+        grid_line2.addWidget(self.btn_set_valve_cycles, 0, 0)
+        grid_line2.addWidget(self.btn_cycle_valve, 0, 1)
+       
         self.grid = QGridLayout()
         self.grid.addLayout(grid_line0,0,0)
         self.grid.addLayout(grid_line1,1,0)
         self.grid.addLayout(grid_line2,2,0)
         self.setLayout(self.grid)
 
-        self.btn_moveX_forward.clicked.connect(self.move_x_forward)
-        self.btn_moveX_backward.clicked.connect(self.move_x_backward)
-        self.btn_moveY_forward.clicked.connect(self.move_y_forward)
-        self.btn_moveY_backward.clicked.connect(self.move_y_backward)
-        self.btn_moveZ_forward.clicked.connect(self.move_z_forward)
-        self.btn_moveZ_backward.clicked.connect(self.move_z_backward)
-        self.btn_close_valveX.clicked.connect(self.navigationController.close_x)
-        self.btn_close_valveY.clicked.connect(self.navigationController.close_y)
-        self.btn_close_valveZ.clicked.connect(self.navigationController.close_z)
-        self.btn_cycle_valveX.clicked.connect(self.navigationController.cycle_x)
-        self.btn_cycle_valveY.clicked.connect(self.navigationController.cycle_y)
-        self.btn_cycle_valveZ.clicked.connect(self.navigationController.cycle_z)
+        self.btn_move_forward.clicked.connect(self.move_forward)
+        self.btn_move_backward.clicked.connect(self.move_backward)
+        self.btn_close_valve.clicked.connect(self.navigationController.close_valve)
+        self.active_valve_dropdown.currentIndexChanged.connect(self.update_active_valve)
+        self.btn_set_valve_cycles.clicked.connect(self.set_valve_cycles)
+        self.btn_cycle_valve.clicked.connect(self.handle_cycle_button)
+
         
-    def move_x_forward(self):
-        self.navigationController.move_x(self.entry_dX.value())
-    def move_x_backward(self):
-        self.navigationController.move_x(-self.entry_dX.value())
-    def move_y_forward(self):
-        self.navigationController.move_y(self.entry_dY.value())
-    def move_y_backward(self):
-        self.navigationController.move_y(-self.entry_dY.value())
-    def move_z_forward(self):
-        self.navigationController.move_z(self.entry_dZ.value())
-    def move_z_backward(self):
-        self.navigationController.move_z(-self.entry_dZ.value())
+    def move_forward(self):
+
+        self.navigationController.move_valve(self.entry_delta.value())
+    
+    def move_backward(self):
+
+        self.navigationController.move_valve(-self.entry_delta.value())
+    
+    def update_active_valve(self):
+
+        active_valve_id =  int(self.active_valve_dropdown.currentText()) - 1
+        self.navigationController.update_active_valve(active_valve_id)
+
+    def set_valve_cycles(self):
+
+        self.navigationController.set_valve_cycles(self.entry_measurement_cycles.value())
+
+    def handle_cycle_button(self):
+
+        if(self.btn_cycle_valve.isChecked()==True):
+            self.navigationController.start_cycle_valve()
+            self.btn_cycle_valve.setText('Stop cycling')
+        elif (self.btn_cycle_valve.isChecked() == False):
+            self.navigationController.stop_cycle_valve()
+            self.btn_cycle_valve.setText('Cycle all valves')
+            print('Stop Cycling valves')
+
+
+
+class DataDisplayWidget(QFrame):
+
+    def __init__(self, main=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_components()
+        self.setFrameStyle(QFrame.Panel | QFrame.Raised)
+
+    def add_components(self):
+
+        self.valve_positions = {ii: QLabel() for ii in range(MicrocontrollerDef.N_VALVES)}
+        self.label_temperature = {ii: QLabel() for ii in range(MicrocontrollerDef.N_VALVES)}
+
+        for ii in range(MicrocontrollerDef.N_VALVES):
+            self.valve_positions[ii].setNum(0)
+            self.label_temperature[ii].setFrameStyle(QFrame.Panel | QFrame.Sunken)
+
+        grid_line_0 = QGridLayout()
+
+        grid_line_0.addWidget(QLabel('Cycles'),0,0)
+        grid_line_0.addWidget(QLabel('Temperature'),0,1)
+
+        grid_line_1 = QGridLayout()
+        for ii in range(MicrocontrollerDef.N_VALVES):
+            
+            grid_line_1.addWidget(self.valve_positions[ii], ii, 0)
+            grid_line_1.addWidget(self.label_temperature[ii], ii, 1)
+
+        self.grid = QGridLayout()
+        self.grid.addLayout(grid_line_0,0,0)
+        self.grid.addLayout(grid_line_1,1,0)
+
+        self.setLayout(self.grid)
+
+    def set_temperature_labels(self, valve_temperatures):
+         for ii in range(MicrocontrollerDef.N_VALVES):
+            self.label_temperature[ii].setNum(valve_temperatures[ii])
+
+    def set_valve_positions(self, valve_positions):
+         for ii in range(MicrocontrollerDef.N_VALVES):
+            self.valve_positions[ii].setNum(valve_positions[ii])
+
+
+
 
 class AutoFocusWidget(QFrame):
     def __init__(self, autofocusController, main=None, *args, **kwargs):

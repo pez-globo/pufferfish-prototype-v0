@@ -15,6 +15,8 @@ class Microcontroller():
         self.tx_buffer_length = MicrocontrollerDef.CMD_LENGTH
         self.rx_buffer_length = MicrocontrollerDef.MSG_LENGTH
 
+        print('Rec buffer size: {}'.format(self.rx_buffer_length))
+
         # AUTO-DETECT the Arduino! By Deepak
         arduino_ports = [
                 p.device
@@ -35,94 +37,67 @@ class Microcontroller():
     def close(self):
         self.serial.close()
 
-    def toggle_LED(self,state):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 3
-        cmd[1] = state
-        self.serial.write(cmd)
-    
-    def toggle_laser(self,state):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 4
-        cmd[1] = state
-        self.serial.write(cmd)
+    def move_valve(self, delta):
 
-    def move_x(self,delta):
+        print('Trying to move valve by {}'.format(delta))
+
         direction = int((np.sign(delta)+1)/2)
-        n_microsteps = abs(delta*Motion.STEPS_PER_MM_XY)
+
+        n_microsteps = abs(delta*Motion.STEPS_PER_MM)
         if n_microsteps > 65535:
             n_microsteps = 65535
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 0
-        cmd[1] = direction
-        cmd[2] = int(n_microsteps) >> 8
-        cmd[3] = int(n_microsteps) & 0xff
-        self.serial.write(cmd)
-        time.sleep(WaitTime.BASE + WaitTime.X*abs(delta))
 
-    def move_y(self,delta):
-        direction = int((np.sign(delta)+1)/2)
-        n_microsteps = abs(delta*Motion.STEPS_PER_MM_XY)
-        if n_microsteps > 65535:
-            n_microsteps = 65535
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 1
-        cmd[1] = direction
-        cmd[2] = int(n_microsteps) >> 8
-        cmd[3] = int(n_microsteps) & 0xff
-        self.serial.write(cmd)
-        time.sleep(WaitTime.BASE + WaitTime.Y*abs(delta))
-
-    def move_z(self,delta):
-        direction = int((np.sign(delta)+1)/2)
-        n_microsteps = abs(delta*Motion.STEPS_PER_MM_Z)
-        if n_microsteps > 65535:
-            n_microsteps = 65535
         cmd = bytearray(self.tx_buffer_length)
         cmd[0] = 2
         cmd[1] = direction
         cmd[2] = int(n_microsteps) >> 8
         cmd[3] = int(n_microsteps) & 0xff
-        self.serial.write(cmd)
-        time.sleep(WaitTime.BASE + WaitTime.Z*abs(delta))
 
-    def close_x(self):
+        self.serial.write(cmd)
+        time.sleep(WaitTime.BASE + WaitTime.X*abs(delta))
+        print('finished move')
+
+    def close_valve(self):
         cmd = bytearray(self.tx_buffer_length)
         cmd[0] = 3
         cmd[1] = 0
         self.serial.write(cmd)
-        print('trying to close x')
-    def close_y(self):
+        print('trying to close valve')
+
+    def start_cycle_valve(self):
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 3
+        cmd[0] = 4
         cmd[1] = 1
         self.serial.write(cmd)
-        print('trying to close y')
-    def close_z(self):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 3
-        cmd[1] = 2
-        self.serial.write(cmd)
-        print('trying to close z')
+        print('start cycling all valves')
 
-    def cycle_x(self):
+    def stop_cycle_valve(self):
         cmd = bytearray(self.tx_buffer_length)
         cmd[0] = 4
         cmd[1] = 0
         self.serial.write(cmd)
-        print('trying to cycle x')
-    def cycle_y(self):
+        print('stop cycling all valves')
+
+    def update_active_valve(self, valve_id):
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 4
+        cmd[0] = 5
+        cmd[1] = 0
+        cmd[2] = valve_id
+
+        self.serial.write(cmd)
+        print('set active valve to: {}'.format(valve_id))
+
+    def enable_valve_measurement_cycling(self, cycles_per_valve):
+
+        cmd = bytearray(self.tx_buffer_length)
+        cmd[0] = 5
         cmd[1] = 1
+        cmd[2] = int(cycles_per_valve) >> 8
+        cmd[3] = int(cycles_per_valve) & 0xff
+
         self.serial.write(cmd)
-        print('trying to cycle y')
-    def cycle_z(self):
-        cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = 4
-        cmd[1] = 2
-        self.serial.write(cmd)
-        print('trying to cycle z')
+        print('Enabled cycling measurements of valve at {} cycles/valve'.format(cycles_per_valve))
+
 
     def send_command(self,command):
         cmd = bytearray(self.tx_buffer_length)
@@ -149,64 +124,36 @@ class Microcontroller():
         '''
         self.serial.write(cmd)
 
-    def read_received_packet(self):
-        # wait to receive data
-        while self.serial.in_waiting==0:
-            pass
-        while self.serial.in_waiting % self.rx_buffer_length != 0:
-            pass
-
-        num_bytes_in_rx_buffer = self.serial.in_waiting
-
-        # get rid of old data
-        if num_bytes_in_rx_buffer > self.rx_buffer_length:
-            print('getting rid of old data')
-            for i in range(num_bytes_in_rx_buffer-self.rx_buffer_length):
-                self.serial.read()
-        
-        # read the buffer
-        data=[]
-        for i in range(self.rx_buffer_length):
-            data.append(ord(self.serial.read()))
-
-        '''
-        YfocusPhase = self.data2byte_to_int(data[0],data[1])*2*np.pi/65535.
-        Xpos_arduino = data[3]*2**24 + data[4]*2**16+data[5]*2**8 + data[6]
-        if data[2]==1:
-            Xpos_arduino =-Xpos_arduino
-        Ypos_arduino = data[8]*2**24 + data[9]*2**16+data[10]*2**8 + data[11]
-        if data[7]==1:
-            Ypos_arduino =-Ypos_arduino
-        Zpos_arduino = data[13]*2**24 + data[14]*2**16+data[15]*2**8 + data[16]
-        if data[12]==1:
-            Zpos_arduino =-Zpos_arduino
-        manualMode = data[17]
-        LED_measured = self.data2byte_to_int(data[18], data[19])
-        timeStamp = data[20]*2**24 + data[21]*2**16+data[22]*2**8 + data[23]
-        tracking_triggered = bool(data[24])
-        trigger_FL = bool(data[25])
-        return [YfocusPhase,Xpos_arduino,Ypos_arduino,Zpos_arduino, LED_measured, tracking_triggered],manualMode
-        '''
-        return data
 
     def read_received_packet_nowait(self):
+        num_bytes_in_rx_buffer = self.serial.in_waiting
+        print(num_bytes_in_rx_buffer)
         # wait to receive data
-        if self.serial.in_waiting==0:
+        if num_bytes_in_rx_buffer == 0:
+            print('Waiting for data')
             return None
-        if self.serial.in_waiting % self.rx_buffer_length != 0:
-            print(str(self.serial.in_waiting) + '/' + str(self.rx_buffer_length))
-            num_bytes_in_rx_buffer = self.serial.in_waiting
-            for i in range(num_bytes_in_rx_buffer):
-                self.serial.read()
-            print('reset input buffer')
-            return None
-        
+
         # get rid of old data
         num_bytes_in_rx_buffer = self.serial.in_waiting
         if num_bytes_in_rx_buffer > self.rx_buffer_length:
             print('getting rid of old data')
             for i in range(num_bytes_in_rx_buffer-self.rx_buffer_length):
                 self.serial.read()
+
+        num_bytes_in_rx_buffer = self.serial.in_waiting
+        if num_bytes_in_rx_buffer % self.rx_buffer_length != 0:
+            # if(num_bytes_in_rx_buffer == 1020):
+            #     print('clearing buffer')
+            #     for i in range(num_bytes_in_rx_buffer):
+            #         self.serial.read()
+            #     return None
+            # else:
+            print('Buffer not full')
+            return None
+
+
+
+        
         
         # read the buffer
         data=[]

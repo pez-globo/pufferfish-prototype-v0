@@ -4,11 +4,15 @@
 //    Blue:     4 (RJ45)  VCC (5V)
 //    Green:    6 (RJ45)  SCK
 
+//#define ENABLE_SENSORS
+
 static const bool USE_SERIAL_MONITOR = false;
 
 #include <Wire.h>
-#include <sfm3x00.h>
-#include "Honeywell_ABP.h"
+#ifdef ENABLE_SENSORS
+  #include <sfm3x00.h>
+  #include "Honeywell_ABP.h"
+#endif
 #include <TMCStepper.h>
 #include <TMCStepper_UTILITY.h>
 #include <AccelStepper.h>
@@ -26,8 +30,8 @@ volatile uint32_t cycle_count = 0;
 /*******************************************************************
  ************************** Valve Selection ************************
  *******************************************************************/
-static const int N_valves = 1; 
-volatile uint8_t active_valve_ID;
+static const int N_valves = 4; 
+volatile uint8_t active_valve_ID = 0;
 volatile int counter_valve_selection = 0;
 int number_of_timer_cycles_per_valve = 100;
 bool flag_cycling_selection_of_valve = true;
@@ -62,7 +66,9 @@ volatile bool is_at_limit = false;
  *************************** Communication *************************
  *******************************************************************/
 static const int CMD_LENGTH = 4;
-static const int MSG_LENGTH = 960;
+static const int N_BYTES_PER_RECORD = 16;
+static const int N_RECORDS_PER_MSG = 60;
+static const int MSG_LENGTH = N_BYTES_PER_RECORD*N_RECORDS_PER_MSG;
 byte buffer_rx[500];
 byte buffer_tx[MSG_LENGTH];
 volatile int buffer_rx_ptr;
@@ -97,6 +103,12 @@ static const int Z_step_2 = 25;
 static const int Z_dir_3 = 27;
 static const int Z_step_3 = 29;
 
+//static const int STEP[N_valves] = {26, 22, 25, 29};
+//static const int DIR[N_valves] = {28, 24, 23, 27};
+
+static const int STEP[N_valves] = {26};
+static const int DIR[N_valves] = {28};
+
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Z_N_microstepping; 
 constexpr float MAX_VELOCITY_Z_mm = 25; 
@@ -105,25 +117,31 @@ static const long Z_NEG_LIMIT_MM = -12;
 static const long Z_POS_LIMIT_MM = 12;
 
 // to do: include more steppers 
-AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, Z_dir_0, Z_step_0)};
+//AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1)};
+AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, 0, 1)};
+
 long Z_commanded_target_position = 0;
 bool Z_commanded_movement_in_progress = false;
 
-/*******************************************************************
- ***************************** SENSORS *****************************
- *******************************************************************/
-SFM3000 sfm3000;
+#ifdef ENABLE_SENSORS
+  /*******************************************************************
+   ***************************** SENSORS *****************************
+   *******************************************************************/
+  SFM3000 sfm3000;
+  
+  
+  Honeywell_ABP abp_30psi(
+    0x28,   // I2C address
+    0,      // minimum pressure
+    30,      // maximum pressure
+    "psi"   // pressure unit
+  );
+
+#endif
 int ret_sfm3000;
-
-Honeywell_ABP abp_30psi(
-  0x28,   // I2C address
-  0,      // minimum pressure
-  30,      // maximum pressure
-  "psi"   // pressure unit
-);
-
 float mFlow;
 float mPressure;
+
 
 /*******************************************************************
  *****************************  SETUP  *****************************
@@ -142,14 +160,23 @@ void setup()
   digitalWrite(13,LOW);
 
   // pin init
-  pinMode(Z_dir_0, OUTPUT);
-  pinMode(Z_step_0, OUTPUT);
-  pinMode(Z_dir_1, OUTPUT);
-  pinMode(Z_step_1, OUTPUT);
-  pinMode(Z_dir_2, OUTPUT);
-  pinMode(Z_step_2, OUTPUT);
-  pinMode(Z_dir_3, OUTPUT);
-  pinMode(Z_step_3, OUTPUT);
+  for(int ii=0; ii< N_valves; ii++)
+  {
+    pinMode(DIR[ii], OUTPUT);
+    pinMode(STEP[ii], OUTPUT);
+
+    stepper_Z[ii] = AccelStepper(AccelStepper::DRIVER, STEP[ii], DIR[ii]);
+    
+    
+  }
+//  pinMode(Z_dir_0, OUTPUT);
+//  pinMode(Z_step_0, OUTPUT);
+//  pinMode(Z_dir_1, OUTPUT);
+//  pinMode(Z_step_1, OUTPUT);
+//  pinMode(Z_dir_2, OUTPUT);
+//  pinMode(Z_step_2, OUTPUT);
+//  pinMode(Z_dir_3, OUTPUT);
+//  pinMode(Z_step_3, OUTPUT);
 
   // UART - not used in this version
   /*
@@ -176,38 +203,40 @@ void setup()
     stepper_Z[i].setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
     stepper_Z[i].enableOutputs();
   }
-  
-  // start I2C
-  Wire.setClock(400000);
-  Wire.begin();
-  
-  // initialize the SFM sensor
-  for(int i=0;i++;i<N_valves)
-  {
-    enableMuxPort_SFM3000(i);
-    while(true) 
+
+  #ifdef ENABLE_SENSORS
+    // start I2C
+    Wire.setClock(400000);
+    Wire.begin();
+    
+    // initialize the SFM sensor
+    for(int i=0;i++;i<N_valves)
     {
-      int ret = sfm3000.init();
-      if (ret == 0) 
+      enableMuxPort_SFM3000(i);
+      while(true) 
       {
-        if(USE_SERIAL_MONITOR)
-          SerialUSB.print("init(): success\n");
-        break;
-      } 
-      else 
-      {
-        if(USE_SERIAL_MONITOR)
+        int ret = sfm3000.init();
+        if (ret == 0) 
         {
-          SerialUSB.print("init(): failed, ret = ");
-          SerialUSB.println(ret);
+          if(USE_SERIAL_MONITOR)
+            SerialUSB.print("init(): success\n");
+          break;
+        } 
+        else 
+        {
+          if(USE_SERIAL_MONITOR)
+          {
+            SerialUSB.print("init(): failed, ret = ");
+            SerialUSB.println(ret);
+          }
+          delay(1000);
         }
-        delay(1000);
       }
+      // get scale and offset factor for the SFM sensor
+      sfm3000.get_scale_offset();
+      sfm3000.start_continuous();
     }
-    // get scale and offset factor for the SFM sensor
-    sfm3000.get_scale_offset();
-    sfm3000.start_continuous();
-  }
+  #endif
 
   // delay
   delayMicroseconds(500000);
@@ -276,20 +305,23 @@ void loop()
     }
   }
 
-  if(flag_read_sensor)
-  {
-    enableMuxPort_SFM3000(active_valve_ID);
-    ret_sfm3000 = sfm3000.read_sample();
-    if (ret_sfm3000 == 0) 
-      mFlow = sfm3000.get_flow();
+  #ifdef ENABLE_SENSORS
+    if(flag_read_sensor)
+    {
+      enableMuxPort_SFM3000(active_valve_ID);
+      ret_sfm3000 = sfm3000.read_sample();
+      if (ret_sfm3000 == 0) 
+        mFlow = sfm3000.get_flow();
+  
+      enableMuxPort_ABP(active_valve_ID);
+      abp_30psi.update();
+      mPressure = abp_30psi.pressure();
+   
+      flag_read_sensor = false;
+    }
+  #endif
 
-    enableMuxPort_ABP(active_valve_ID);
-    abp_30psi.update();
-    mPressure = abp_30psi.pressure();
- 
-    flag_read_sensor = false;
-  }
-
+  
   if(flag_write_data)
   {
     // only write data if the last read is successful
@@ -333,12 +365,14 @@ void loop()
         buffer_tx[buffer_tx_ptr++] = active_valve_ID;
 
         // field 6: force
-        buffer_tx[buffer_tx_ptr++] = byte(0 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(0 % 256);
+        // number_of_timer_cycles_per_valve (Testing)
+        buffer_tx[buffer_tx_ptr++] = byte(number_of_timer_cycles_per_valve >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(number_of_timer_cycles_per_valve % 256);
 
         // field 7: aux (e.g additional steps needed to fully close the valve)
-        buffer_tx[buffer_tx_ptr++] = byte(0 >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(0 % 256);
+        // Testing (different flag variables)
+        buffer_tx[buffer_tx_ptr++] = byte(flag_cycling_selection_of_valve >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(flag_cycling_selection_of_valve % 256);
       }
     }
     // send data to computer
@@ -423,7 +457,11 @@ void timer_interruptHandler()
           {
             if (limit_wait_counter++ == LIMIT_WAIT_CYCLES)
             {
-              cycle_count++;
+              if(i==0)
+              { // Only count the total cycles per valve (maybe consider counting separately for all valves?)
+                cycle_count++;
+              }
+             
               if(flag_valve_stop_cyclic_motion_requested==true)
               {
                 flag_valve_doing_cyclic_motion = false;

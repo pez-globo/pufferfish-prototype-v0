@@ -10,6 +10,8 @@ from qtpy.QtGui import *
 
 import control.utils as utils
 from control._def import *
+import control.CSV_Tool as CSV_Tool
+
 
 from queue import Queue
 from threading import Thread, Lock
@@ -21,77 +23,143 @@ from pathlib import Path
 
 class NavigationController(QObject):
 
-    xPos = Signal(float)
-    yPos = Signal(float)
-    zPos = Signal(float)
+    ValvePositions = Signal(float)
+    ValveCycles =  Signal(int)
+    ValveTemperatures =  Signal(float)
+    activeValveID = Signal(int)
+
 
     def __init__(self,microcontroller):
         QObject.__init__(self)
         self.microcontroller = microcontroller
-        self.x_pos = 0
-        self.y_pos = 0
-        self.z_pos = 0
+        
+        # Internal copy of the data
+        self.valve_pos = np.zeros(MicrocontrollerDef.N_VALVES)
+        self.valve_cycles = 0
+        self.valve_temperature = np.zeros(MicrocontrollerDef.N_VALVES)
 
         # self.timer_read_pos = QTimer()
         # self.timer_read_pos.setInterval(PosUpdate.INTERVAL_MS)
         # self.timer_read_pos.timeout.connect(self.update_pos)
         # self.timer_read_pos.start()
 
-        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S.%f') + ".csv", "w+")
-        self.file.write('stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n')
+        # self.file_header = ['stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n']
+
+
+        # self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + ".csv", "w+")
+        
+        # cycles_header = list()
+        # position_header = list()
+        # temperatures_header = list()
+
+        # for ii in range(MicrocontrollerDef.N_VALVES):
+        #     cycles_header = cycles_header.append(['valve {} cycles,'.format(ii)])
+        #     position_header = position_header.append(['valve {} position,'.format(ii)])
+        #     temperatures_header = temperatures_header.append(['valve {} temperatures,'.format(ii)])
+
+        # self.file.write('Time (s)'+','+cycles_header+','+position_header+','+temperatures_header+'Force (N)'+'\n')
+        # self.file.write('stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n')
+
+        # Initialize arrays to hold recd data from uController
+        self.valve_cycles_rec = 0
+        self.valve_pos_rec = 0
+        self.valve_temperature_rec = 0
+
+        self.current_active_valve = 0
 
         self.timer_collect_data = QTimer()
-        self.timer_collect_data.setInterval(10) # check every 10 ms
+        self.timer_collect_data.setInterval(10) # check every 100 ms
         self.timer_collect_data.timeout.connect(self.collect_data)
         self.timer_collect_data.start()
 
-    def move_x(self,delta):
-        self.microcontroller.move_x(delta)
-        self.x_pos = self.x_pos + delta
-        print('X: ' + str(self.x_pos))
-        self.xPos.emit(self.x_pos)
+        self.time_start = time.time()
 
-    def move_y(self,delta):
-        self.microcontroller.move_y(delta)
-        self.y_pos = self.y_pos + delta
-        print('Y: ' + str(self.y_pos))
-        self.yPos.emit(self.y_pos)
+    def move_valve(self, delta):
 
-    def move_z(self,delta):
-        self.microcontroller.move_z(delta)
-        self.z_pos = self.z_pos + delta
-        print('Z: ' + str(self.z_pos))
-        self.zPos.emit(self.z_pos)
+        self.microcontroller.move_valve(delta)
 
-    def close_x(self):
-        self.microcontroller.close_x()
-        self.x_pos = 0
-        self.xPos.emit(self.x_pos)
+        self.valve_pos[self.current_active_valve] += delta
 
-    def close_y(self):
-        self.microcontroller.close_y()
-        self.y_pos = 0
-        self.yPos.emit(self.y_pos)
+        # Update the local copy of the valve position
+        
+        # if(valve_id > MicrocontrollerDef.N_VALVES):
+        #     self.valve_pos = self.valve_pos + delta
+        # else:
+        #     self.valve_pos[valve_id] = self.valve_pos[valve_id] + delta
 
-    def close_z(self):
-        self.microcontroller.close_z()
-        self.z_pos = 0
-        self.zPos.emit(self.z_pos)
+        # self.ValvePositions.emit(self.valve_pos)
 
-    def cycle_x(self):
-        self.microcontroller.cycle_x()
-        self.x_pos = 0
-        self.xPos.emit(self.x_pos)
+    def start_cycle_valve(self):
+        self.microcontroller.start_cycle_valve()
 
-    def cycle_y(self):
-        self.microcontroller.cycle_y()
-        self.y_pos = 0
-        self.yPos.emit(self.y_pos)
+    def stop_cycle_valve(self):
+        self.microcontroller.stop_cycle_valve()
 
-    def cycle_z(self):
-        self.microcontroller.cycle_z()
-        self.z_pos = 0
-        self.zPos.emit(self.z_pos)
+    def close_valve(self):
+        self.microcontroller.close_valve()
+
+
+    def update_active_valve(self, valve_id):
+
+        self.current_active_valve = valve_id
+
+        self.microcontroller.update_active_valve(valve_id)
+
+    def set_valve_cycles(self, valve_cycles):
+
+        self.microcontroller.enable_valve_measurement_cycling(valve_cycles)
+
+
+
+
+
+    # def move_x(self,delta):
+    #     self.microcontroller.move_x(delta)
+    #     self.x_pos = self.x_pos + delta
+    #     print('X: ' + str(self.x_pos))
+    #     self.xPos.emit(self.x_pos)
+
+    # def move_y(self,delta):
+    #     self.microcontroller.move_y(delta)
+    #     self.y_pos = self.y_pos + delta
+    #     print('Y: ' + str(self.y_pos))
+    #     self.yPos.emit(self.y_pos)
+
+    # def move_z(self,delta):
+    #     self.microcontroller.move_z(delta)
+    #     self.z_pos = self.z_pos + delta
+    #     print('Z: ' + str(self.z_pos))
+    #     self.zPos.emit(self.z_pos)
+
+    # def close_x(self):
+    #     self.microcontroller.close_x()
+    #     self.x_pos = 0
+    #     self.xPos.emit(self.x_pos)
+
+    # def close_y(self):
+    #     self.microcontroller.close_y()
+    #     self.y_pos = 0
+    #     self.yPos.emit(self.y_pos)
+
+    # def close_z(self):
+    #     self.microcontroller.close_z()
+    #     self.z_pos = 0
+    #     self.zPos.emit(self.z_pos)
+
+    # def cycle_x(self):
+    #     self.microcontroller.cycle_x()
+    #     self.x_pos = 0
+    #     self.xPos.emit(self.x_pos)
+
+    # def cycle_y(self):
+    #     self.microcontroller.cycle_y()
+    #     self.y_pos = 0
+    #     self.yPos.emit(self.y_pos)
+
+    # def cycle_z(self):
+    #     self.microcontroller.cycle_z()
+    #     self.z_pos = 0
+    #     self.zPos.emit(self.z_pos)
 
     # def update_pos(self):
     #     pos = self.microcontroller.read_received_packet_nowait()
@@ -104,24 +172,55 @@ class NavigationController(QObject):
     #     self.yPos.emit(self.y_pos)
     #     self.zPos.emit(self.z_pos*1000)
 
-    def home(self):
-        # self.microcontroller.move_x(-self.x_pos)
-        # self.microcontroller.move_y(-self.y_pos)
-        pass
+  
 
     def collect_data(self):
+
+        self.time_now = time.time() - self.time_start
         data = self.microcontroller.read_received_packet_nowait()
+        
         if data is not None:
-            print('data collected')
-            for i in range(int(MicrocontrollerDef.MSG_LENGTH/N_BYTES_PER_RECORD)):
-                cycle_count = int.from_bytes(data[i*N_BYTES_PER_RECORD:i*N_BYTES_PER_RECORD+4], byteorder='big', signed=False)
-                stepper1_pos = utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+4:i*N_BYTES_PER_RECORD+6],2)
-                flow = (utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+6:i*N_BYTES_PER_RECORD+8],2)/(65536/2))*FLOW_FS
-                pressure_1 = ((data[i*N_BYTES_PER_RECORD+8]*256+data[i*N_BYTES_PER_RECORD+9])/65536.0)*PRESSURE_FS
-                pressure_2 = (utils.unsigned_to_signed(data[i*N_BYTES_PER_RECORD+10:i*N_BYTES_PER_RECORD+12],2)/(65536/2))*PRESSURE_FS2
-                self.file.write(str(cycle_count)+','+str(stepper1_pos)+','+"{:.2f}".format(flow)+','+"{:.2f}".format(pressure_1)+','+"{:.2f}".format(pressure_2)+'\n')
-                print(str(cycle_count)+'\t'+str(stepper1_pos)+'\t'+"{:.2f}".format(flow)+'\t'+"{:.2f}".format(pressure_1)+'\t'+"{:.2f}".format(pressure_2))
-            self.file.flush()
+            # print('data collected')
+            # print('No:of bytes: {}'.format(len(data)))
+            ''' 
+            Message format:
+             - No:of cycles (4 bytes x N_valves)
+             - Actuator position (2 bytes x N_valves)
+             - Temperature (2 bytes x N_valves)
+            '''
+
+            for ii in range(int(MicrocontrollerDef.MSG_LENGTH/MicrocontrollerDef.N_BYTES_PER_RECORD)):
+
+               
+                start_index = ii*MicrocontrollerDef.N_BYTES_PER_RECORD
+
+                self.valve_cycles_rec = int.from_bytes(data[start_index: start_index + 4], byteorder='big', signed=False)
+                # self.valve_cycles_rec[jj] = utils.data4byte_to_int(data[start_index: start_index + 4])
+                self.valve_pos_rec = utils.unsigned_to_signed(data[start_index+4: start_index+6], 2)
+
+                self.flow_rate = utils.unsigned_to_signed(data[start_index+6: start_index+8], 2)
+
+                self.upstream_pressure = int.from_bytes(data[start_index + 8: start_index + 10], byteorder='big', signed=False)
+
+                self.active_valve_id = int.from_bytes(data[start_index + 10: start_index + 12], byteorder='big', signed=False)
+
+                self.force = int.from_bytes(data[start_index + 12: start_index + 14], byteorder='big', signed=False)
+
+                self.valve_temperature_rec = int.from_bytes(data[start_index + 14: start_index + 16], byteorder='big', signed=False)
+                
+
+                
+
+                # self.file.write(str(self.time_now) + ',' +str(self.valve_cycles_rec)+','+str(self.valve_pos_rec)+','+str(self.valve_temperature_rec) + str(0) +'\n')
+
+                print(str(self.time_now) + ',' +str(self.valve_cycles_rec)+','+str(self.valve_pos_rec)+','+str(self.active_valve_id) + ',' + str(self.force) + ','  + str(self.valve_temperature_rec) + '\n')
+                # print('Open loop pos (mm)'+'\t'+ 'Force (N)') 
+                # print(str(stepper1_openLoop_pos)+'\t'+str(force_newtons))
+            
+            self.ValveCycles.emit(self.valve_cycles_rec)
+            self.ValveTemperatures.emit(self.valve_temperature_rec)
+            self.activeValveID.emit(self.active_valve_id)
+            # self.file.flush()
 
 
 # from gravity machine

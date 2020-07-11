@@ -8,6 +8,9 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
+from control._def import *
+
+
 # app specific libraries
 import control.widgets as widgets
 import control.core as core
@@ -27,10 +30,13 @@ class OctopiGUI(QMainWindow):
 
 		# load widgets
 		self.navigationWidget = widgets.NavigationWidget(self.navigationController)
+		# self.DataDisplayWidget = widgets.DataDisplayWidget()
+
 		
 		# layout widgets
 		layout = QGridLayout() #layout = QStackedLayout()
-		layout.addWidget(self.navigationWidget,2,0)
+		layout.addWidget(self.navigationWidget,0,0)
+		# layout.addWidget(self.DataDisplayWidget,0,1)
 
 		# transfer the layout to the central widget
 		self.centralWidget = QWidget()
@@ -38,9 +44,14 @@ class OctopiGUI(QMainWindow):
 		self.setCentralWidget(self.centralWidget)
 
 		# make connections
-		self.navigationController.xPos.connect(self.navigationWidget.label_Xpos.setNum)
-		self.navigationController.yPos.connect(self.navigationWidget.label_Ypos.setNum)
-		self.navigationController.zPos.connect(self.navigationWidget.label_Zpos.setNum)
+		# self.navigationController.ValvePositions.connect(self.DataDisplayWidget.set_valve_positions)
+
+		# self.navigationController.ValveCycles.connect(self.DataDisplayWidget.set_cycle_labels)
+
+		# self.navigationController.ValveTemperatures.connect(self.DataDisplayWidget.set_temperature_labels)
+
+
+
 
 	def closeEvent(self, event):
 		event.accept()
