@@ -30,7 +30,7 @@ volatile uint32_t cycle_count = 0;
 /*******************************************************************
  ************************** Valve Selection ************************
  *******************************************************************/
-static const int N_valves = 2; 
+static const int N_valves = 4; 
 volatile uint8_t active_valve_ID = 0;
 volatile int counter_valve_selection = 0;
 int number_of_timer_cycles_per_valve = 100;
@@ -53,8 +53,9 @@ int valve_cyclic_motion_step_size = 2;
 long cyclic_motion_limit_valve = 125;
 
 static const int LIMIT_WAIT_CYCLES = 10;
-volatile int limit_wait_counter = 0;
-volatile bool is_at_limit = false;
+volatile int limit_wait_counter[N_valves] = {0};
+volatile bool is_at_limit[N_valves] = {false};
+volatile int valves_at_home = 0;
 
 /*******************************************************************
  ****************************** I2C MUX ****************************
@@ -118,7 +119,7 @@ static const long Z_POS_LIMIT_MM = 12;
 
 // to do: include more steppers 
 //AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1)};
-AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, 26, 28), AccelStepper(AccelStepper::DRIVER, 22, 24)};
+AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, 26, 28)};
 
 long Z_commanded_target_position = 0;
 long relative_position = 0;
@@ -282,12 +283,15 @@ void loop()
       }
       if(buffer_rx[0]==4) // valve cycling
       {
-        // only allow valve cycling when all valves have been closed
-        bool tmp = true;
-        for(int i=0;i<N_valves;i++)
-          tmp = tmp && flag_valve_close_position_reset[i];
-        if(buffer_rx[1]==1 && tmp==true) // start cycling all the valves
+        // only allow valve cycling when all valves have been closed (Comment out for testing)
+//        bool tmp = true;
+//        for(int i=0;i<N_valves;i++)
+//          tmp = tmp && flag_valve_close_position_reset[i];
+//        if(buffer_rx[1]==1 && tmp==true) // start cycling all the valves
+        if(buffer_rx[1]==1)
+        {
           flag_valve_doing_cyclic_motion = true; 
+        }
         // stop cycling
         if(buffer_rx[1]==0) // stop cycling all the valves
           if(flag_valve_doing_cyclic_motion == true)
@@ -352,10 +356,6 @@ void loop()
 
         // field 2: stepper pos
         tmp_uint16 = signed2NBytesUnsigned(stepper_Z[active_valve_ID].currentPosition(), 2);
-
-        //testing
-//        tmp_uint16 = signed2NBytesUnsigned(stepper_Z[active_valve_ID].distanceToGo(), 2);
-
         
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
@@ -368,8 +368,6 @@ void loop()
 
         // field 4: upstream pressure
         tmp_uint16 = 65536 * mPressure / pressure_FS;
-        // Test
-        tmp_uint16 = Z_commanded_target_position;
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
@@ -379,13 +377,13 @@ void loop()
 
         // field 6: force
         // number_of_timer_cycles_per_valve (Testing)
-        buffer_tx[buffer_tx_ptr++] = byte(number_of_timer_cycles_per_valve >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(number_of_timer_cycles_per_valve % 256);
+        buffer_tx[buffer_tx_ptr++] = byte(flag_valve_doing_cyclic_motion >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(flag_valve_doing_cyclic_motion % 256);
 
         // field 7: aux (e.g additional steps needed to fully close the valve)
         // Testing (different flag variables)
-        buffer_tx[buffer_tx_ptr++] = byte(flag_cycling_selection_of_valve >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(flag_cycling_selection_of_valve % 256);
+        buffer_tx[buffer_tx_ptr++] = byte(flag_valve_stop_cyclic_motion_requested >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(flag_valve_stop_cyclic_motion_requested % 256);
       }
     }
     // send data to computer
@@ -447,50 +445,67 @@ void timer_interruptHandler()
   // cycle the selection of the valve
   if(flag_cycling_selection_of_valve)
     if(++counter_valve_selection == number_of_timer_cycles_per_valve)
-      active_valve_ID = (active_valve_ID+1)%N_valves;
+    {
+      active_valve_ID++;
+      if(active_valve_ID >= N_valves)
+      {
+        active_valve_ID = 0;
+      }
+    }
+
+    // Check if all valves are at home position before stopping the cycling
+    valves_at_home = 0;
+    for(int ii=0;ii<N_valves;ii++)
+    {
+      if(stepper_Z[ii].currentPosition() == 0)
+      {
+        valves_at_home++;
+      }
+    }
+ 
+  // If stop cycling is requested AND all valves are are 0 position then STOP CYCLING
+    if(flag_valve_stop_cyclic_motion_requested == true && valves_at_home == N_valves)
+    {
+      flag_valve_doing_cyclic_motion = false;
+      flag_valve_stop_cyclic_motion_requested = false;
+    }
+    
 
   // set sensor reading flag
   flag_read_sensor = true;
   flag_write_data = true;
+
 
   // to have multiple readings for each linear actuator position
   timer_div_counter++;
   if(timer_div_counter>=timer_div)
   {
     timer_div_counter = 0;
+      
     if(flag_valve_doing_cyclic_motion)
     { 
-     
-      
+
        // cycle all the valves
       for(int i = 0; i<N_valves; i++)
       {
         if(stepper_Z[i].currentPosition() == 0)
         {
           // park at the fully closed position for LIMIT_WAIT_CYCLES timer cycles
-          if (is_at_limit == false)
+          if (is_at_limit[i] == false)
           {
-            is_at_limit = true;
-            limit_wait_counter = 0;
+            is_at_limit[i] = true;
+            limit_wait_counter[i] = 0;
+            
           }
-          if (is_at_limit == true)
+          if (is_at_limit[i] == true)
           {
-            if (limit_wait_counter++ == LIMIT_WAIT_CYCLES)
+            if (limit_wait_counter[i]++ == LIMIT_WAIT_CYCLES)
             {
+              is_at_limit[i] = false;
+              stepper_Z[i].moveTo(-cyclic_motion_limit_valve);
               if(i==0)
               { // Only count the total cycles per valve (maybe consider counting separately for all valves?)
                 cycle_count++;
-              }
-             
-              if(flag_valve_stop_cyclic_motion_requested==true)
-              {
-                flag_valve_doing_cyclic_motion = false;
-                flag_valve_stop_cyclic_motion_requested = false;
-              }
-              else
-              {
-                is_at_limit = false;
-                stepper_Z[i].moveTo(-cyclic_motion_limit_valve);
               }
             }
           }
@@ -498,16 +513,17 @@ void timer_interruptHandler()
         if(stepper_Z[i].currentPosition() == -cyclic_motion_limit_valve)
         {
           // park at the fully open position for LIMIT_WAIT_CYCLES timer cycles
-          if (is_at_limit == false)
+          if (is_at_limit[i] == false)
           {
-            is_at_limit = true;
-            limit_wait_counter = 0;
+            is_at_limit[i] = true;
+            limit_wait_counter[i] = 0;
+
           }
-          if (is_at_limit == true)
+          if (is_at_limit[i] == true)
           {
-            if (limit_wait_counter++ == LIMIT_WAIT_CYCLES)
+            if (limit_wait_counter[i]++ == LIMIT_WAIT_CYCLES)
             {
-              is_at_limit = false;
+              is_at_limit[i] = false;
               stepper_Z[i].moveTo(0);
             }
           }
