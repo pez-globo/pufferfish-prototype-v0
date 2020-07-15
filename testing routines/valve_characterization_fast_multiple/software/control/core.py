@@ -213,7 +213,7 @@ class NavigationController(QObject):
 
                 # self.file.write(str(self.time_now) + ',' +str(self.valve_cycles_rec)+','+str(self.valve_pos_rec)+','+str(self.valve_temperature_rec) + str(0) +'\n')
 
-                print(str(self.time_now) + ',' +str(self.valve_cycles_rec)+','+str(self.valve_pos_rec)+','+str(self.active_valve_id) + ',' + str(self.force) + ','  + str(self.valve_temperature_rec) + '\n')
+                print(str(round(self.time_now,2)) +',' + 'commmanded pos: '+ str(self.upstream_pressure)+','+'valve pos: '+str(self.valve_pos_rec)+','+ 'valve_id: '+str(self.active_valve_id) + ',' + 'cycles: '+ str(self.valve_cycles_rec) + ',' + str(self.force) + ','  + str(self.valve_temperature_rec) + '\n')
                 # print('Open loop pos (mm)'+'\t'+ 'Force (N)') 
                 # print(str(stepper1_openLoop_pos)+'\t'+str(force_newtons))
             

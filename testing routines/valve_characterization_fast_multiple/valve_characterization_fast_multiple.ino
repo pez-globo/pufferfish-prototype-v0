@@ -30,7 +30,7 @@ volatile uint32_t cycle_count = 0;
 /*******************************************************************
  ************************** Valve Selection ************************
  *******************************************************************/
-static const int N_valves = 4; 
+static const int N_valves = 2; 
 volatile uint8_t active_valve_ID = 0;
 volatile int counter_valve_selection = 0;
 int number_of_timer_cycles_per_valve = 100;
@@ -106,8 +106,8 @@ static const int Z_step_3 = 29;
 //static const int STEP[N_valves] = {26, 22, 25, 29};
 //static const int DIR[N_valves] = {28, 24, 23, 27};
 
-static const int STEP[N_valves] = {26};
-static const int DIR[N_valves] = {28};
+static const int STEP[N_valves] = {26, 22};
+static const int DIR[N_valves] = {28, 24};
 
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Z_N_microstepping; 
@@ -118,10 +118,12 @@ static const long Z_POS_LIMIT_MM = 12;
 
 // to do: include more steppers 
 //AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1), AccelStepper(AccelStepper::DRIVER, 0, 1)};
-AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, 0, 1)};
+AccelStepper stepper_Z[N_valves] = {AccelStepper(AccelStepper::DRIVER, 26, 28), AccelStepper(AccelStepper::DRIVER, 22, 24)};
 
 long Z_commanded_target_position = 0;
+long relative_position = 0;
 bool Z_commanded_movement_in_progress = false;
+
 
 #ifdef ENABLE_SENSORS
   /*******************************************************************
@@ -196,12 +198,12 @@ void setup()
   Z_driver_0b00.en_spreadCycle(false);
   Z_driver_0b00.toff(4);
 
-  for(int i=0;i++;i<N_valves)
+  for(int i=0;i<N_valves;i++)
   {
     stepper_Z[i].setPinsInverted(false, false, true);
     stepper_Z[i].setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
     stepper_Z[i].setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
-    stepper_Z[i].enableOutputs();
+//    stepper_Z[i].enableOutputs();
   }
 
   #ifdef ENABLE_SENSORS
@@ -210,7 +212,7 @@ void setup()
     Wire.begin();
     
     // initialize the SFM sensor
-    for(int i=0;i++;i<N_valves)
+    for(int i=0;i<N_valves;i++)
     {
       enableMuxPort_SFM3000(i);
       while(true) 
@@ -254,6 +256,7 @@ void setup()
 void loop() 
 {
 
+
   // read one meesage from the buffer
   while (SerialUSB.available()) 
   { 
@@ -264,8 +267,9 @@ void loop()
       buffer_rx_ptr = 0;
       if(buffer_rx[0]==2 && flag_valve_doing_cyclic_motion==false) // actuate the currently selected valve
       {
-        long relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
+        relative_position = long(buffer_rx[1]*2-1)*(long(buffer_rx[2])*256 + long(buffer_rx[3]));
         Z_commanded_target_position = (stepper_Z[active_valve_ID].currentPosition()+relative_position);
+//        stepper_Z[active_valve_ID].moveTo(Z_commanded_target_position);
         stepper_Z[active_valve_ID].runToNewPosition(Z_commanded_target_position);
         // Z_commanded_movement_in_progress = true;
       }
@@ -280,7 +284,7 @@ void loop()
       {
         // only allow valve cycling when all valves have been closed
         bool tmp = true;
-        for(int i=0;i++;i<N_valves)
+        for(int i=0;i<N_valves;i++)
           tmp = tmp && flag_valve_close_position_reset[i];
         if(buffer_rx[1]==1 && tmp==true) // start cycling all the valves
           flag_valve_doing_cyclic_motion = true; 
@@ -330,10 +334,12 @@ void loop()
       if(USE_SERIAL_MONITOR)
       {
         // SerialUSB.print("flow rate (slm): ");
-        SerialUSB.print(mFlow);
-        SerialUSB.print(",");
+//        SerialUSB.print(mFlow);
+//        SerialUSB.print(",");
         //SerialUSB.print(" pressure (cmH2O): ");
-        SerialUSB.print(mPressure);
+//        SerialUSB.print(mPressure);
+        SerialUSB.println(active_valve_ID);
+        SerialUSB.println(stepper_Z[active_valve_ID].currentPosition());
         SerialUSB.print("\n");
       }
       else
@@ -346,6 +352,11 @@ void loop()
 
         // field 2: stepper pos
         tmp_uint16 = signed2NBytesUnsigned(stepper_Z[active_valve_ID].currentPosition(), 2);
+
+        //testing
+//        tmp_uint16 = signed2NBytesUnsigned(stepper_Z[active_valve_ID].distanceToGo(), 2);
+
+        
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
@@ -357,6 +368,8 @@ void loop()
 
         // field 4: upstream pressure
         tmp_uint16 = 65536 * mPressure / pressure_FS;
+        // Test
+        tmp_uint16 = Z_commanded_target_position;
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
@@ -416,9 +429,14 @@ void loop()
   }
   
   // run steppers
-  for(int i = 0;i++;i<N_valves)
-    stepper_Z[i].run();
+  for(int ii = 0; ii<N_valves; ii++)
+  { 
+    stepper_Z[ii].run();
+    // Test 
+      
+  }
   
+
 }
 
 /*******************************************************************
@@ -441,9 +459,11 @@ void timer_interruptHandler()
   {
     timer_div_counter = 0;
     if(flag_valve_doing_cyclic_motion)
-    {
+    { 
+     
+      
        // cycle all the valves
-      for(int i = 0; i++; i<N_valves)
+      for(int i = 0; i<N_valves; i++)
       {
         if(stepper_Z[i].currentPosition() == 0)
         {
