@@ -41,7 +41,11 @@ class Microcontroller():
 
         print('Trying to move valve by {}'.format(delta))
 
-        direction = int((np.sign(delta)+1)/2)
+        if(delta>=0):
+            direction = 1;
+        else:
+            direction = 0;
+        # direction = int((np.sign(delta)+1)/2)
 
         n_microsteps = abs(delta*Motion.STEPS_PER_MM)
         if n_microsteps > 65535:
@@ -54,7 +58,7 @@ class Microcontroller():
         cmd[3] = int(n_microsteps) & 0xff
 
         self.serial.write(cmd)
-        time.sleep(WaitTime.BASE + WaitTime.X*abs(delta))
+        # time.sleep(WaitTime.BASE + WaitTime.X*abs(delta))
         print('finished move')
 
     def close_valve(self):
@@ -127,10 +131,10 @@ class Microcontroller():
 
     def read_received_packet_nowait(self):
         num_bytes_in_rx_buffer = self.serial.in_waiting
-        print(num_bytes_in_rx_buffer)
+        # print(num_bytes_in_rx_buffer)
         # wait to receive data
         if num_bytes_in_rx_buffer == 0:
-            print('Waiting for data')
+            # print('Waiting for data')
             return None
 
         # get rid of old data
