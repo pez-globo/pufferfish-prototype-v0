@@ -368,7 +368,7 @@ class NavigationWidget(QFrame):
         # Active valve selection
         self.active_valve_dropdown = QComboBox()
         self.active_valve_dropdown.addItems(MicrocontrollerDef.N_VALVES_LIST)
-        self.active_valve_dropdown.setCurrentText(MicrocontrollerDef.DEFAULT_ACTIVE_VALVE)
+        self.active_valve_dropdown.setCurrentText(str(MicrocontrollerDef.DEFAULT_ACTIVE_VALVE+1))
 
         # Measurement cycles per valve
         self.entry_measurement_cycles = QDoubleSpinBox()
@@ -457,23 +457,35 @@ class DataDisplayWidget(QFrame):
 
     def add_components(self):
 
-        self.valve_positions = {ii: QLabel() for ii in range(MicrocontrollerDef.N_VALVES)}
-        self.label_temperature = {ii: QLabel() for ii in range(MicrocontrollerDef.N_VALVES)}
+        self.active_valve_id = QLabel()
+        self.active_valve_id.setNum(int(MicrocontrollerDef.DEFAULT_ACTIVE_VALVE))
 
-        for ii in range(MicrocontrollerDef.N_VALVES):
-            self.valve_positions[ii].setNum(0)
-            self.label_temperature[ii].setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.valve_position = QLabel()
+        self.valve_position.setNum(0)
+
+        self.flow_rate = QLabel()
+        self.flow_rate.setNum(0)
+
+        self.pressure = QLabel()
+        self.pressure.setNum(0)
+
+        self.cycles = QLabel()
+        self.cycles.setNum(0)
 
         grid_line_0 = QGridLayout()
-
-        grid_line_0.addWidget(QLabel('Cycles'),0,0)
-        grid_line_0.addWidget(QLabel('Temperature'),0,1)
+        grid_line_0.addWidget(QLabel('Active valve'),0,0)
+        grid_line_0.addWidget(self.active_valve_id,0,1)
+        grid_line_0.addWidget(QLabel('Cycles'), 0, 2)
+        grid_line_0.addWidget(self.cycles,0,3)
 
         grid_line_1 = QGridLayout()
-        for ii in range(MicrocontrollerDef.N_VALVES):
-            
-            grid_line_1.addWidget(self.valve_positions[ii], ii, 0)
-            grid_line_1.addWidget(self.label_temperature[ii], ii, 1)
+        grid_line_1.addWidget(QLabel('Position (mm)'),0,0)
+        grid_line_1.addWidget(self.valve_position,0,1)
+        grid_line_1.addWidget(QLabel('Pressure'),1,0)
+        grid_line_1.addWidget(self.pressure,1,1)
+        grid_line_1.addWidget(QLabel('Flow rate'),2,0)
+        grid_line_1.addWidget(self.flow_rate,2,1)
+
 
         self.grid = QGridLayout()
         self.grid.addLayout(grid_line_0,0,0)
@@ -481,13 +493,20 @@ class DataDisplayWidget(QFrame):
 
         self.setLayout(self.grid)
 
-    def set_temperature_labels(self, valve_temperatures):
-         for ii in range(MicrocontrollerDef.N_VALVES):
-            self.label_temperature[ii].setNum(valve_temperatures[ii])
+    def set_active_valve(self, active_valve_id):
+        self.active_valve_id.setNum(active_valve_id+1)
+         
+    def set_valve_position(self, valve_position):
+        self.valve_position.setNum(valve_position)
 
-    def set_valve_positions(self, valve_positions):
-         for ii in range(MicrocontrollerDef.N_VALVES):
-            self.valve_positions[ii].setNum(valve_positions[ii])
+    def set_pressure(self, pressure):
+        self.pressure.setNum(pressure)
+
+    def set_flow_rate(self, flow_rate):
+        self.flow_rate.setNum(flow_rate)
+
+    def set_valve_cycles(self, cycles):
+        self.cycles.setNum(cycles)
 
 
 
@@ -721,7 +740,7 @@ class MultiPointWidget(QFrame):
         self.checkbox_fluorescence.setEnabled(enabled)
         self.checkbox_withAutofocus.setEnabled(enabled)
         if exclude_btn_startAcquisition is not True:
-        	self.btn_startAcquisition.setEnabled(enabled)
+            self.btn_startAcquisition.setEnabled(enabled)
 
 class TrackingControllerWidget(QFrame):
     def __init__(self, multipointController, navigationController, main=None, *args, **kwargs):

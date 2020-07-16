@@ -23,10 +23,11 @@ from pathlib import Path
 
 class NavigationController(QObject):
 
-    ValvePositions = Signal(float)
-    ValveCycles =  Signal(int)
-    ValveTemperatures =  Signal(float)
-    activeValveID = Signal(int)
+    ValvePosition = Signal(float)
+    ValveCycle =  Signal(int)
+    Pressure =  Signal(float)
+    FlowRate = Signal(float)
+    ActiveValveID = Signal(int)
 
 
     def __init__(self,microcontroller):
@@ -208,18 +209,17 @@ class NavigationController(QObject):
 
                 self.valve_temperature_rec = int.from_bytes(data[start_index + 14: start_index + 16], byteorder='big', signed=False)
                 
-
-                
-
                 # self.file.write(str(self.time_now) + ',' +str(self.valve_cycles_rec)+','+str(self.valve_pos_rec)+','+str(self.valve_temperature_rec) + str(0) +'\n')
 
                 print(str(round(self.time_now,2)) +',' + 'commmanded pos: '+ str(self.upstream_pressure)+','+'valve pos: '+str(self.valve_pos_rec)+','+ 'valve_id: '+str(self.active_valve_id) + ',' + 'cycles: '+ str(self.valve_cycles_rec) + ',' + str(self.force) + ','  + str(self.valve_temperature_rec) + '\n')
                 # print('Open loop pos (mm)'+'\t'+ 'Force (N)') 
                 # print(str(stepper1_openLoop_pos)+'\t'+str(force_newtons))
             
-            self.ValveCycles.emit(self.valve_cycles_rec)
-            self.ValveTemperatures.emit(self.valve_temperature_rec)
-            self.activeValveID.emit(self.active_valve_id)
+            self.ActiveValveID.emit(self.active_valve_id)
+            self.ValveCycle.emit(self.valve_cycles_rec)
+            self.Pressure.emit(self.upstream_pressure)
+            self.FlowRate.emit(self.flow_rate)
+            self.ValvePosition.emit(self.valve_pos_rec)
             # self.file.flush()
 
 

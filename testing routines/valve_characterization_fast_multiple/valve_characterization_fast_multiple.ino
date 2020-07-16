@@ -30,11 +30,11 @@ volatile uint32_t cycle_count = 0;
 /*******************************************************************
  ************************** Valve Selection ************************
  *******************************************************************/
-static const int N_valves = 4; 
+static const int N_valves = 8; 
 volatile uint8_t active_valve_ID = 0;
 volatile int counter_valve_selection = 0;
 int number_of_timer_cycles_per_valve = 100;
-bool flag_cycling_selection_of_valve = true;
+bool flag_cycling_selection_of_valve = false;
 
 
 /*******************************************************************
@@ -372,18 +372,18 @@ void loop()
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
         // field 5: valve ID
-        buffer_tx[buffer_tx_ptr++] = 0;
-        buffer_tx[buffer_tx_ptr++] = active_valve_ID;
+        buffer_tx[buffer_tx_ptr++] = byte(active_valve_ID >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(active_valve_ID % 256);
 
         // field 6: force
         // number_of_timer_cycles_per_valve (Testing)
-        buffer_tx[buffer_tx_ptr++] = byte(flag_valve_doing_cyclic_motion >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(flag_valve_doing_cyclic_motion % 256);
+        buffer_tx[buffer_tx_ptr++] = byte(counter_valve_selection >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(counter_valve_selection % 256);
 
         // field 7: aux (e.g additional steps needed to fully close the valve)
         // Testing (different flag variables)
-        buffer_tx[buffer_tx_ptr++] = byte(flag_valve_stop_cyclic_motion_requested >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(flag_valve_stop_cyclic_motion_requested % 256);
+        buffer_tx[buffer_tx_ptr++] = byte(number_of_timer_cycles_per_valve >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(number_of_timer_cycles_per_valve % 256);
       }
     }
     // send data to computer
@@ -443,15 +443,22 @@ void loop()
 void timer_interruptHandler()
 {
   // cycle the selection of the valve
-  if(flag_cycling_selection_of_valve)
-    if(++counter_valve_selection == number_of_timer_cycles_per_valve)
+  if(flag_cycling_selection_of_valve==true)
+  {
+    counter_valve_selection++;
+    if(counter_valve_selection == number_of_timer_cycles_per_valve)
     {
       active_valve_ID++;
-      if(active_valve_ID >= N_valves)
+      counter_valve_selection = 0;
+      
+    }
+
+    if(active_valve_ID >= N_valves)
       {
         active_valve_ID = 0;
       }
-    }
+  
+  }
 
     // Check if all valves are at home position before stopping the cycling
     valves_at_home = 0;
