@@ -30,7 +30,7 @@ volatile uint32_t cycle_count = 0;
 /*******************************************************************
  ************************** Valve Selection ************************
  *******************************************************************/
-static const int N_valves = 8; 
+static const int N_valves = 4; 
 volatile uint8_t active_valve_ID = 0;
 volatile int counter_valve_selection = 0;
 int number_of_timer_cycles_per_valve = 100;
@@ -104,11 +104,11 @@ static const int Z_step_2 = 25;
 static const int Z_dir_3 = 27;
 static const int Z_step_3 = 29;
 
-//static const int STEP[N_valves] = {26, 22, 25, 29};
-//static const int DIR[N_valves] = {28, 24, 23, 27};
+static const int STEP[N_valves] = {26, 22, 25, 29};
+static const int DIR[N_valves] = {28, 24, 23, 27};
 
-static const int STEP[N_valves] = {26, 22};
-static const int DIR[N_valves] = {28, 24};
+//static const int STEP[N_valves] = {26, 22};
+//static const int DIR[N_valves] = {28, 24};
 
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Z_N_microstepping; 
@@ -199,6 +199,34 @@ void setup()
   Z_driver_0b00.en_spreadCycle(false);
   Z_driver_0b00.toff(4);
 
+  Z_driver_0b01.begin();
+  Z_driver_0b01.I_scale_analog(false);  
+  Z_driver_0b01.rms_current(300,0.2); //I_run and holdMultiplier
+  Z_driver_0b01.microsteps(Z_N_microstepping);
+  Z_driver_0b01.pwm_autoscale(true);
+  Z_driver_0b01.TPOWERDOWN(2);
+  Z_driver_0b01.en_spreadCycle(false);
+  Z_driver_0b01.toff(4);
+
+   Z_driver_0b10.begin();
+  Z_driver_0b10.I_scale_analog(false);  
+  Z_driver_0b10.rms_current(300,0.2); //I_run and holdMultiplier
+  Z_driver_0b10.microsteps(Z_N_microstepping);
+  Z_driver_0b10.pwm_autoscale(true);
+  Z_driver_0b10.TPOWERDOWN(2);
+  Z_driver_0b10.en_spreadCycle(false);
+  Z_driver_0b10.toff(4);
+
+  Z_driver_0b11.begin();
+  Z_driver_0b11.I_scale_analog(false);  
+  Z_driver_0b11.rms_current(300,0.2); //I_run and holdMultiplier
+  Z_driver_0b11.microsteps(Z_N_microstepping);
+  Z_driver_0b11.pwm_autoscale(true);
+  Z_driver_0b11.TPOWERDOWN(2);
+  Z_driver_0b11.en_spreadCycle(false);
+  Z_driver_0b11.toff(4);
+
+  
   for(int i=0;i<N_valves;i++)
   {
     stepper_Z[i].setPinsInverted(false, false, true);
