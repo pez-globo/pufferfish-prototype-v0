@@ -17,7 +17,7 @@ static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 9000;
 uint32_t exhalation_control_PEEP_duty = 5000;
 static const float TIMER_PERIOD_us = 1500; // in us
 static const bool USE_SERIAL_MONITOR = false; // for debug
-static const int MSG_LENGTH = 780;
+static const int MSG_LENGTH = 832;
 # define LOGGING_UNDERSAMPLING  1
 
 /***************************************************************************************************/
@@ -86,6 +86,11 @@ static const uint8_t CMD_Exhalation_Control_RiseTime = 16;
 static const uint8_t CMD_CLOSE_VALVE_OXYGEN = 17;
 static const uint8_t CMD_SET_BIAS_FLOW_OXYGEN = 18;
 static const uint8_t CMD_SET_FIO2 = 19;
+static const uint8_t CMD_SLILENCE_ALARM = 20;
+static const uint8_t CMD_SET_ALARM_PAW_HIGH = 21;
+static const uint8_t CMD_SET_ALARM_PAW_LOW = 22;
+static const uint8_t CMD_SET_ALARM_VT_HIGH = 23;
+static const uint8_t CMD_SET_ALARM_VT_LOW = 24;
 
 // full scale values
 static const float flow_FS = 200;
@@ -140,6 +145,7 @@ volatile float mvolume = 0;
 volatile float mvolume_oxygen = 0;
 volatile float mvolume_air = 0;
 volatile float mPEEP = 0;
+volatile float mVt_internal = 0;
 
 // breathing control
 float cycle_period_ms = 0; // duration of each breathing cycle
@@ -275,6 +281,22 @@ constexpr float MAX_ACCELERATION_Y_mm = 1600;
 AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 
 /***************************************************************************************************/
+/******************************************* alarms ************************************************/
+/***************************************************************************************************/
+bool alarm_is_silenced = false;
+static const int buzzer_pin = 45;
+#define BUZZER_OFF HIGH
+#define BUZZER_ON LOW
+
+volatile int n_active_alarms = 0;
+float alarm_th_paw_high = 40;
+float alarm_th_paw_low = 0;
+float alarm_th_vt_high = 800;
+float alarm_th_vt_low = 0;
+float alarm_th_psupply_air = 3;
+float alarm_th_psupply_oxygen = 3;
+
+/***************************************************************************************************/
 /******************************************* setup *************************************************/
 /***************************************************************************************************/
 void setup() {
@@ -289,6 +311,10 @@ void setup() {
 
   pinMode(13, OUTPUT);
   digitalWrite(13, HIGH);
+
+  // buzzer pin
+  pinMode(buzzer_pin, OUTPUT);
+  digitalWrite(buzzer_pin, BUZZER_OFF);
 
   // tmp gnd pin for the SDP810 sensor
   pinMode(18, OUTPUT);
@@ -429,6 +455,26 @@ void timer_interruptHandler()
 {
   timestamp = timestamp + 1;
 
+  // check alarm conditions
+  n_active_alarms = 0;
+  if( mpaw > alarm_th_paw_high )
+    n_active_alarms = n_active_alarms + 1;
+  if( mpaw < alarm_th_paw_low )
+    n_active_alarms = n_active_alarms + 1;
+  if ( mVt_internal > alarm_th_vt_high )
+    n_active_alarms = n_active_alarms + 1;
+  if( mVt_internal > alarm_th_vt_low )
+    n_active_alarms = n_active_alarms + 1;
+  if( mp_air < alarm_th_psupply_air )
+    n_active_alarms = n_active_alarms + 1;
+  if( mp_oxygen < alarm_th_psupply_oxygen )
+    n_active_alarms = n_active_alarms + 1;
+  
+  if( n_active_alarms > 1)
+    alarm_on();
+  else
+    alarm_off();
+    
   // read sensor value
   flag_read_sensor = true;
 
@@ -560,6 +606,9 @@ void timer_interruptHandler()
       // advanced termination
       if(is_in_pressure_support && mflow_proximal <= 0.25*mflow_peak && is_in_pressure_regulation_plateau && is_in_expiratory_phase == false)
       {
+        // record tidal volume
+        mVt_internal = mvolume_air + mvolume_oxygen;
+      
         // change to exhalation
         is_in_inspiratory_phase = false;
         is_in_pressure_regulation_plateau = false;
@@ -626,6 +675,9 @@ void timer_interruptHandler()
       // stop the inspiratory flow when the set tidal volume is delivered
       if (mvolume >= Vt && is_in_inspiratory_phase == true)
       {
+        // record tidal volume
+        mVt_internal = mvolume_air + mvolume_oxygen;
+      
         valve_opening_air = 0;
         set_valve_air_pos(valve_opening_air);
         valve_opening_oxygen = 0;
@@ -654,6 +706,9 @@ void timer_interruptHandler()
     // if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
     if (cycle_time_ms > time_inspiratory_ms && is_in_expiratory_phase == false)
     {
+      // record tidal volume
+      mVt_internal = mvolume_air + mvolume_oxygen;
+      
       // set state variables
       is_in_inspiratory_phase = false;
       is_in_pressure_regulation_rise = false;
@@ -801,6 +856,16 @@ void loop()
         rise_time_ms_exhalation_control =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * pc_rise_time_ms_FS;
       else if (buffer_rx[0] == CMD_SET_FIO2)
         fio2 =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536);
+      else if (buffer_rx[0] == CMD_SLILENCE_ALARM)
+        alarm_is_silenced = buffer_rx[1];
+      else if (buffer_rx[0] == CMD_SET_ALARM_PAW_HIGH)
+        alarm_th_paw_high = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
+      else if (buffer_rx[0] == CMD_SET_ALARM_PAW_LOW)
+        alarm_th_paw_low = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
+      else if (buffer_rx[0] == CMD_SET_ALARM_VT_HIGH)
+        alarm_th_vt_high = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * Vt_FS;
+      else if (buffer_rx[0] == CMD_SET_ALARM_VT_LOW)
+        alarm_th_vt_low = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * Vt_FS;
     }
   }
 
@@ -1013,6 +1078,12 @@ void loop()
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
+    // field 15 tidal volume measured with air and oxygen sensor
+    tmp_long = (65536 / 2) * mVt_internal / volume_FS;
+    tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
+    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+
     if (buffer_tx_ptr == MSG_LENGTH)
     {
       buffer_tx_ptr = 0; // this was missing
@@ -1091,6 +1162,20 @@ void change_duty(pwm_base& pwm_obj, uint32_t pwm_duty, uint32_t pwm_period)
   if(duty>pwm_period) 
     duty=pwm_duty; 
   pwm_obj.set_duty(duty); 
+}
+
+/***************************************************************************************************/
+/*********************************************  utils  *********************************************/
+/***************************************************************************************************/
+void alarm_on()
+{
+  if(alarm_is_silenced == false)
+    digitalWrite(buzzer_pin, BUZZER_ON);
+}
+
+void alarm_off()
+{
+  digitalWrite(buzzer_pin, BUZZER_OFF);
 }
 
 /***************************************************************************************************/

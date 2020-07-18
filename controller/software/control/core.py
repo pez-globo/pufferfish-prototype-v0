@@ -95,7 +95,6 @@ class VentController(QObject):
     #     self.microcontroller.set_parameter(MCU.CMD_FlowDeceleratingSlope,value/100)
 
     def setPinsp(self,value):
-        print('setting P_insp')
         self.microcontroller.set_parameter(MCU.CMD_Pinsp,value/MCU.PAW_FS)
         self.Pinsp = value
 
@@ -148,6 +147,18 @@ class VentController(QObject):
             self.fio2_set = 1.00
         self.microcontroller.set_parameter(MCU.CMD_SET_FIO2,self.fio2_set)
 
+    def silence_alarm(self,state):
+        self.microcontroller.silence_alarm(state)
+
+    def set_alarm_paw_high(self,value):
+        self.microcontroller.set_parameter(MCU.CMD_SET_ALARM_PAW_HIGH,value/MCU.PAW_FS)
+    def set_alarm_paw_low(self,value):
+        self.microcontroller.set_parameter(MCU.CMD_SET_ALARM_PAW_LOW,value/MCU.PAW_FS)
+    def set_alarm_vt_high(self,value):
+        self.microcontroller.set_parameter(MCU.CMD_SET_ALARM_VT_HIGH,value/MCU.VT_FS)
+    def set_alarm_vt_low(self,value):
+        self.microcontroller.set_parameter(MCU.CMD_SET_ALARM_VT_LOW,value/MCU.VT_FS)
+
 # class DataLogger(QObject):
 #     def __init__(self,microcontroller):
 #         QObject.__init__(self)
@@ -178,6 +189,7 @@ class Waveforms(QObject):
     signal_p_supply_oxygen = Signal(str)
     signal_fio2 = Signal(str)
     signal_flow_oxygen = Signal(str)
+    signal_vt_internal = Signal(str)
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
@@ -281,7 +293,8 @@ class Waveforms(QObject):
                     self.volume_air = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+26:i*MCU.RECORD_LENGTH_BYTE+28],2)/(65536/2)*MCU.volume_FS
                     # humidity (repurposed)
                     self.volume_oxygen = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+28:i*MCU.RECORD_LENGTH_BYTE+30],2)/(65536/2)*MCU.volume_FS
-
+                    self.vt_internal = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+30:i*MCU.RECORD_LENGTH_BYTE+32],2)/(65536/2)*MCU.volume_FS
+                    
                     # fio2 calculation; note here volume is actually mass
                     if (self.volume_air + self.volume_oxygen) > 100:
                         self.fio2 = ( self.volume_air*0.23 + self.volume_oxygen*1 ) / (self.volume_air + self.volume_oxygen)
@@ -327,6 +340,7 @@ class Waveforms(QObject):
                     else:
                         self.signal_fio2.emit("-")
                     self.signal_flow_oxygen.emit("{:.2f}".format(self.flow_oxygen))
+                    self.signal_vt_internal.emit("{:.2f}".format(self.vt_internal)) 
 
         # file flushing
         if self.logging_is_on:

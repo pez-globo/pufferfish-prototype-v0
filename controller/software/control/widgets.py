@@ -259,9 +259,66 @@ class ControlPanel(QFrame):
 		self.btn_logging_onoff.setCheckable(True)
 		self.btn_logging_onoff.setChecked(True)
 
-		# self.label_print = QLabel()
-		# self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+		# alarms
+		self.btn_silence_alarm  = QPushButton('Silence Alarms')
+		self.btn_silence_alarm.setDefault(False)
+		self.btn_silence_alarm.setCheckable(True)
+		self.btn_silence_alarm.setChecked(False)
 
+		self.entry_alarm_paw_high = QDoubleSpinBox()
+		self.entry_alarm_paw_high.setFont(self.font)
+		self.entry_alarm_paw_high.setMinimum(0)
+		self.entry_alarm_paw_high.setMaximum(60)
+		self.entry_alarm_paw_high.setValue(MCU.alarm_paw_high_DEFAULT)
+		self.entry_alarm_paw_high.setSingleStep(0.1)
+
+		self.entry_alarm_paw_low = QDoubleSpinBox()
+		self.entry_alarm_paw_low.setFont(self.font)
+		self.entry_alarm_paw_low.setMinimum(0)
+		self.entry_alarm_paw_low.setMaximum(60)
+		self.entry_alarm_paw_low.setValue(MCU.alarm_paw_low_DEFAULT)
+		self.entry_alarm_paw_low.setSingleStep(0.1)
+
+		self.entry_alarm_Vt_high = QDoubleSpinBox()
+		self.entry_alarm_Vt_high.setFont(self.font)
+		self.entry_alarm_Vt_high.setMinimum(0)
+		self.entry_alarm_Vt_high.setMaximum(1000)
+		self.entry_alarm_Vt_high.setValue(MCU.alarm_vt_high_DEFAULT)
+		self.entry_alarm_Vt_high.setSingleStep(1)
+
+		self.entry_alarm_Vt_low = QDoubleSpinBox()
+		self.entry_alarm_Vt_low.setFont(self.font)
+		self.entry_alarm_Vt_low.setMinimum(0)
+		self.entry_alarm_Vt_low.setMaximum(1000)
+		self.entry_alarm_Vt_low.setValue(MCU.alarm_vt_low_DEFAULT)
+		self.entry_alarm_Vt_low.setSingleStep(1)
+
+		self.label_Vt_internal = QLabel()
+		self.label_Vt_internal.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+		self.label_Vt_internal.setFixedWidth(50)
+
+		# alarms related layout
+		grid_line4 = QGridLayout()
+		grid_line4.addWidget(self.btn_silence_alarm,			0,1,1,2)
+		grid_line4.addWidget(QLabel('paw high alarm (cmH2O)'),	0,4,1,1)
+		grid_line4.addWidget(self.entry_alarm_paw_high,			0,5,1,1)
+		grid_line4.addWidget(QLabel('paw low alarm (cmH2O)'),	0,6,1,1)
+		grid_line4.addWidget(self.entry_alarm_paw_low,			0,7,1,1)
+		grid_line4.addWidget(QLabel('paw high alarm (ml)'),		0,8,1,1)
+		grid_line4.addWidget(self.entry_alarm_Vt_high,			0,9,1,1)
+		grid_line4.addWidget(QLabel('paw low alarm (ml)'),		0,10,1,1)
+		grid_line4.addWidget(self.entry_alarm_Vt_low,			0,11,1,1)
+		grid_line4.addWidget(QLabel('Tidal Volume - Internal (ml)'),0,12,1,1)
+		grid_line4.addWidget(self.label_Vt_internal,			0,13,1,1)
+
+		# alarms related connections
+		self.btn_silence_alarm.clicked.connect(self.ventController.silence_alarm)
+		self.entry_alarm_paw_high.valueChanged.connect(self.ventController.set_alarm_paw_high)
+		self.entry_alarm_paw_low.valueChanged.connect(self.ventController.set_alarm_paw_low)
+		self.entry_alarm_Vt_high.valueChanged.connect(self.ventController.set_alarm_vt_high)
+		self.entry_alarm_Vt_low.valueChanged.connect(self.ventController.set_alarm_vt_low)
+
+		# layout
 		grid_line0 = QHBoxLayout()
 		grid_line0.addWidget(QLabel('Ti (s)',font=self.font))
 		grid_line0.addWidget(self.entry_Ti)
@@ -296,9 +353,6 @@ class ControlPanel(QFrame):
 		grid_line2.addWidget(QLabel('File Prefix'))
 		grid_line2.addWidget(self.lineEdit_experimentID)
 		grid_line2.addWidget(self.btn_logging_onoff)
-
-		# grid_line11 = QGridLayout()
-		# grid_line11.addWidget(self.label_print,0,0,10,0)
 
 		# for displaying stepper position and flow/pressure measurements
 		self.label_stepper_pos_air = QLabel()
@@ -340,9 +394,6 @@ class ControlPanel(QFrame):
 		self.label_fio2.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 		self.label_fio2.setFixedWidth(50)
 
-		# self.label_print = QLabel()
-		# self.label_print.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-
 		grid_line3 = QHBoxLayout()
 		grid_line3.addWidget(QLabel('p supply air (psi)'))
 		grid_line3.addWidget(self.label_p_supply_air)
@@ -374,8 +425,7 @@ class ControlPanel(QFrame):
 		self.grid.addLayout(grid_line1,1,0)
 		self.grid.addLayout(grid_line2,2,0)
 		self.grid.addLayout(grid_line3,3,0)
-		# self.grid.addWidget(self.label_print,3,0,1,8)
-
+		self.grid.addLayout(grid_line4,4,0)
 		self.setLayout(self.grid)
 
 		self.entry_VT.valueChanged.connect(self.ventController.setVT)
@@ -394,12 +444,10 @@ class ControlPanel(QFrame):
 		self.dropdown_modeManu.currentTextChanged.connect(self.ventController.updateMode)
 		self.entry_Exhalation_Control_P_RiseTime.valueChanged.connect(self.ventController.setExhalationControlPRiseTime)
 		self.entry_fio2.valueChanged.connect(self.ventController.setFiO2)
-
 		self.btn_logging_onoff.clicked.connect(self.logging_onoff)
 
 	def logging_onoff(self,state):
 		self.signal_logging_onoff.emit(state,self.lineEdit_experimentID.text())
-		
 
 # from Deepak
 class PlotWidget(pg.GraphicsLayoutWidget):

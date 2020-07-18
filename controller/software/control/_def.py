@@ -55,7 +55,7 @@ class Acquisition:
         pass
 
 class MCU:
-    MSG_LENGTH = 780
+    MSG_LENGTH = 832
     CMD_LENGTH = 4
     N_BYTES_DATA = 2
 
@@ -108,6 +108,11 @@ class MCU:
     CMD_CLOSE_VALVE_OXYGEN = 17
     CMD_SET_BIAS_FLOW_OXYGEN = 18
     CMD_SET_FIO2 = 19
+    CMD_SLILENCE_ALARM = 20
+    CMD_SET_ALARM_PAW_HIGH = 21
+    CMD_SET_ALARM_PAW_LOW = 22
+    CMD_SET_ALARM_VT_HIGH = 23
+    CMD_SET_ALARM_VT_LOW = 24
 
     CMD_FlowDeceleratingSlope = 5
 
@@ -124,6 +129,10 @@ class MCU:
     rise_time_ms_exhalation_control_DEFAULT = 400
     fio2_DEFAULT = 50
     valve_opening_vc_DEFAULT = 40
+    alarm_paw_high_DEFAULT = 40
+    alarm_paw_low_DEFAULT = 0
+    alarm_vt_high_DEFAULT = 800
+    alarm_vt_low_DEFAULT = 0
 
     TIMER_PERIOD_ms = 1.50
     DATA_INTERVAL_ms = TIMER_PERIOD_ms*26

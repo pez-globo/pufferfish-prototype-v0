@@ -1,0 +1,4 @@
+07/17/2020 HL
+ - (software) display tidal volume measured by the air and oxygen flow sensors inside the ventilator
+ - (firmware_pinch_valve_implementation) add buzzer-based alarm on the MCU side for paw high and low, vt high and low, supply pressure low (for very preliminary demo purpose only)
+ - (software) add alarm settings and a silence alarm button
