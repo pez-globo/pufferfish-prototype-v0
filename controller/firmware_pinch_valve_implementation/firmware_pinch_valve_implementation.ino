@@ -285,8 +285,8 @@ AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 /***************************************************************************************************/
 bool alarm_is_silenced = false;
 static const int buzzer_pin = 45;
-#define BUZZER_OFF HIGH
-#define BUZZER_ON LOW
+#define BUZZER_OFF LOW
+#define BUZZER_ON HIGH
 
 volatile int n_active_alarms = 0;
 float alarm_th_paw_high = 40;
