@@ -137,7 +137,7 @@ class MCU:
     TIMER_PERIOD_ms = 1.50
     DATA_INTERVAL_ms = TIMER_PERIOD_ms*26
     TIMEPOINT_PER_UPDATE = 26
-    RECORD_LENGTH_BYTE = 30
+    RECORD_LENGTH_BYTE = 32
 
 class WAVEFORMS:
     # UPDATE_INTERVAL_MS = 25 # make sure this equals MCU.DATA_INTERVAL_ms when MCU is connected and MCU.DATA_INTERVAL_ms/2 when in simulation
