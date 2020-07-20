@@ -17,7 +17,7 @@ static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 9000;
 uint32_t exhalation_control_PEEP_duty = 5000;
 static const float TIMER_PERIOD_us = 1500; // in us
 static const bool USE_SERIAL_MONITOR = false; // for debug
-static const int MSG_LENGTH = 832;
+static const int MSG_LENGTH = 33*26;
 # define LOGGING_UNDERSAMPLING  1
 
 /***************************************************************************************************/
@@ -283,7 +283,7 @@ AccelStepper stepper_Y = AccelStepper(AccelStepper::DRIVER, Y_step, Y_dir);
 /***************************************************************************************************/
 /******************************************* alarms ************************************************/
 /***************************************************************************************************/
-bool alarm_is_silenced = false;
+volatile bool alarm_is_silenced = false;
 static const int buzzer_pin = 45;
 #define BUZZER_OFF LOW
 #define BUZZER_ON HIGH
@@ -455,26 +455,6 @@ void timer_interruptHandler()
 {
   timestamp = timestamp + 1;
 
-  // check alarm conditions
-  n_active_alarms = 0;
-  if( mpaw > alarm_th_paw_high )
-    n_active_alarms = n_active_alarms + 1;
-  if( mpaw < alarm_th_paw_low )
-    n_active_alarms = n_active_alarms + 1;
-  if ( mVt_internal > alarm_th_vt_high )
-    n_active_alarms = n_active_alarms + 1;
-  if( mVt_internal > alarm_th_vt_low )
-    n_active_alarms = n_active_alarms + 1;
-  if( mp_air < alarm_th_psupply_air )
-    n_active_alarms = n_active_alarms + 1;
-  if( mp_oxygen < alarm_th_psupply_oxygen )
-    n_active_alarms = n_active_alarms + 1;
-  
-  if( n_active_alarms > 1)
-    alarm_on();
-  else
-    alarm_off();
-    
   // read sensor value
   flag_read_sensor = true;
 
@@ -857,7 +837,7 @@ void loop()
       else if (buffer_rx[0] == CMD_SET_FIO2)
         fio2 =  ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536);
       else if (buffer_rx[0] == CMD_SLILENCE_ALARM)
-        alarm_is_silenced = buffer_rx[1];
+        alarm_is_silenced = bool(buffer_rx[1]);
       else if (buffer_rx[0] == CMD_SET_ALARM_PAW_HIGH)
         alarm_th_paw_high = ((256*float(buffer_rx[1])+float(buffer_rx[2]))/65536) * paw_FS;
       else if (buffer_rx[0] == CMD_SET_ALARM_PAW_LOW)
@@ -930,6 +910,27 @@ void loop()
     mvolume_air = mvolume_air + mflow_air * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
     mvolume_oxygen = mvolume_oxygen + mflow_oxygen * 1000 * (float(TIMER_PERIOD_us) / 1000000 / 60);
     flag_read_sensor = false;
+
+    // check alarm conditions
+    n_active_alarms = 0;
+    if( mpaw > alarm_th_paw_high )
+      n_active_alarms = n_active_alarms + 1;
+    if( mpaw < alarm_th_paw_low )
+      n_active_alarms = n_active_alarms + 1;
+    if ( mVt_internal > alarm_th_vt_high )
+      n_active_alarms = n_active_alarms + 1;
+    if( mVt_internal < alarm_th_vt_low )
+      n_active_alarms = n_active_alarms + 1;
+    if( mp_air < alarm_th_psupply_air )
+      n_active_alarms = n_active_alarms + 1;
+    if( mp_oxygen < alarm_th_psupply_oxygen )
+      n_active_alarms = n_active_alarms + 1;
+
+    if( n_active_alarms >= 1)
+      if( alarm_is_silenced == false )
+        alarm_on();
+    else
+      alarm_off();
   }
 
   if (flag_close_valve_air_in_progress && ret_sfm3000_1 == 0)
@@ -1084,6 +1085,9 @@ void loop()
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
+    // filed 16 number of alarms
+    buffer_tx[buffer_tx_ptr++] = byte(n_active_alarms);
+
     if (buffer_tx_ptr == MSG_LENGTH)
     {
       buffer_tx_ptr = 0; // this was missing
@@ -1169,8 +1173,7 @@ void change_duty(pwm_base& pwm_obj, uint32_t pwm_duty, uint32_t pwm_period)
 /***************************************************************************************************/
 void alarm_on()
 {
-  if(alarm_is_silenced == false)
-    digitalWrite(buzzer_pin, BUZZER_ON);
+  digitalWrite(buzzer_pin, BUZZER_ON);
 }
 
 void alarm_off()

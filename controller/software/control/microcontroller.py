@@ -76,9 +76,10 @@ class Microcontroller():
 
     def silence_alarm(self,alarm_state):
         cmd = bytearray(self.tx_buffer_length)
-        cmd[0] = CMD_SLILENCE_ALARM
+        cmd[0] = MCU.CMD_SLILENCE_ALARM
         cmd[1] = int(alarm_state)
         self.serial.write(cmd)
+        print('set silence alarm to ' + str(cmd[1]))
 
     def read_received_packet(self):
         # wait to receive data

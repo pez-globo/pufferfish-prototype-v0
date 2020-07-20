@@ -67,6 +67,7 @@ class VentDevGUI(QMainWindow):
 		self.waveforms.signal_fio2.connect(self.controlPanel.label_fio2.setText)
 		self.waveforms.signal_flow_oxygen.connect(self.controlPanel.label_flow_oxygen.setText)
 		self.waveforms.signal_vt_internal.connect(self.controlPanel.label_Vt_internal.setText)
+		self.waveforms.signal_num_active_alarms.connect(self.controlPanel.label_num_active_alarms.setText)
 
 	def closeEvent(self, event):
 		self.waveforms.close()

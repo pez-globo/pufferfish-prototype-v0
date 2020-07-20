@@ -190,6 +190,7 @@ class Waveforms(QObject):
     signal_fio2 = Signal(str)
     signal_flow_oxygen = Signal(str)
     signal_vt_internal = Signal(str)
+    signal_num_active_alarms = Signal(str)
 
     def __init__(self,microcontroller,ventController):
         QObject.__init__(self)
@@ -294,7 +295,8 @@ class Waveforms(QObject):
                     # humidity (repurposed)
                     self.volume_oxygen = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+28:i*MCU.RECORD_LENGTH_BYTE+30],2)/(65536/2)*MCU.volume_FS
                     self.vt_internal = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+30:i*MCU.RECORD_LENGTH_BYTE+32],2)/(65536/2)*MCU.volume_FS
-                    
+                    self.num_active_alarms = readout[i*MCU.RECORD_LENGTH_BYTE+32]
+
                     # fio2 calculation; note here volume is actually mass
                     if (self.volume_air + self.volume_oxygen) > 100:
                         self.fio2 = ( self.volume_air*0.23 + self.volume_oxygen*1 ) / (self.volume_air + self.volume_oxygen)
@@ -341,6 +343,7 @@ class Waveforms(QObject):
                         self.signal_fio2.emit("-")
                     self.signal_flow_oxygen.emit("{:.2f}".format(self.flow_oxygen))
                     self.signal_vt_internal.emit("{:.2f}".format(self.vt_internal)) 
+                    self.signal_num_active_alarms.emit(str(self.num_active_alarms))
 
         # file flushing
         if self.logging_is_on:

@@ -260,6 +260,10 @@ class ControlPanel(QFrame):
 		self.btn_logging_onoff.setChecked(True)
 
 		# alarms
+		self.label_num_active_alarms = QLabel()
+		self.label_num_active_alarms.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+		self.label_num_active_alarms.setFixedWidth(50)
+
 		self.btn_silence_alarm  = QPushButton('Silence Alarms')
 		self.btn_silence_alarm.setDefault(False)
 		self.btn_silence_alarm.setCheckable(True)
@@ -304,12 +308,14 @@ class ControlPanel(QFrame):
 		grid_line4.addWidget(self.entry_alarm_paw_high,			0,5,1,1)
 		grid_line4.addWidget(QLabel('paw low alarm (cmH2O)'),	0,6,1,1)
 		grid_line4.addWidget(self.entry_alarm_paw_low,			0,7,1,1)
-		grid_line4.addWidget(QLabel('paw high alarm (ml)'),		0,8,1,1)
+		grid_line4.addWidget(QLabel('Vt high alarm (ml)'),		0,8,1,1)
 		grid_line4.addWidget(self.entry_alarm_Vt_high,			0,9,1,1)
-		grid_line4.addWidget(QLabel('paw low alarm (ml)'),		0,10,1,1)
+		grid_line4.addWidget(QLabel('Vt low alarm (ml)'),		0,10,1,1)
 		grid_line4.addWidget(self.entry_alarm_Vt_low,			0,11,1,1)
 		grid_line4.addWidget(QLabel('Tidal Volume - Internal (ml)'),0,12,1,1)
 		grid_line4.addWidget(self.label_Vt_internal,			0,13,1,1)
+		grid_line4.addWidget(QLabel('N active alarms'),			0,14,1,1)
+		grid_line4.addWidget(self.label_num_active_alarms,		0,15,1,1)
 
 		# alarms related connections
 		self.btn_silence_alarm.clicked.connect(self.ventController.silence_alarm)
