@@ -28,6 +28,7 @@ class NavigationController(QObject):
     Pressure =  Signal(float)
     FlowRate = Signal(float)
     ActiveValveID = Signal(int)
+    Force = Signal(float)
 
 
     def __init__(self,microcontroller):
@@ -65,6 +66,7 @@ class NavigationController(QObject):
         self.valve_cycles_rec = 0
         self.valve_pos_rec = 0
         self.valve_temperature_rec = 0
+        self.force = 0
 
         self.current_active_valve = 0
 
@@ -215,11 +217,17 @@ class NavigationController(QObject):
                 # print('Open loop pos (mm)'+'\t'+ 'Force (N)') 
                 # print(str(stepper1_openLoop_pos)+'\t'+str(force_newtons))
             
+            # Convert raw reading for force to Newtons:
+            force_voltage = (Force.DRIVE_VOLTAGE)*(self.force/Force.ADC_RESOLUTION)
+
+            force_newtons = Force.MAX_RATED_LOAD*(force_voltage - Force.VOLT_MIN_LOAD)/(Force.VOLT_MAX_LOAD - Force.VOLT_MIN_LOAD)
+
             self.ActiveValveID.emit(self.active_valve_id)
             self.ValveCycle.emit(self.valve_cycles_rec)
             self.Pressure.emit(self.upstream_pressure)
             self.FlowRate.emit(self.flow_rate)
             self.ValvePosition.emit(self.valve_pos_rec)
+            self.Force.emit(self.force)
             # self.file.flush()
 
 

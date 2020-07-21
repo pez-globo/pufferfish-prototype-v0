@@ -145,6 +145,13 @@ int ret_sfm3000;
 float mFlow;
 float mPressure;
 
+/*******************************************************************
+ ************************* FORCE MEASUREMENT *************************
+ *******************************************************************/
+#define FORCE_PIN A0;
+int force_reading = 0;
+
+
 
 /*******************************************************************
  *****************************  SETUP  *****************************
@@ -352,6 +359,8 @@ void loop()
       enableMuxPort_ABP(active_valve_ID);
       abp_30psi.update();
       mPressure = abp_30psi.pressure();
+
+      force_reading = analogRead(FORCE_PIN);
    
       flag_read_sensor = false;
     }
@@ -405,8 +414,8 @@ void loop()
 
         // field 6: force
         // number_of_timer_cycles_per_valve (Testing)
-        buffer_tx[buffer_tx_ptr++] = byte(counter_valve_selection >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(counter_valve_selection % 256);
+        buffer_tx[buffer_tx_ptr++] = byte(force_reading >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(force_reading % 256);
 
         // field 7: aux (e.g additional steps needed to fully close the valve)
         // Testing (different flag variables)
