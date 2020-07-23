@@ -4,9 +4,9 @@
 //    Blue:     4 (RJ45)  VCC (5V)
 //    Green:    6 (RJ45)  SCK
 
-//#define ENABLE_SENSORS
+#define ENABLE_SENSORS
 
-static const bool USE_SERIAL_MONITOR = false;
+static const bool USE_SERIAL_MONITOR = true;
 
 #include <Wire.h>
 #ifdef ENABLE_SENSORS
@@ -30,7 +30,7 @@ volatile uint32_t cycle_count = 0;
 /*******************************************************************
  ************************** Valve Selection ************************
  *******************************************************************/
-static const int N_valves = 4; 
+static const int N_valves = 1; 
 volatile uint8_t active_valve_ID = 0;
 volatile int counter_valve_selection = 0;
 int number_of_timer_cycles_per_valve = 100;
@@ -104,11 +104,11 @@ static const int Z_step_2 = 25;
 static const int Z_dir_3 = 27;
 static const int Z_step_3 = 29;
 
-static const int STEP[N_valves] = {26, 22, 25, 29};
-static const int DIR[N_valves] = {28, 24, 23, 27};
+//static const int STEP[N_valves] = {26, 22, 25, 29};
+//static const int DIR[N_valves] = {28, 24, 23, 27};
 
-//static const int STEP[N_valves] = {26, 22};
-//static const int DIR[N_valves] = {28, 24};
+static const int STEP[N_valves] = {26};
+static const int DIR[N_valves] = {28};
 
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Z_N_microstepping; 
@@ -148,7 +148,7 @@ float mPressure;
 /*******************************************************************
  ************************* FORCE MEASUREMENT *************************
  *******************************************************************/
-#define FORCE_PIN A0;
+static const int FORCE_PIN = A0;
 int force_reading = 0;
 
 
@@ -257,14 +257,18 @@ void setup()
         if (ret == 0) 
         {
           if(USE_SERIAL_MONITOR)
-            SerialUSB.print("init(): success\n");
+            SerialUSB.print("Valve: ");
+            SerialUSB.print(i);
+            SerialUSB.print("init(): SFM 3000 success\n");
           break;
         } 
         else 
         {
           if(USE_SERIAL_MONITOR)
           {
-            SerialUSB.print("init(): failed, ret = ");
+            SerialUSB.print("Valve: ");
+            SerialUSB.print(i);
+            SerialUSB.print("init(): SFM 3000 failed, ret = ");
             SerialUSB.println(ret);
           }
           delay(1000);
@@ -273,6 +277,9 @@ void setup()
       // get scale and offset factor for the SFM sensor
       sfm3000.get_scale_offset();
       sfm3000.start_continuous();
+
+      disableMuxPort_SFM3000(i);
+      delay(1); //Wait for next reading
     }
   #endif
 
@@ -282,6 +289,8 @@ void setup()
   // start the timer
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
+  
+  SerialUSB.println("setup complete");
   
 }
 
@@ -352,13 +361,26 @@ void loop()
     if(flag_read_sensor)
     {
       enableMuxPort_SFM3000(active_valve_ID);
+
       ret_sfm3000 = sfm3000.read_sample();
+      SerialUSB.println(ret_sfm3000);
       if (ret_sfm3000 == 0) 
         mFlow = sfm3000.get_flow();
-  
+        
+      disableMuxPort_SFM3000(active_valve_ID);
+
+
+      delay(1); //Wait for next reading
+
+      
       enableMuxPort_ABP(active_valve_ID);
       abp_30psi.update();
       mPressure = abp_30psi.pressure();
+
+      disableMuxPort_ABP(active_valve_ID);
+
+      SerialUSB.print("Pressure (cmH2O): ");
+      SerialUSB.println(mPressure);
 
       force_reading = analogRead(FORCE_PIN);
    
@@ -374,13 +396,13 @@ void loop()
     {
       if(USE_SERIAL_MONITOR)
       {
-        // SerialUSB.print("flow rate (slm): ");
-//        SerialUSB.print(mFlow);
+         SerialUSB.print("flow rate (slm): ");
+        SerialUSB.print(mFlow);
 //        SerialUSB.print(",");
         //SerialUSB.print(" pressure (cmH2O): ");
 //        SerialUSB.print(mPressure);
         SerialUSB.println(active_valve_ID);
-        SerialUSB.println(stepper_Z[active_valve_ID].currentPosition());
+//        SerialUSB.println(stepper_Z[active_valve_ID].currentPosition());
         SerialUSB.print("\n");
       }
       else
@@ -616,19 +638,82 @@ void select_driver(int id)
 //Enables a specific port number
 boolean enableMuxPort_SFM3000(byte portNumber)
 {
+//  byte settings = (1 << portNumber);
+//  Wire.beginTransmission(MUX_ADDR_SFM3000);
+//  Wire.write(settings);
+//  Wire.endTransmission();
+//  return(true);
+
+  if(portNumber > 7) portNumber = 7;
+
+  //Read the current mux settings
+//  Wire.requestFrom(MUX_ADDR_SFM3000, 1);
+//  if(!Wire.available()) return(false); //Error
+//  byte settings = Wire.read();
+
+  //Set the wanted bit to enable the port
   byte settings = (1 << portNumber);
+  
+//  byte settings = (1 << portNumber);
   Wire.beginTransmission(MUX_ADDR_SFM3000);
   Wire.write(settings);
   Wire.endTransmission();
   return(true);
 }
 
-boolean enableMuxPort_ABP(byte portNumber)
+boolean disableMuxPort_SFM3000(byte portNumber)
 {
+  if(portNumber > 7) portNumber = 7;
+
+  //Read the current mux settings
+  Wire.requestFrom(MUX_ADDR_SFM3000, 1);
+  if(!Wire.available()) return(false); //Error
+  byte settings = Wire.read();
+
+  //Clear the wanted bit to disable the port
+  settings &= ~(1 << portNumber);
+
+  Wire.beginTransmission(MUX_ADDR_SFM3000);
+  Wire.write(settings);
+  Wire.endTransmission();
+
+  return(true);
+}
+boolean enableMuxPort_ABP(byte portNumber)
+{ 
+  if(portNumber > 7) portNumber = 7;
+
+  //Read the current mux settings
+//  Wire.requestFrom(MUX_ADDR_ABP, 1);
+//  if(!Wire.available()) return(false); //Error
+//  byte settings = Wire.read();
+
+  //Set the wanted bit to enable the port
+//  settings |= (1 << portNumber);
+  
   byte settings = (1 << portNumber);
   Wire.beginTransmission(MUX_ADDR_ABP);
   Wire.write(settings);
   Wire.endTransmission();
+  return(true);
+}
+
+boolean disableMuxPort_ABP(byte portNumber)
+{
+  if(portNumber > 7) portNumber = 7;
+
+  //Read the current mux settings
+  Wire.requestFrom(MUX_ADDR_ABP, 1);
+  if(!Wire.available()) return(false); //Error
+  byte settings = Wire.read();
+
+  //Clear the wanted bit to disable the port
+  settings &= ~(1 << portNumber);
+
+  Wire.beginTransmission(MUX_ADDR_ABP);
+  Wire.write(settings);
+  Wire.endTransmission();
+
   return(true);
 }
 
