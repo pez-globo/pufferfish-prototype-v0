@@ -467,6 +467,7 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 
 		self.title = title
 		self.maxLen = int(1000*WAVEFORMS.DISPLAY_RANGE_S/WAVEFORMS.UPDATE_INTERVAL_MS)
+		self.maxLen = 112
 		self.left_X_data = deque(maxlen = self.maxLen)
 		self.left_Y_data = deque(maxlen = self.maxLen)
 		self.right_Abs = []
