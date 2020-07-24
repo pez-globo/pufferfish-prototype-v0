@@ -45,10 +45,10 @@ class NavigationController(QObject):
         # self.timer_read_pos.timeout.connect(self.update_pos)
         # self.timer_read_pos.start()
 
-        # self.file_header = ['stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n']
+        self.file_header = 'Time (s)'+','+'Active valve'+','+'cycles'+','+'stepper position (mm)'+','+'pressure (psi)'+','+'flow (slm)'+','+'force (N)'+','+'temperature (C)'
 
 
-        # self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + ".csv", "w+")
+        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + ".csv", "w+")
         
         # cycles_header = list()
         # position_header = list()
@@ -59,6 +59,7 @@ class NavigationController(QObject):
         #     position_header = position_header.append(['valve {} position,'.format(ii)])
         #     temperatures_header = temperatures_header.append(['valve {} temperatures,'.format(ii)])
 
+        self.file.write(self.file_header)
         # self.file.write('Time (s)'+','+cycles_header+','+position_header+','+temperatures_header+'Force (N)'+'\n')
         # self.file.write('stepper 1 pos,stepper 2 pos,stepper 3 pos,flow (slm),pressure 1 (psi),pressure 2 (psi),pressure 3 (psi)\n')
 
@@ -111,70 +112,6 @@ class NavigationController(QObject):
     def set_valve_cycles(self, valve_cycles):
 
         self.microcontroller.enable_valve_measurement_cycling(valve_cycles)
-
-
-
-
-
-    # def move_x(self,delta):
-    #     self.microcontroller.move_x(delta)
-    #     self.x_pos = self.x_pos + delta
-    #     print('X: ' + str(self.x_pos))
-    #     self.xPos.emit(self.x_pos)
-
-    # def move_y(self,delta):
-    #     self.microcontroller.move_y(delta)
-    #     self.y_pos = self.y_pos + delta
-    #     print('Y: ' + str(self.y_pos))
-    #     self.yPos.emit(self.y_pos)
-
-    # def move_z(self,delta):
-    #     self.microcontroller.move_z(delta)
-    #     self.z_pos = self.z_pos + delta
-    #     print('Z: ' + str(self.z_pos))
-    #     self.zPos.emit(self.z_pos)
-
-    # def close_x(self):
-    #     self.microcontroller.close_x()
-    #     self.x_pos = 0
-    #     self.xPos.emit(self.x_pos)
-
-    # def close_y(self):
-    #     self.microcontroller.close_y()
-    #     self.y_pos = 0
-    #     self.yPos.emit(self.y_pos)
-
-    # def close_z(self):
-    #     self.microcontroller.close_z()
-    #     self.z_pos = 0
-    #     self.zPos.emit(self.z_pos)
-
-    # def cycle_x(self):
-    #     self.microcontroller.cycle_x()
-    #     self.x_pos = 0
-    #     self.xPos.emit(self.x_pos)
-
-    # def cycle_y(self):
-    #     self.microcontroller.cycle_y()
-    #     self.y_pos = 0
-    #     self.yPos.emit(self.y_pos)
-
-    # def cycle_z(self):
-    #     self.microcontroller.cycle_z()
-    #     self.z_pos = 0
-    #     self.zPos.emit(self.z_pos)
-
-    # def update_pos(self):
-    #     pos = self.microcontroller.read_received_packet_nowait()
-    #     if pos is None:
-    #         return
-    #     self.x_pos = utils.unsigned_to_signed(pos[0:3],MicrocontrollerDef.N_BYTES_POS)/Motion.STEPS_PER_MM_XY # @@@TODO@@@: move to microcontroller?
-    #     self.y_pos = utils.unsigned_to_signed(pos[3:6],MicrocontrollerDef.N_BYTES_POS)/Motion.STEPS_PER_MM_XY # @@@TODO@@@: move to microcontroller?
-    #     self.z_pos = utils.unsigned_to_signed(pos[6:9],MicrocontrollerDef.N_BYTES_POS)/Motion.STEPS_PER_MM_Z  # @@@TODO@@@: move to microcontroller?
-    #     self.xPos.emit(self.x_pos)
-    #     self.yPos.emit(self.y_pos)
-    #     self.zPos.emit(self.z_pos*1000)
-
   
 
     def collect_data(self):
@@ -211,16 +148,17 @@ class NavigationController(QObject):
 
                 self.valve_temperature_rec = int.from_bytes(data[start_index + 14: start_index + 16], byteorder='big', signed=False)
                 
-                # self.file.write(str(self.time_now) + ',' +str(self.valve_cycles_rec)+','+str(self.valve_pos_rec)+','+str(self.valve_temperature_rec) + str(0) +'\n')
+                # Convert raw reading for force to Newtons:
+                force_voltage = (Force.DRIVE_VOLTAGE)*(self.force/Force.ADC_RESOLUTION)
 
-                print(str(round(self.time_now,2)) +',' + 'commmanded pos: '+ str(self.upstream_pressure)+','+'valve pos: '+str(self.valve_pos_rec)+','+ 'valve_id: '+str(self.active_valve_id) + ',' + 'cycles: '+ str(self.valve_cycles_rec) + ',' + str(self.force) + ','  + str(self.valve_temperature_rec) + '\n')
-                # print('Open loop pos (mm)'+'\t'+ 'Force (N)') 
-                # print(str(stepper1_openLoop_pos)+'\t'+str(force_newtons))
+                force_newtons = Force.MAX_RATED_LOAD*(force_voltage - Force.VOLT_MIN_LOAD)/(Force.VOLT_MAX_LOAD - Force.VOLT_MIN_LOAD)
+
+                # ['Time (s)'+','+'Active valve'+','+'cycles'+','+'stepper position (mm)'+','+'pressure (psi)'+','+'flow (slm)','force (N)','temperature (C)']
+                self.file.write(str(round(self.time_now,3)) + ',' +str(self.active_valve_id)+','+str(self.valve_cycles)+','+str(self.valve_pos_rec)+','+str(self.upstream_pressure)+','+str(self.flow_rate)+','+str(self.force)+','+str(self.valve_temperature_rec)+'\n')
+
+                print('cycles: '+ str(self.valve_cycles_rec)+','+ str(round(self.time_now,2)) +',' + 'active valve: '+ str(self.active_valve_id)+','+'valve pos: '+str(self.valve_pos_rec)+','+ 'pressure: '+ str(round(self.upstream_pressure,2)) +','+ 'flow rate: '+ str(round(self.flow_rate,2))+ ',' + str(round(self.force,2)) + '\n')
             
-            # Convert raw reading for force to Newtons:
-            force_voltage = (Force.DRIVE_VOLTAGE)*(self.force/Force.ADC_RESOLUTION)
-
-            force_newtons = Force.MAX_RATED_LOAD*(force_voltage - Force.VOLT_MIN_LOAD)/(Force.VOLT_MAX_LOAD - Force.VOLT_MIN_LOAD)
+            
 
             self.ActiveValveID.emit(self.active_valve_id)
             self.ValveCycle.emit(self.valve_cycles_rec)
@@ -228,7 +166,7 @@ class NavigationController(QObject):
             self.FlowRate.emit(self.flow_rate)
             self.ValvePosition.emit(self.valve_pos_rec)
             self.Force.emit(self.force)
-            # self.file.flush()
+            self.file.flush()
 
 
 # from gravity machine
