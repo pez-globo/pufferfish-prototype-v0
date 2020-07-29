@@ -45,10 +45,12 @@ class NavigationController(QObject):
         # self.timer_read_pos.timeout.connect(self.update_pos)
         # self.timer_read_pos.start()
 
-        self.file_header = 'Time (s)'+','+'Active valve'+','+'cycles'+','+'stepper position (mm)'+','+'pressure (psi)'+','+'flow (slm)'+','+'force (N)'+','+'temperature (C)'
+        self.file_counter = 0
+        self.time_elapsed_since_save = 0
+        self.time_last_saved = 0
 
-
-        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + ".csv", "w+")
+        self.file_header = 'Time (s)'+','+'Active valve'+','+'cycles'+','+'stepper position (mm)'+','+'pressure (psi)'+','+'flow (slm)'+','+'force (N)'+','+'temperature (C)'+'\n'
+        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + '_{:5d}'.format(self.file_counter)+".csv", "w+")
         
         # cycles_header = list()
         # position_header = list()
@@ -112,11 +114,27 @@ class NavigationController(QObject):
     def set_valve_cycles(self, valve_cycles):
 
         self.microcontroller.enable_valve_measurement_cycling(valve_cycles)
-  
+
+
+    def start_new_file(self):
+
+        self.file.close()
+        self.file_counter+=1
+        self.file = open(str(Path.home()) + "/Downloads/" + datetime.now().strftime('%Y-%m-%d %H-%M-%-S') + '_{:05d}'.format(self.file_counter)+".csv", "w+")
+        self.file.write(self.file_header)
 
     def collect_data(self):
 
         self.time_now = time.time() - self.time_start
+
+        self.time_elapsed_since_save = time.time() - self.time_last_saved
+
+        if(self.time_elapsed_since_save > SAVE_TIME_PER_FILE):
+            self.start_new_file()
+            self.time_last_saved = time.time()
+            self.time_elapsed_since_save = 0
+
+
         data = self.microcontroller.read_received_packet_nowait()
         
         if data is not None:

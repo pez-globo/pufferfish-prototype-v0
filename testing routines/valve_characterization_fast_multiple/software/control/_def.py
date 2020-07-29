@@ -82,6 +82,8 @@ PRESSURE_FS = 60
 # Encoder Counter per mm (1um per count RLS miniature linear encoder)
 ENCODER_COUNTS_PER_MM = 500
 
+SAVE_TIME_PER_FILE = 10800 # A new file is saved every 3 hours. 
+
 class MicrocontrollerDef:
     N_VALVES = 8
     N_BYTES_PER_RECORD = 16
@@ -95,5 +97,6 @@ class MicrocontrollerDef:
     N_VALVES_LIST = [str(ii+1) for ii in range(N_VALVES)]
 
     DEFAULT_ACTIVE_VALVE = 0
+
 
 
