@@ -14,7 +14,7 @@ static const uint32_t EXHALATION_CONTROL_DUTY_CLOSE = 9000;
 uint32_t exhalation_control_PEEP_duty = 5000;
 static const float TIMER_PERIOD_us = 1500; // in us
 static const bool USE_SERIAL_MONITOR = false; // for debug
-static const int MSG_LENGTH = 780;
+static const int MSG_LENGTH = 33*26;
 # define LOGGING_UNDERSAMPLING  1
 
 /***************************************************************************************************/
@@ -886,6 +886,16 @@ void loop()
     tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
     buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+
+    // field 15 tidal volume measured with air and oxygen sensor
+    // to pull from pinch valve implementation
+    tmp_long = (65536 / 2) * 0 / volume_FS;
+    tmp_uint16 = signed2NBytesUnsigned(tmp_long, 2);
+    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
+    buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
+
+    // filed 16 number of alarms
+    buffer_tx[buffer_tx_ptr++] = byte(0);
 
     if (buffer_tx_ptr == MSG_LENGTH)
     {
