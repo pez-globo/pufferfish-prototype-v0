@@ -30,7 +30,7 @@ volatile uint32_t cycle_count = 0;
 /*******************************************************************
  ************************** Valve Selection ************************
  *******************************************************************/
-static const int N_valves = 4; 
+static const int N_valves = 8; 
 volatile uint8_t active_valve_ID = 0;
 volatile int counter_valve_selection = 0;
 int number_of_timer_cycles_per_valve = 100;
@@ -55,7 +55,7 @@ long cyclic_motion_limit_valve = 125;
 static const int LIMIT_WAIT_CYCLES = 10;
 volatile int limit_wait_counter[N_valves] = {0};
 volatile bool is_at_limit[N_valves] = {false};
-volatile int valves_at_home = 0;
+volatile bool cycle_valve[N_valves] = {false};
 
 /*******************************************************************
  ****************************** I2C MUX ****************************
@@ -104,11 +104,11 @@ static const int Z_step_2 = 25;
 static const int Z_dir_3 = 27;
 static const int Z_step_3 = 29;
 
-static const int STEP[N_valves] = {26, 22, 25, 29};
-static const int DIR[N_valves] = {28, 24, 23, 27};
+//static const int STEP[N_valves] = {26, 22, 25, 29};
+//static const int DIR[N_valves] = {28, 24, 23, 27};
 
-//static const int STEP[N_valves] = {26, 22};
-//static const int DIR[N_valves] = {28, 24};
+static const int STEP[N_valves] = {26};
+static const int DIR[N_valves] = {28};
 
 static const int Z_N_microstepping = 2;
 static const long steps_per_mm_Z = 30*Z_N_microstepping; 
@@ -145,6 +145,17 @@ int ret_sfm3000;
 float mFlow;
 float mPressure;
 
+/*******************************************************************
+ ************************* FORCE MEASUREMENT *************************
+ *******************************************************************/
+static const int FORCE_PIN = A0;
+int force_reading = 0;
+
+
+/*******************************************************************
+ ************************* TEMPERATURE MEASUREMENT *************************
+ *******************************************************************/
+int temperature_reading = 0; 
 
 /*******************************************************************
  *****************************  SETUP  *****************************
@@ -250,14 +261,18 @@ void setup()
         if (ret == 0) 
         {
           if(USE_SERIAL_MONITOR)
-            SerialUSB.print("init(): success\n");
+            SerialUSB.print("Valve: ");
+            SerialUSB.print(i);
+            SerialUSB.print("init(): SFM 3000 success\n");
           break;
         } 
         else 
         {
           if(USE_SERIAL_MONITOR)
           {
-            SerialUSB.print("init(): failed, ret = ");
+            SerialUSB.print("Valve: ");
+            SerialUSB.print(i);
+            SerialUSB.print("init(): SFM 3000 failed, ret = ");
             SerialUSB.println(ret);
           }
           delay(1000);
@@ -266,6 +281,9 @@ void setup()
       // get scale and offset factor for the SFM sensor
       sfm3000.get_scale_offset();
       sfm3000.start_continuous();
+
+      disableMuxPort_SFM3000(i);
+      delay(1); //Wait for next reading
     }
   #endif
 
@@ -275,6 +293,8 @@ void setup()
   // start the timer
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
+  
+  SerialUSB.println("setup complete");
   
 }
 
@@ -311,7 +331,7 @@ void loop()
       }
       if(buffer_rx[0]==4) // valve cycling
       {
-        // only allow valve cycling when all valves have been closed (Comment out for testing)
+        //@@@@ only allow valve cycling when all valves have been closed (@@@@ Comment out for testing @@@@)
 //        bool tmp = true;
 //        for(int i=0;i<N_valves;i++)
 //          tmp = tmp && flag_valve_close_position_reset[i];
@@ -319,6 +339,11 @@ void loop()
         if(buffer_rx[1]==1)
         {
           flag_valve_doing_cyclic_motion = true; 
+          for (int ii=0;ii<N_valves;ii++)
+          {
+            cycle_valve[ii] = true;
+          }
+          
         }
         // stop cycling
         if(buffer_rx[1]==0) // stop cycling all the valves
@@ -345,13 +370,27 @@ void loop()
     if(flag_read_sensor)
     {
       enableMuxPort_SFM3000(active_valve_ID);
+
       ret_sfm3000 = sfm3000.read_sample();
       if (ret_sfm3000 == 0) 
         mFlow = sfm3000.get_flow();
-  
+        
+      disableMuxPort_SFM3000(active_valve_ID);
+
+
+      delay(1); //Wait for next reading
+
+      
       enableMuxPort_ABP(active_valve_ID);
       abp_30psi.update();
       mPressure = abp_30psi.pressure();
+
+      disableMuxPort_ABP(active_valve_ID);
+
+//      SerialUSB.print("Pressure (cmH2O): ");
+//      SerialUSB.println(mPressure);
+
+      force_reading = analogRead(FORCE_PIN);
    
       flag_read_sensor = false;
     }
@@ -365,13 +404,15 @@ void loop()
     {
       if(USE_SERIAL_MONITOR)
       {
-        // SerialUSB.print("flow rate (slm): ");
-//        SerialUSB.print(mFlow);
+        SerialUSB.print("Flow rate (slm): ");
+        SerialUSB.println(mFlow);
 //        SerialUSB.print(",");
-        //SerialUSB.print(" pressure (cmH2O): ");
-//        SerialUSB.print(mPressure);
+        SerialUSB.print("Pressure (cmH2O): ");
+        SerialUSB.println(mPressure);
+        SerialUSB.print("Active valve: ");
+
         SerialUSB.println(active_valve_ID);
-        SerialUSB.println(stepper_Z[active_valve_ID].currentPosition());
+//        SerialUSB.println(stepper_Z[active_valve_ID].currentPosition());
         SerialUSB.print("\n");
       }
       else
@@ -405,13 +446,12 @@ void loop()
 
         // field 6: force
         // number_of_timer_cycles_per_valve (Testing)
-        buffer_tx[buffer_tx_ptr++] = byte(counter_valve_selection >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(counter_valve_selection % 256);
+        buffer_tx[buffer_tx_ptr++] = byte(force_reading >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(force_reading % 256);
 
         // field 7: aux (e.g additional steps needed to fully close the valve)
-        // Testing (different flag variables)
-        buffer_tx[buffer_tx_ptr++] = byte(number_of_timer_cycles_per_valve >> 8);
-        buffer_tx[buffer_tx_ptr++] = byte(number_of_timer_cycles_per_valve % 256);
+        buffer_tx[buffer_tx_ptr++] = byte(temperature_reading >> 8);
+        buffer_tx[buffer_tx_ptr++] = byte(temperature_reading % 256);
       }
     }
     // send data to computer
@@ -457,9 +497,7 @@ void loop()
   // run steppers
   for(int ii = 0; ii<N_valves; ii++)
   { 
-    stepper_Z[ii].run();
-    // Test 
-      
+    stepper_Z[ii].run();      
   }
   
 
@@ -487,22 +525,21 @@ void timer_interruptHandler()
       }
   
   }
-
-    // Check if all valves are at home position before stopping the cycling
-    valves_at_home = 0;
-    for(int ii=0;ii<N_valves;ii++)
-    {
-      if(stepper_Z[ii].currentPosition() == 0)
-      {
-        valves_at_home++;
-      }
-    }
+    
  
-  // If stop cycling is requested AND all valves are are 0 position then STOP CYCLING
-    if(flag_valve_stop_cyclic_motion_requested == true && valves_at_home == N_valves)
-    {
-      flag_valve_doing_cyclic_motion = false;
-      flag_valve_stop_cyclic_motion_requested = false;
+  // If stop cycling is requested AND all valves are are 0 position then move away from the STOP CYCLING state
+    if(flag_valve_stop_cyclic_motion_requested == true)
+    {  
+      bool temp = true;
+      for(int ii=0;ii<N_valves;ii++)
+      {
+        temp = temp && cycle_valve[ii];
+      }
+      if(temp == true) // If all valves have stopped cycling then switch states to flag_valve_doing_cyclic_motion = false;
+      {
+        flag_valve_doing_cyclic_motion = false;
+        flag_valve_stop_cyclic_motion_requested = false;
+      }
     }
     
 
@@ -519,49 +556,57 @@ void timer_interruptHandler()
       
     if(flag_valve_doing_cyclic_motion)
     { 
-
        // cycle all the valves
       for(int i = 0; i<N_valves; i++)
       {
-        if(stepper_Z[i].currentPosition() == 0)
+        if(cycle_valve[i] == true)
         {
-          // park at the fully closed position for LIMIT_WAIT_CYCLES timer cycles
-          if (is_at_limit[i] == false)
-          {
-            is_at_limit[i] = true;
-            limit_wait_counter[i] = 0;
-            
-          }
-          if (is_at_limit[i] == true)
-          {
-            if (limit_wait_counter[i]++ == LIMIT_WAIT_CYCLES)
+          if(stepper_Z[i].currentPosition() == 0)
+          {   
+            if(flag_valve_stop_cyclic_motion_requested) // If the valve has reached the closed position and the cycling command has been stopped, then stop cycling this particular valve
             {
-              is_at_limit[i] = false;
-              stepper_Z[i].moveTo(-cyclic_motion_limit_valve);
-              if(i==0)
-              { // Only count the total cycles per valve (maybe consider counting separately for all valves?)
-                cycle_count++;
+              cycle_valve[i] = false;
+            }
+            
+            // park at the fully closed position for LIMIT_WAIT_CYCLES timer cycles
+            if (is_at_limit[i] == false)
+            {
+              is_at_limit[i] = true;
+              limit_wait_counter[i] = 0;
+              
+            }
+            if (is_at_limit[i] == true)
+            {
+              if (limit_wait_counter[i]++ == LIMIT_WAIT_CYCLES)
+              {
+                is_at_limit[i] = false;
+                stepper_Z[i].moveTo(-cyclic_motion_limit_valve);
+                if(i==0)
+                { // Only count the total cycles per valve (maybe consider counting separately for all valves?)
+                  cycle_count++;
+                }
               }
             }
           }
-        }
-        if(stepper_Z[i].currentPosition() == -cyclic_motion_limit_valve)
-        {
-          // park at the fully open position for LIMIT_WAIT_CYCLES timer cycles
-          if (is_at_limit[i] == false)
+          if(stepper_Z[i].currentPosition() == -cyclic_motion_limit_valve)
           {
-            is_at_limit[i] = true;
-            limit_wait_counter[i] = 0;
-
-          }
-          if (is_at_limit[i] == true)
-          {
-            if (limit_wait_counter[i]++ == LIMIT_WAIT_CYCLES)
+            // park at the fully open position for LIMIT_WAIT_CYCLES timer cycles
+            if (is_at_limit[i] == false)
             {
-              is_at_limit[i] = false;
-              stepper_Z[i].moveTo(0);
+              is_at_limit[i] = true;
+              limit_wait_counter[i] = 0;
+  
+            }
+            if (is_at_limit[i] == true)
+            {
+              if (limit_wait_counter[i]++ == LIMIT_WAIT_CYCLES)
+              {
+                is_at_limit[i] = false;
+                stepper_Z[i].moveTo(0);
+              }
             }
           }
+
         }
       }
     }
@@ -607,19 +652,82 @@ void select_driver(int id)
 //Enables a specific port number
 boolean enableMuxPort_SFM3000(byte portNumber)
 {
+//  byte settings = (1 << portNumber);
+//  Wire.beginTransmission(MUX_ADDR_SFM3000);
+//  Wire.write(settings);
+//  Wire.endTransmission();
+//  return(true);
+
+  if(portNumber > 7) portNumber = 7;
+
+  //Read the current mux settings
+//  Wire.requestFrom(MUX_ADDR_SFM3000, 1);
+//  if(!Wire.available()) return(false); //Error
+//  byte settings = Wire.read();
+
+  //Set the wanted bit to enable the port
   byte settings = (1 << portNumber);
+  
+//  byte settings = (1 << portNumber);
   Wire.beginTransmission(MUX_ADDR_SFM3000);
   Wire.write(settings);
   Wire.endTransmission();
   return(true);
 }
 
-boolean enableMuxPort_ABP(byte portNumber)
+boolean disableMuxPort_SFM3000(byte portNumber)
 {
+  if(portNumber > 7) portNumber = 7;
+
+  //Read the current mux settings
+  Wire.requestFrom(MUX_ADDR_SFM3000, 1);
+  if(!Wire.available()) return(false); //Error
+  byte settings = Wire.read();
+
+  //Clear the wanted bit to disable the port
+  settings &= ~(1 << portNumber);
+
+  Wire.beginTransmission(MUX_ADDR_SFM3000);
+  Wire.write(settings);
+  Wire.endTransmission();
+
+  return(true);
+}
+boolean enableMuxPort_ABP(byte portNumber)
+{ 
+  if(portNumber > 7) portNumber = 7;
+
+  //Read the current mux settings
+//  Wire.requestFrom(MUX_ADDR_ABP, 1);
+//  if(!Wire.available()) return(false); //Error
+//  byte settings = Wire.read();
+
+  //Set the wanted bit to enable the port
+//  settings |= (1 << portNumber);
+  
   byte settings = (1 << portNumber);
   Wire.beginTransmission(MUX_ADDR_ABP);
   Wire.write(settings);
   Wire.endTransmission();
+  return(true);
+}
+
+boolean disableMuxPort_ABP(byte portNumber)
+{
+  if(portNumber > 7) portNumber = 7;
+
+  //Read the current mux settings
+  Wire.requestFrom(MUX_ADDR_ABP, 1);
+  if(!Wire.available()) return(false); //Error
+  byte settings = Wire.read();
+
+  //Clear the wanted bit to disable the port
+  settings &= ~(1 << portNumber);
+
+  Wire.beginTransmission(MUX_ADDR_ABP);
+  Wire.write(settings);
+  Wire.endTransmission();
+
   return(true);
 }
 

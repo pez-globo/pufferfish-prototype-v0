@@ -49,6 +49,7 @@ class OctopiGUI(QMainWindow):
 		self.navigationController.Pressure.connect(self.DataDisplayWidget.set_pressure)
 		self.navigationController.FlowRate.connect(self.DataDisplayWidget.set_flow_rate)
 		self.navigationController.ValveCycle.connect(self.DataDisplayWidget.set_valve_cycles)
+		self.navigationController.Force.connect(self.DataDisplayWidget.set_force)
 
 		# self.navigationController.ValveTemperatures.connect(self.DataDisplayWidget.set_temperature_labels)
 

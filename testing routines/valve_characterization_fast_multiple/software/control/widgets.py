@@ -472,11 +472,15 @@ class DataDisplayWidget(QFrame):
         self.cycles = QLabel()
         self.cycles.setNum(0)
 
+        self.force = QLabel()
+        self.force.setNum(0)
+
         grid_line_0 = QGridLayout()
         grid_line_0.addWidget(QLabel('Active valve'),0,0)
         grid_line_0.addWidget(self.active_valve_id,0,1)
         grid_line_0.addWidget(QLabel('Cycles'), 0, 2)
         grid_line_0.addWidget(self.cycles,0,3)
+
 
         grid_line_1 = QGridLayout()
         grid_line_1.addWidget(QLabel('Position (mm)'),0,0)
@@ -485,6 +489,8 @@ class DataDisplayWidget(QFrame):
         grid_line_1.addWidget(self.pressure,1,1)
         grid_line_1.addWidget(QLabel('Flow rate'),2,0)
         grid_line_1.addWidget(self.flow_rate,2,1)
+        grid_line_1.addWidget(QLabel('Force (N)'), 3, 0)
+        grid_line_1.addWidget(self.force,3,1)
 
 
         self.grid = QGridLayout()
@@ -507,6 +513,10 @@ class DataDisplayWidget(QFrame):
 
     def set_valve_cycles(self, cycles):
         self.cycles.setNum(cycles)
+
+    def set_force(self, force):
+        self.force.setNum(force)
+
 
 
 
