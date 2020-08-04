@@ -103,7 +103,7 @@ class Waveforms(QObject):
                     self.pressure_aw_cmH2O = utils.unsigned_to_signed(readout[i*MCU.RECORD_LENGTH_BYTE+6:i*MCU.RECORD_LENGTH_BYTE+8],2)/(65536/2)*MCU.paw_FS
 
                     record_from_MCU = (
-                        str(self.time_ticks) + '\t' + str(self.flow_1) + "{:.2f}".format(self.pressure_aw_cmH2O) )
+                        str(self.time_ticks) + '\t' + str(self.flow_1) + '\t' + "{:.2f}".format(self.pressure_aw_cmH2O) )
                     record_settings = (str(self.time_now))
                    
                     # saved variables
