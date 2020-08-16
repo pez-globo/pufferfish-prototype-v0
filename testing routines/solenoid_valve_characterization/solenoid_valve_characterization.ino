@@ -12,8 +12,9 @@ volatile int timer_div_counter = 0;
 volatile uint32_t cycle_count = 0;
 volatile uint32_t timestamp = 0; // in number of TIMER_PERIOD_us
 
-volatile bool flag_read_sensor = true;
-volatile bool flag_write_data = true;
+volatile bool flag_read_sensor = false;
+volatile bool flag_write_data = false;
+volatile bool flag_update_pwm = false;
 volatile bool is_cycling = false;
 
 /*******************************************************************
@@ -236,47 +237,51 @@ void loop()
     flag_write_data = false;
   }
 
-  // cycling control
-  if(is_cycling)
+  if(flag_update_pwm)
   {
-    if(phase == 0)
+    // cycling control
+    if(is_cycling)
     {
-      pwm_current = pwm_current + pwm_step_increase;
-      if(pwm_current >= pwm_end)
+      if(phase == 0)
       {
-        pwm_current = pwm_end;
-        phase = 1;
-        counter_phase = 0;
+        pwm_current = pwm_current + pwm_step_increase;
+        if(pwm_current >= pwm_end)
+        {
+          pwm_current = pwm_end;
+          phase = 1;
+          counter_phase = 0;
+        }
+      }
+      if(phase == 1)
+      {
+        counter_phase = counter_phase + 1;
+        if(counter_phase>pwm_max_hold)
+          phase = 2;
+      }
+      if(phase == 2)
+      {
+        pwm_current = pwm_current - pwm_step_decrease;
+        if(pwm_current <= pwm_start)
+        {
+          pwm_current = pwm_start;
+          phase = 3;
+          counter_phase = 0;
+        }
+      }
+      if(phase == 3)
+      {
+        counter_phase = counter_phase + 1;
+        if(counter_phase>pwm_min_hold)
+        {
+          pwn_cycle_current = pwn_cycle_current + 1;
+          if(pwn_cycle_current >= pwm_cycle_N)
+            is_cycling = false;
+          else
+            phase = 0;
+        }
       }
     }
-    if(phase == 1)
-    {
-      counter_phase = counter_phase + 1;
-      if(counter_phase>pwm_max_hold)
-        phase = 2;
-    }
-    if(phase == 2)
-    {
-      pwm_current = pwm_current - pwm_step_decrease;
-      if(pwm_current <= pwm_start)
-      {
-        pwm_current = pwm_start;
-        phase = 3;
-        counter_phase = 0;
-      }
-    }
-    if(phase == 3)
-    {
-      counter_phase = counter_phase + 1;
-      if(counter_phase>pwm_min_hold)
-      {
-        pwn_cycle_current = pwn_cycle_current + 1;
-        if(pwn_cycle_current >= pwm_cycle_N)
-          is_cycling = false;
-        else
-          phase = 0;
-      }
-    }
+    flag_update_pwm = false;
   }
 }
 
@@ -286,7 +291,8 @@ void timer_interruptHandler()
   timestamp = timestamp + 1;
   flag_read_sensor = true;
   flag_write_data = true;
-
+  flag_update_pwm = true;
+  
 }
 
 /***************************************************************************************************/
