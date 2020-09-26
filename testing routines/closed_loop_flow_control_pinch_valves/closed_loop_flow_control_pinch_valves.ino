@@ -4,6 +4,10 @@
 #include "pwm_lib.h"
 #include "Honeywell_ABP.h"
 
+#include <AccelStepper.h>
+#include <TMCStepper.h>
+#include <TMCStepper_UTILITY.h>
+
 static const bool USE_SERIAL_MONITOR = false;
 
 static const float TIMER_PERIOD_us = 500; // in us
@@ -33,6 +37,8 @@ uint16_t tmp_uint16;
 float flow_FS = 200;
 float pressure_FS = 60;
 
+#define MUX_ADDR 0x70 //7-bit unshifted default I2C Address
+
 /***************************************************************************************************/
 /********************************************* pwm_lib *********************************************/
 /***************************************************************************************************/
@@ -57,7 +63,7 @@ SFM3000 sfm3000;
 Honeywell_ABP abp_60psi_1(
   0x28,   // I2C address
   0,      // minimum pressure
-  60,      // maximum pressure
+  30,      // maximum pressure
   "psi"   // pressure unit
 );
 int ret_sfm3000 = 0;
@@ -81,10 +87,31 @@ int counter_phase = 0;
 
 float valve_opening = 0;
 float P_gain = 0.00001;
-float I_gain = 0.0002;
+float I_gain = 0.0001;
 float flow_setpoint = 0;
 float error = 0;
 float error_integral = 0;
+
+/***************************************************************************************************/
+/******************************************* stepper ***********************************************/
+/***************************************************************************************************/
+// stepper
+static const int UART_CS_S0 = 46;
+static const int UART_CS_S1 = 47;
+#define STEPPER_SERIAL Serial3
+static const uint8_t X_driver_ADDRESS = 0b00;
+static const float R_SENSE = 0.11f;
+// air valve
+TMC2209Stepper Z_driver(&STEPPER_SERIAL, R_SENSE, X_driver_ADDRESS);
+static const int Z_dir = 28;
+static const int Z_step = 26;
+static const int Z_N_microstepping = 8;
+static const long steps_per_mm_Z = 30*Z_N_microstepping; 
+constexpr float MAX_VELOCITY_Z_mm = 25; 
+constexpr float MAX_ACCELERATION_Z_mm = 1600;
+AccelStepper stepper_Z = AccelStepper(AccelStepper::DRIVER, Z_step, Z_dir);
+
+float valve_pos_open_steps = -800;
 
 /*******************************************************************
  ******************************* SETUP *****************************
@@ -101,12 +128,10 @@ void setup()
   // reset rx buffer pointer
   buffer_rx_ptr = 0;
 
-  // init stepper motors
-  pinMode(13, OUTPUT);
-  digitalWrite(13,LOW);
-
   // initialize the SFM sensor
   Wire.begin();
+
+  enableMuxPort(0);
   while(true) 
   {
     int ret = sfm3000.init();
@@ -131,6 +156,34 @@ void setup()
   sfm3000.start_continuous();
 
   delayMicroseconds(500000);
+
+  // init stepper motors
+  pinMode(13, OUTPUT);
+  digitalWrite(13,LOW);
+  pinMode(Z_dir, OUTPUT);
+  pinMode(Z_step, OUTPUT);
+  pinMode(UART_CS_S0, OUTPUT);
+  pinMode(UART_CS_S1, OUTPUT);
+  
+   // initialize stepper driver
+  STEPPER_SERIAL.begin(115200);
+  delayMicroseconds(1000);
+  
+  // stepper
+  select_driver(1);
+  while(!STEPPER_SERIAL);
+  Z_driver.begin();
+  Z_driver.I_scale_analog(false);  
+  Z_driver.rms_current(350,0.2); //I_run and holdMultiplier
+  Z_driver.microsteps(Z_N_microstepping);
+  Z_driver.pwm_autoscale(true);
+  Z_driver.TPOWERDOWN(2);
+  Z_driver.en_spreadCycle(false);
+  Z_driver.toff(4);
+  stepper_Z.setPinsInverted(false, false, true);
+  stepper_Z.setMaxSpeed(MAX_VELOCITY_Z_mm*steps_per_mm_Z);
+  stepper_Z.setAcceleration(MAX_ACCELERATION_Z_mm*steps_per_mm_Z);
+  stepper_Z.enableOutputs();
 
   Timer3.attachInterrupt(timer_interruptHandler);
   Timer3.start(TIMER_PERIOD_us);
@@ -170,12 +223,14 @@ void loop()
   // read sensor
   if(flag_read_sensor)
   {
+    enableMuxPort(0);
     ret_sfm3000 = sfm3000.read_sample();
     if (ret_sfm3000 == 0) 
     {
       mFlow = sfm3000.get_flow();
       // low pass filter 
     }
+    enableMuxPort(2);
     abp_60psi_1.update();
     mPressure = abp_60psi_1.pressure();
     flag_read_sensor = false;
@@ -196,6 +251,7 @@ void loop()
   if(flag_write_data)
   {
     // only write data if the last read is successful
+    ret_sfm3000 = 0;
     if (ret_sfm3000 == 0)
     {
       if(USE_SERIAL_MONITOR)
@@ -222,6 +278,7 @@ void loop()
 
         // field 3: PWM
         tmp_uint16 = flow_setpoint;
+        tmp_uint16 = stepper_Z.currentPosition();
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 >> 8);
         buffer_tx[buffer_tx_ptr++] = byte(tmp_uint16 % 256);
 
@@ -300,6 +357,10 @@ void loop()
     }
     flag_update_pwm = false;
   }
+
+  // run stepper
+  stepper_Z.run();
+  
 }
 
 void timer_interruptHandler()
@@ -319,12 +380,22 @@ void set_valve_opening(float opening)
 {
   if(opening>1)
     opening = 1;
-  change_duty(*pwm_wrapper_pin35_ptr,opening*PWM_PERIOD,PWM_PERIOD);
+  stepper_Z.moveTo(valve_pos_open_steps * opening);
 }
 
 /***************************************************************************************************/
 /*********************************************  utils  *********************************************/
-/***************************************************************************************************/long signed2NBytesUnsigned(long signedLong,int N)
+/***************************************************************************************************/
+boolean enableMuxPort(byte portNumber)
+{
+  byte settings = (1 << portNumber);
+  Wire.beginTransmission(MUX_ADDR);
+  Wire.write(settings);
+  Wire.endTransmission();
+  return(true);
+}
+
+long signed2NBytesUnsigned(long signedLong, int N)
 {
   long NBytesUnsigned = signedLong + pow(256L,N)/2;
   //long NBytesUnsigned = signedLong + 8388608L;
@@ -346,4 +417,28 @@ void change_duty(pwm_base& pwm_obj, uint32_t pwm_duty, uint32_t pwm_period)
   if(duty>pwm_period) 
     duty=pwm_duty; 
   pwm_obj.set_duty(duty); 
+}
+
+void select_driver(int id)
+{
+  if(id==1)
+  {
+    digitalWrite(UART_CS_S0, LOW);
+    digitalWrite(UART_CS_S1, LOW);
+  }
+  if(id==2)
+  {
+    digitalWrite(UART_CS_S0, HIGH);
+    digitalWrite(UART_CS_S1, LOW);
+  }
+  if(id==3)
+  {
+    digitalWrite(UART_CS_S0, LOW);
+    digitalWrite(UART_CS_S1, HIGH);
+  }
+  if(id==4)
+  {
+    digitalWrite(UART_CS_S0, HIGH);
+    digitalWrite(UART_CS_S1, HIGH);
+  }
 }
