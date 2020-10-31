@@ -183,8 +183,8 @@ void loop()
     // PID control of flow
     error = flow_setpoint - mFlow;
     error_integral = error_integral + error;
-    error_integral > 200*I_gain ? 200*I_gain : error_integral;
-    error_integral < 0 ? 0 : error_integral;
+    error_integral = error_integral > 1/I_gain ? 1/I_gain : error_integral;
+    error_integral = error_integral < 0 ? 0 : error_integral;
     
     valve_opening = error*P_gain + error_integral*I_gain;
     valve_opening = valve_opening > 1 ? 1 : valve_opening;
